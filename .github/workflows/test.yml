@@ -1,0 +1,41 @@
+name: test
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+env:
+  FOUNDRY_PROFILE: ci
+
+jobs:
+  check:
+    strategy:
+      fail-fast: true
+
+    name: Foundry project
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: "nightly-de33b6af53005037b463318d2628b5cfcaf39916"
+
+      - name: Install dependencies
+        run: forge install
+
+      - name: Run Forge build
+        run: |
+          forge --version
+          forge build --via-ir --sizes
+        id: build
+
+      - name: Run Forge tests
+        run: |
+          forge test --via-ir
+        id: test
+        env:
+          NODE_PROVIDER_BYPASS_KEY: ${{ secrets.NODE_PROVIDER_BYPASS_KEY }}
