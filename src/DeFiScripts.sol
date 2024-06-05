@@ -9,7 +9,6 @@ import {QuarkScript} from "quark-core/src/QuarkScript.sol";
 
 import {IComet} from "./interfaces/IComet.sol";
 import {ICometRewards} from "./interfaces/ICometRewards.sol";
-import {ITokenMessenger} from "./interfaces/ITokenMessenger.sol";
 import {DeFiScriptErrors} from "./lib/DeFiScriptErrors.sol";
 
 contract CometSupplyActions {
