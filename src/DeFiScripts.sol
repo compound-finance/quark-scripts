@@ -9,6 +9,7 @@ import {QuarkScript} from "quark-core/src/QuarkScript.sol";
 
 import {IComet} from "./interfaces/IComet.sol";
 import {ICometRewards} from "./interfaces/ICometRewards.sol";
+import {ITokenMessenger} from "./interfaces/ITokenMessenger.sol";
 import {DeFiScriptErrors} from "./lib/DeFiScriptErrors.sol";
 
 contract CometSupplyActions {
@@ -324,5 +325,18 @@ contract ApproveAndSwap {
 
         // Approvals to external contracts should always be reset to 0
         IERC20(sellToken).forceApprove(to, 0);
+    }
+}
+
+contract CCTPBridgeActions {
+    function bridgeUSDC(
+        address tokenMessenger,
+        uint256 amount,
+        uint32 destinationDomain,
+        bytes32 mintRecipient,
+        address burnToken
+    ) external {
+        IERC20(burnToken).approve(tokenMessenger, amount);
+        ITokenMessenger(tokenMessenger).depositForBurn(amount, destinationDomain, mintRecipient, burnToken);
     }
 }
