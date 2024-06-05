@@ -17,7 +17,7 @@ import {YulHelper} from "./lib/YulHelper.sol";
 import {SignatureHelper} from "./lib/SignatureHelper.sol";
 import {QuarkOperationHelper, ScriptType} from "./lib/QuarkOperationHelper.sol";
 
-import "src/DeFiScripts.sol";
+import "src/BridgeScripts.sol";
 
 /**
  * Tests for CCTP Bridge
@@ -48,7 +48,7 @@ contract CCTPBridge is Test {
     function testBridgeToBase() public {
         vm.pauseGasMetering();
         QuarkWallet wallet = QuarkWallet(factory.create(alice, address(0)));
-        bytes memory cctpBridgeScript = new YulHelper().getCode("DeFiScripts.sol/CCTPBridgeActions.json");
+        bytes memory cctpBridgeScript = new YulHelper().getCode("BridgeScripts.sol/CCTPBridgeActions.json");
 
         deal(USDC, address(wallet), 1_000_000e6);
 
