@@ -1,6 +1,7 @@
 ApproveAndSwapTest:testSwap() (gas: 285500)
 ApproveAndSwapTest:testSwapFailsIfWeExpectedTooMuch() (gas: 364666)
 ApproveAndSwapTest:testSwapFailsWithNoApproval() (gas: 122231)
+CCTPBridge:testBridgeToBase() (gas: 146874)
 CometClaimRewardsTest:testClaimComp() (gas: 131265)
 CometRepayAndWithdrawMultipleAssetsTest:testInvalidInput() (gas: 68171)
 CometRepayAndWithdrawMultipleAssetsTest:testRepayAndWithdrawMultipleAssets() (gas: 153860)
