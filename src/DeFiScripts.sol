@@ -327,16 +327,3 @@ contract ApproveAndSwap {
         IERC20(sellToken).forceApprove(to, 0);
     }
 }
-
-contract CCTPBridgeActions {
-    function bridgeUSDC(
-        address tokenMessenger,
-        uint256 amount,
-        uint32 destinationDomain,
-        bytes32 mintRecipient,
-        address burnToken
-    ) external {
-        IERC20(burnToken).approve(tokenMessenger, amount);
-        ITokenMessenger(tokenMessenger).depositForBurn(amount, destinationDomain, mintRecipient, burnToken);
-    }
-}
