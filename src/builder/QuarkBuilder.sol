@@ -25,7 +25,6 @@ contract QuarkBuilder {
     /* ===== Custom Errors ===== */
 
     error AssetPositionNotFound();
-    error BridgeNotFound(uint256 srcChainId, uint256 dstChainId, string assetSymbol);
     error FundsUnavailable();
     error InsufficientFunds();
     error InvalidInput();
@@ -47,7 +46,7 @@ contract QuarkBuilder {
         bool hasCode;
         bool isQuark;
         string quarkVersion;
-        uint256 quarkNextNonce;
+        uint96 quarkNextNonce;
     }
 
     // Similarly, this is designed to intentionally reduce the encoding burden for the client
@@ -138,6 +137,20 @@ contract QuarkBuilder {
         uint256 decimals;
         uint256 usdPrice;
         AccountBalance[] accountBalances;
+    }
+
+    function codeJar(uint256 chainId) internal pure returns (address) {
+        if (chainId == 1) {
+            return address(0xff); // FIXME
+        } else {
+            revert(); // FIXME
+        }
+    }
+
+    function getCodeAddress(uint256 chainId, bytes memory code) public pure returns (address) {
+        return address(
+            uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), codeJar(chainId), uint256(0), keccak256(code)))))
+        );
     }
 
     function filterChainAccounts(string memory assetSymbol, ChainAccounts[] memory chainAccountsList)
@@ -301,6 +314,7 @@ contract QuarkBuilder {
             } else {
                 bytes[] memory scriptSources = new bytes[](1);
                 scriptSources[0] = type(CCTPBridgeActions).creationCode;
+                // FIXME
                 address scriptAddress = address(0);
                 /*
                 getCodeAddress(
@@ -330,14 +344,14 @@ contract QuarkBuilder {
                 // wrap around paycall
             } else {
                 // Native ETH transfer
-                transferQuarkOperation = ERC20Transfer(recipient, amount, paymentChainAccounts);
+                transferQuarkOperation = ERC20Transfer(chainId, recipient, amount, paymentChainAccounts[0], address(0));
             }
         } else {
             if (payment.isToken) {
                 // wrap around paycall
             } else {
                 // ERC20 transfer
-                transferQuarkOperation = ERC20Transfer(recipient, amount, paymentChainAccounts);
+                transferQuarkOperation = ERC20Transfer(chainId, recipient, amount, paymentChainAccounts[0], address(0));
             }
         }
 
@@ -359,23 +373,33 @@ contract QuarkBuilder {
         });
     }
 
-    function ERC20Transfer(address recipient, uint256 amount, ChainAccounts[] memory paymentChainAccounts) internal pure returns (IQuarkWallet.QuarkOperation memory) {
+    function ERC20Transfer(
+        uint256 dstChainId,
+        address recipient,
+        uint256 amount,
+        ChainAccounts memory transferOriginAccount,
+        address sender
+    ) internal pure returns (IQuarkWallet.QuarkOperation memory) {
         bytes[] memory scriptSources = new bytes[](1);
         scriptSources[0] = type(TransferActions).creationCode;
-        /*
-           getCodeAddress(
-           address(0), // IQuarkWallet(accountBalances[i].account).factory().codeJar()
-           type(CCTPBridgeActions).creationCode
-           );
-         */
+        // uint256 chainId = transferOriginAccount.chainId;
+        AssetPositions memory transferAssetPositions = transferOriginAccount.assetPositionsList[0];
+
+        QuarkState memory accountState;
+        for (uint256 i = 0; i < transferOriginAccount.quarkStates.length; ++i) {
+            if (transferOriginAccount.quarkStates[i].account == sender) {
+                accountState = transferOriginAccount.quarkStates[i];
+                break;
+            }
+        }
+
         // ERC20 transfer
         return IQuarkWallet.QuarkOperation({
-            nonce: 0, // TODO: get next nonce
-            scriptAddress: address(0),
+            nonce: accountState.quarkNextNonce,
+            scriptAddress: getCodeAddress(transferOriginAccount.chainId, type(CCTPBridgeActions).creationCode),
             scriptCalldata: abi.encodeWithSelector(
                 TransferActions.transferERC20Token.selector,
-                // TODO: this needs to be per-chain correct
-                paymentChainAccounts[0].assetPositionsList[0].asset,
+                transferAssetPositions.asset,
                 recipient,
                 amount
             ),

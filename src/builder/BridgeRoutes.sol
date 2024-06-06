@@ -9,6 +9,8 @@ library BridgeRoutes {
         CCTP
     }
 
+    error BridgeNotFound(uint256 srcChainId, uint256 dstChainId, string assetSymbol);
+
     struct Bridge {
         // Note: Cannot name these `address` nor `type` because those are both reserved keywords
         address bridgeAddress;
