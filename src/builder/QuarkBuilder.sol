@@ -290,7 +290,6 @@ contract QuarkBuilder {
             // Then bridging is required AND/OR withdraw from Comet is required
             // Prepend a bridge action to the list of actions
             // Bridge `amount` of `chainAsset` to `recipient`
-        QuarkOperation memory bridgeQuarkOperation;
         QuarkOperation[] memory operations;
         // TODO: implement get assetBalanceOnChain
         uint256 transferAssetBalanceOnTargetChain = getAssetBalanceOnChain(assetSymbol, chainId, chainAccountsList);
@@ -298,10 +297,19 @@ contract QuarkBuilder {
         if (transferAssetBalanceOnTargetChain < amount) {
             // Construct bridge operation if not enough funds on target chain
             // TODO: bridge routing logic (which bridge to prioritize, how many bridges?)
+            // 
 
             // TODO: construct action contexts
             if (payment.isToken) {
                 // wrap around paycall
+                // operations.push(QuarkOperation({
+                //     nonce: , // TODO: get next nonce
+                //     chainId: chainId,
+                //     scriptAddress: scriptAddress,
+                //     scriptCalldata: abi.encodeWithSelector(BridgeActions.bridge.selector, recipient, amount),
+                //     scriptSources: scriptSources,
+                //     expiry: 99999999999 // TODO: never expire?
+                // })
             } else {
                 address scriptAddress = getCodeAddress(codeJar, type(BridgeActions).creationCode);
                 operations.push(QuarkOperation({
@@ -317,7 +325,6 @@ contract QuarkBuilder {
         }
 
         // Then, transfer `amount` of `chainAsset` to `recipient`
-        QuarkOperation memory transferQuarkOperation;
         address scriptAddress = getCodeAddress(codeJar, type(TransferActions).creationCode);
         // TODO: don't necessarily need scriptSources
         bytes[] memory scriptSources = new bytes[](1);
