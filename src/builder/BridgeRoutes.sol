@@ -11,6 +11,7 @@ library BridgeRoutes {
         // Note: Cannot name these `address` nor `type` because those are both reserved keywords
         address bridgeAddress;
         BridgeType bridgeType;
+        uint32 domainId;
     }
 
     function hasBridge(uint256 srcChainId, uint256 dstChainId, string memory assetSymbol) internal pure returns (bool) {
@@ -45,7 +46,7 @@ library BridgeRoutes {
             return Bridge({
                 bridgeAddress: address(0),
                 bridgeType: BridgeType.NONE
-            })
+            });
             // revert BridgeNotFound(1, dstChainid, assetSymbol);
         }
     }
@@ -54,13 +55,13 @@ library BridgeRoutes {
         if (compareStrings(assetSymbol, "USDC")) {
             return Bridge({
                 bridgeAddress: 0x1682Ae6375C4E4A97e4B583BC394c861A46D8962,
-                type: BridgeType.CCTP
+                bridgeType: BridgeType.CCTP
             });
         } else {
             return Bridge({
                 bridgeAddress: address(0),
-                type: BridgeType.NONE
-            })
+                bridgeType: BridgeType.NONE
+            });
             // revert BridgeNotFound(1, dstChainid, assetSymbol);
         }
     }

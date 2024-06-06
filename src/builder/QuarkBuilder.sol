@@ -291,6 +291,7 @@ contract QuarkBuilder {
             // Prepend a bridge action to the list of actions
             // Bridge `amount` of `chainAsset` to `recipient`
         QuarkOperation memory bridgeQuarkOperation;
+        QuarkOperation[] memory operations;
         // TODO: implement get assetBalanceOnChain
         uint256 transferAssetBalanceOnTargetChain = getAssetBalanceOnChain(assetSymbol, chainId, chainAccountsList);
         // Note: User will always have enough payment token on destination chain, since we already check that in the MaxCostTooHigh() check
@@ -303,7 +304,7 @@ contract QuarkBuilder {
                 // wrap around paycall
             } else {
                 address scriptAddress = getCodeAddress(codeJar, type(BridgeActions).creationCode);
-                bridgeQuarkOperation = QuarkOperation({
+                operations.push(QuarkOperation({
                     nonce: , // TODO: get next nonce
                     chainId: chainId,
                     scriptAddress: scriptAddress,
@@ -311,7 +312,7 @@ contract QuarkBuilder {
                     scriptCalldata: abi.encodeWithSelector(BridgeActions.bridge.selector, recipient, amount),
                     scriptSources: scriptSources,
                     expiry: 99999999999 // TODO: never expire?
-                });
+                }));
             }
         }
 
@@ -327,38 +328,41 @@ contract QuarkBuilder {
                 // wrap around paycall
             } else {
                 // Native ETH transfer
-                transferQuarkOperation = QuarkOperation({
+                operations.push(QuarkOperation({
                     nonce: , // TODO: get next nonce
                     chainId: chainId,
                     scriptAddress: scriptAddress,
                     scriptCalldata: abi.encodeWithSelector(TransferActions.transferNativeToken.selector, recipient, amount),
                     scriptSources: scriptSources,
                     expiry: 99999999999 // TODO: never expire?
-                });
+                }));
             }
         } else {
             if (payment.isToken) {
                 // wrap around paycall
             } else {
                 // ERC20 transfer
-                transferQuarkOperation = QuarkOperation({
+                operations.push(QuarkOperation({
                     nonce: , // TODO: get next nonce
                     chainId: chainId,
                     scriptAddress: scriptAddress,
                     scriptCalldata: abi.encodeWithSelector(TransferActions.transferERC20Token.selector, token, recipient, amount),
                     scriptSources: scriptSources,
                     expiry: 99999999999 // TODO: never expire?
-                });
+                }));
             }
         }
 
         // TODO: construct QuarkOperation of size 1 or 2 depending on bridge or not
-        QuarkOperation[] memory operations = new QuarkOperation[](1);
+        QuarkOperation[] memory operationsRst = new QuarkOperation[](operations.length);
+        for (uint i = 0; i < operations.length; ++i) {
+            operationsRst[i] = operations[i];
+        }
         return QuarkAction({
             version: version,
             actionType: actionType,
             actionContext: actionContext,
-            operations: operations
+            operations: operationsRst
         });
         // TODO: return these
         struct BuilderResult {
