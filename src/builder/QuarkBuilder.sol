@@ -209,7 +209,7 @@ contract QuarkBuilder {
 
     function sumBalances(AssetPositions memory assetPositions) internal pure returns (uint256) {
         uint256 totalBalance = 0;
-        for (uint j = 0; j < assetPositions.accountBalances.length; ++j) {
+        for (uint256 j = 0; j < assetPositions.accountBalances.length; ++j) {
             totalBalance += assetPositions.accountBalances[j].balance;
         }
         return totalBalance;
@@ -236,7 +236,8 @@ contract QuarkBuilder {
         {
             uint256 aggregateTransferAssetBalance;
             for (uint256 i = 0; i < transferChainAccounts.length; ++i) {
-                aggregateTransferAssetBalance += sumBalances(findAssetPositions(assetSymbol, transferChainAccounts[i].assetPositionsList));
+                aggregateTransferAssetBalance +=
+                    sumBalances(findAssetPositions(assetSymbol, transferChainAccounts[i].assetPositionsList));
             }
             if (aggregateTransferAssetBalance < amount) {
                 revert InsufficientFunds();
@@ -248,17 +249,17 @@ contract QuarkBuilder {
         // There is at least one chain that does not have sufficient payment assets to cover the maxCost for that chain.
         // Note: This check assumes we will not be bridging payment tokens for the user
         if (payment.isToken) {
-            for (uint i = 0; i < payment.maxCosts.length; ++i) {
+            for (uint256 i = 0; i < payment.maxCosts.length; ++i) {
                 uint256 paymentAssetBalanceOnChain = sumBalances(
                     findAssetPositions(
                         assetSymbol,
-                        findChainAccounts(payment.maxCosts[i].chainId, paymentChainAccounts)
-                            .assetPositionsList
+                        findChainAccounts(payment.maxCosts[i].chainId, paymentChainAccounts).assetPositionsList
                     )
                 );
                 uint256 paymentAssetNeeded = payment.maxCosts[i].amount;
                 // If the payment token is the transfer token and this is the target chain, we need to account for the transfer amount when checking token balances
-                if (Strings.stringEqIgnoreCase(payment.currency, assetSymbol) && chainId == payment.maxCosts[i].chainId) {
+                if (Strings.stringEqIgnoreCase(payment.currency, assetSymbol) && chainId == payment.maxCosts[i].chainId)
+                {
                     paymentAssetNeeded += amount;
                 }
                 if (paymentAssetBalanceOnChain < paymentAssetNeeded) {
@@ -274,10 +275,11 @@ contract QuarkBuilder {
         // In order to consider the availability here, we’d need comet data to be passed in as an input. (So, if we were including withdraw.)
         {
             uint256 aggregateTransferAssetAvailableBalance;
-            for (uint i = 0; i < transferChainAccounts.length; ++i) {
-                for (uint j = 0; j < transferChainAccounts[i].assetPositionsList[0].accountBalances.length; ++j) {
+            for (uint256 i = 0; i < transferChainAccounts.length; ++i) {
+                for (uint256 j = 0; j < transferChainAccounts[i].assetPositionsList[0].accountBalances.length; ++j) {
                     if (BridgeRoutes.hasBridge(transferChainAccounts[i].chainId, chainId, assetSymbol)) {
-                        aggregateTransferAssetAvailableBalance += transferChainAccounts[i].assetPositionsList[0].accountBalances[j].balance;
+                        aggregateTransferAssetAvailableBalance +=
+                            transferChainAccounts[i].assetPositionsList[0].accountBalances[j].balance;
                     }
                 }
             }
@@ -289,17 +291,17 @@ contract QuarkBuilder {
         // Construct Quark Operations:
 
         // If Payment.isToken:
-            // Wrap Quark operation around a Paycall/Quotecall
-            // Process for generating Paycall transaction:
+        // Wrap Quark operation around a Paycall/Quotecall
+        // Process for generating Paycall transaction:
 
         // We need to find the (payment token address, payment token price feed address) to derive the CREATE2 address of the Paycall script
         // TODO: define helper function to get (payment token address, payment token price feed address) given a chain ID
 
         // TODO:
         // If not enough assets on the chain ID:
-            // Then bridging is required AND/OR withdraw from Comet is required
-            // Prepend a bridge action to the list of actions
-            // Bridge `amount` of `chainAsset` to `recipient`
+        // Then bridging is required AND/OR withdraw from Comet is required
+        // Prepend a bridge action to the list of actions
+        // Bridge `amount` of `chainAsset` to `recipient`
         IQuarkWallet.QuarkOperation memory bridgeQuarkOperation;
         // TODO: implement get assetBalanceOnChain
         uint256 localBalance = sumBalances(findChainAccounts(chainId, transferChainAccounts).assetPositionsList[0]);
@@ -325,11 +327,7 @@ contract QuarkBuilder {
                 bridgeQuarkOperation = IQuarkWallet.QuarkOperation({
                     nonce: 0, // TODO: get next nonce
                     scriptAddress: scriptAddress,
-                    scriptCalldata: abi.encodeWithSelector(
-                        CCTPBridgeActions.bridgeUSDC.selector,
-                        recipient,
-                        amount
-                    ),
+                    scriptCalldata: abi.encodeWithSelector(CCTPBridgeActions.bridgeUSDC.selector, recipient, amount),
                     scriptSources: scriptSources,
                     expiry: 99999999999 // TODO: never expire?
                 });
@@ -398,17 +396,13 @@ contract QuarkBuilder {
             nonce: accountState.quarkNextNonce,
             scriptAddress: getCodeAddress(transferOriginAccount.chainId, type(CCTPBridgeActions).creationCode),
             scriptCalldata: abi.encodeWithSelector(
-                TransferActions.transferERC20Token.selector,
-                transferAssetPositions.asset,
-                recipient,
-                amount
+                TransferActions.transferERC20Token.selector, transferAssetPositions.asset, recipient, amount
             ),
             scriptSources: scriptSources,
             expiry: 99999999999 // TODO: never expire?
         });
     }
 }
-
 
 // 1. Input validation (custom errors)
 // 2. Constructing the operation
