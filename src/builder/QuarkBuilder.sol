@@ -23,7 +23,7 @@ contract QuarkBuilder {
     /* ===== Custom Errors ===== */
 
     error AssetPositionNotFound();
-    error BridgeNotFound(uint256 srcChainId, uint256 dstChainId, string assetSymbol)
+    error BridgeNotFound(uint256 srcChainId, uint256 dstChainId, string assetSymbol);
     error FundsUnavailable();
     error InsufficientFunds();
     error InvalidInput();
@@ -81,7 +81,7 @@ contract QuarkBuilder {
         // version of the builder interface. (Same as VERSION, but attached to the output.)
         string version;
         // array of quark operations to execute to fulfill the client intent
-        QuarkWallet.QuarkOperation[] quarkOperations;
+        IQuarkWallet.QuarkOperation[] quarkOperations;
         // array of action context and other metadata corresponding 1:1 with quarkOperations
         QuarkAction[] quarkActions;
         // EIP-712 digest to sign for a MultiQuarkOperation to fulfill the client intent.
@@ -138,7 +138,7 @@ contract QuarkBuilder {
         AccountBalance[] accountBalances;
     }
 
-    function filterAssetPositions(string memory assetSymbol, ChainAccount[] memory chainAccountsList) internal pure returns (AssetPositionsWithChainId[] memory) {
+    function filterAssetPositions(string memory assetSymbol, ChainAccounts[] memory chainAccountsList) internal pure returns (AssetPositionsWithChainId[] memory) {
         uint numMatches = 0;
         // First loop to count the number of matching AssetPositions
         for (uint i = 0; i < chainAccountsList.length; ++i) {
@@ -172,12 +172,12 @@ contract QuarkBuilder {
         return matchingAssetPositions;
     }
 
-    function getAssetPositionsForSymbolAndChain(string memory assetSymbol, uint256 chainId, ChainAccount[] memory chainAccountsList) internal pure returns (AssetPositionsWithChainId memory) {
+    function getAssetPositionsForSymbolAndChain(string memory assetSymbol, uint256 chainId, ChainAccounts[] memory chainAccountsList) internal pure returns (AssetPositionsWithChainId memory) {
         uint index = 0;
         // Second loop to populate the matchingAssetPositions array
         for (uint i = 0; i < chainAccountsList.length; ++i) {
             if (chainAccountsList[i].chainId != chainId) {
-                continue
+                continue;
             }
             for (uint j = 0; j < chainAccountsList[i].assetPositionsList.length; ++j) {
                 if (Strings.stringEqIgnoreCase(chainAccountsList[i].assetPositionsList[j].symbol, assetSymbol)) {
@@ -245,7 +245,7 @@ contract QuarkBuilder {
                 uint256 paymentAssetNeeded = maxCost.amount;
                 // If the payment token is the transfer token and this is the target chain, we need to account for the transfer amount when checking token balances
                 if (Strings.stringEqIgnoreCase(payment.currency, assetSymbol) && chainId == maxCost.chainId) {
-                    paymentAssetNeeded += transferAmount;
+                    paymentAssetNeeded += amount;
                 }
                 if (paymentAssetBalanceOnChain < paymentAssetNeeded) {
                     revert MaxCostTooHigh();
@@ -285,7 +285,7 @@ contract QuarkBuilder {
             // Then bridging is required AND/OR withdraw from Comet is required
             // Prepend a bridge action to the list of actions
             // Bridge `amount` of `chainAsset` to `recipient`
-        QuarkOperation memory bridgeQuarkOperation;
+        IQuarkWallet.QuarkOperation memory bridgeQuarkOperation;
         // TODO: implement get assetBalanceOnChain
         uint256 transferAssetBalanceOnTargetChain = getAssetBalanceOnChain(assetSymbol, chainId, chainAccountsList);
         // Note: User will always have enough payment token on destination chain, since we already check that in the MaxCostTooHigh() check
@@ -298,8 +298,8 @@ contract QuarkBuilder {
                 // wrap around paycall
             } else {
                 address scriptAddress = getCodeAddress(codeJar, type(BridgeActions).creationCode);
-                bridgeQuarkOperation = QuarkOperation({
-                    nonce: , // TODO: get next nonce
+                bridgeQuarkOperation = IQuarkWallet.QuarkOperation({
+                    nonce: 0, // TODO: get next nonce
                     chainId: chainId,
                     scriptAddress: scriptAddress,
                     // TODO: Do we have a bridge action script?
@@ -311,8 +311,7 @@ contract QuarkBuilder {
         }
 
         // Then, transfer `amount` of `chainAsset` to `recipient`
-        QuarkOperation memory transferQuarkOperation;
-        address scriptAddress = getCodeAddress(codeJar, type(TransferActions).creationCode);
+        IQuarkWallet.QuarkOperation memory transferQuarkOperation;
         // TODO: don't necessarily need scriptSources
         bytes[] memory scriptSources = new bytes[](1);
         scriptSources[0] = type(TransferActions).creationCode;
@@ -321,9 +320,10 @@ contract QuarkBuilder {
             if (payment.isToken) {
                 // wrap around paycall
             } else {
+                address scriptAddress = getCodeAddress(codeJar, type(TransferActions).creationCode);
                 // Native ETH transfer
-                transferQuarkOperation = QuarkOperation({
-                    nonce: , // TODO: get next nonce
+                transferQuarkOperation = IQuarkWallet.QuarkOperation({
+                    nonce: 0, // TODO: get next nonce
                     chainId: chainId,
                     scriptAddress: scriptAddress,
                     scriptCalldata: abi.encodeWithSelector(TransferActions.transferNativeToken.selector, recipient, amount),
@@ -336,8 +336,8 @@ contract QuarkBuilder {
                 // wrap around paycall
             } else {
                 // ERC20 transfer
-                transferQuarkOperation = QuarkOperation({
-                    nonce: , // TODO: get next nonce
+                transferQuarkOperation = IQuarkWallet.QuarkOperation({
+                    nonce: 0, // TODO: get next nonce
                     chainId: chainId,
                     scriptAddress: scriptAddress,
                     scriptCalldata: abi.encodeWithSelector(TransferActions.transferERC20Token.selector, token, recipient, amount),
@@ -348,45 +348,21 @@ contract QuarkBuilder {
         }
 
         // TODO: construct QuarkOperation of size 1 or 2 depending on bridge or not
-        QuarkOperation[] memory operations = new QuarkOperation[](1);
-        return QuarkAction({
-            version: version,
-            actionType: actionType,
-            actionContext: actionContext,
-            operations: operations
-        });
-        // TODO: return these
-        struct BuilderResult {
-            // version of the builder interface. (Same as VERSION, but attached to the output.)
-            string version;
-            // array of quark operations to execute to fulfill the client intent
-            QuarkWallet.QuarkOperation[] quarkOperations;
-            // array of action context and other metadata corresponding 1:1 with quarkOperations
-            QuarkAction[] quarkActions;
-            // EIP-712 digest to sign for a MultiQuarkOperation to fulfill the client intent.
-            // Empty when quarkOperations.length == 0.
-            bytes multiQuarkOperationDigest;
-            // EIP-712 digest to sign for a single QuarkOperation to fulfill the client intent.
-            // Empty when quarkOperations.length != 1.
-            bytes quarkOperationDigest;
-            // client-provided paymentCurrency string that was used to derive token addresses.
-            // client may re-use this string to construct a request that simulates the transaction.
-            string paymentCurrency;
-        }
+        // return QuarkAction({
+        //     version: version,
+        //     actionType: actionType,
+        //     actionContext: actionContext,
+        //     operations: operations
+        // });
 
-        // With QuarkAction, we try to define fields that are as 1:1 as possible with the
-        // simulate endpoint request schema.
-        struct QuarkAction {
-            uint256 chainId;
-            string actionType;
-            bytes actionContext;
-            // One of the PAYMENT_METHOD_* constants.
-            string paymentMethod;
-            // Address of payment token on chainId.
-            // Null address if the payment method was OFFCHAIN.
-            address paymentToken;
-            uint256 paymentMaxCost;
-        }
+        return BuilderResult({
+            version: VERSION,
+            quarkOperations: new IQuarkWallet.QuarkOperation[](0),
+            quarkActions: new QuarkAction[](0),
+            multiQuarkOperationDigest: bytes(0),
+            quarkOperationDigest: bytes(0),
+            paymentCurrency: payment.currency
+        });
     }
 }
 

@@ -11,7 +11,7 @@ library Strings {
     }
 
     function toLowerCase(string memory str) internal pure returns (string memory) {
-        bytes memory strBytes = bytes(strBytes);
+        bytes memory strBytes = bytes(str);
         for (uint i = 0; i < strBytes.length; i++) {
             if (strBytes[i] >= 0x41 && strBytes[i] <= 0x5A) {
                 strBytes[i] = bytes1(uint8(strBytes[i]) + 32);
