@@ -342,14 +342,14 @@ contract QuarkBuilder {
                 // wrap around paycall
             } else {
                 // Native ETH transfer
-                transferQuarkOperation = ERC20Transfer(chainId, recipient, amount, paymentChainAccounts[0], address(0));
+                transferQuarkOperation = ERC20Transfer(assetSymbol, chainId, recipient, amount, paymentChainAccounts[0], address(0));
             }
         } else {
             if (payment.isToken) {
                 // wrap around paycall
             } else {
                 // ERC20 transfer
-                transferQuarkOperation = ERC20Transfer(chainId, recipient, amount, paymentChainAccounts[0], address(0));
+                transferQuarkOperation = ERC20Transfer(assetSymbol, chainId, recipient, amount, paymentChainAccounts[0], address(0));
             }
         }
 
@@ -372,6 +372,7 @@ contract QuarkBuilder {
     }
 
     function ERC20Transfer(
+        string assetSymbol,
         uint256 dstChainId,
         address recipient,
         uint256 amount,
@@ -381,7 +382,10 @@ contract QuarkBuilder {
         bytes[] memory scriptSources = new bytes[](1);
         scriptSources[0] = type(TransferActions).creationCode;
         // uint256 chainId = transferOriginAccount.chainId;
-        AssetPositions memory transferAssetPositions = transferOriginAccount.assetPositionsList[0];
+        AssetPositions memory transferAssetPositions = findAssetPositions(
+            assetSymbol,
+            transferOriginAccount.assetPositionsList
+        );
 
         QuarkState memory accountState;
         for (uint256 i = 0; i < transferOriginAccount.quarkStates.length; ++i) {
