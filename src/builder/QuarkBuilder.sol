@@ -19,8 +19,8 @@ contract QuarkBuilder {
     string constant PAYMENT_CURRENCY_USD = "usd";
     string constant PAYMENT_CURRENCY_USDC = "usdc";
 
-    uint256 constant BRIDGE_COST_OFFSET_USDC = 10_000_000;
-    uint256 constant BRIDGE_MINIMUM_AMOUNT_USDC = 10_000_000;
+    uint256 constant BRIDGE_COST_OFFSET_USDC = 1_000_000;
+    uint256 constant BRIDGE_MINIMUM_AMOUNT_USDC = 1_000_000;
     /* ===== Custom Errors ===== */
 
     error AssetPositionNotFound();
