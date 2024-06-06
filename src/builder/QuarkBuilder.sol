@@ -19,6 +19,8 @@ contract QuarkBuilder {
     string constant PAYMENT_CURRENCY_USD = "usd";
     string constant PAYMENT_CURRENCY_USDC = "usdc";
 
+    uint256 constant BRIDGE_COST_OFFSET_USDC = 10_000_000;
+    uint256 constant BRIDGE_MINIMUM_AMOUNT_USDC = 10_000_000;
     /* ===== Custom Errors ===== */
 
     error AssetPositionNotFound();
@@ -295,32 +297,57 @@ contract QuarkBuilder {
         uint256 transferAssetBalanceOnTargetChain = getAssetBalanceOnChain(assetSymbol, chainId, chainAccountsList);
         // Note: User will always have enough payment token on destination chain, since we already check that in the MaxCostTooHigh() check
         if (transferAssetBalanceOnTargetChain < amount) {
+            uint256 amountLeft = amount - transferAssetBalanceOnTargetChain;
+            uint256 maxBridgeAction = 2;
+            uint256 bridgeActionCount = 0;
             // Construct bridge operation if not enough funds on target chain
             // TODO: bridge routing logic (which bridge to prioritize, how many bridges?)
-            // 
+            // Iterate chainAccountList and find upto 2 chains that can provide enough fund
+            for (uint i = 0; i < chainAccountsList.length; ++i) {
+                if (amountLeft == 0) {
+                    break;
+                }
 
-            // TODO: construct action contexts
-            if (payment.isToken) {
-                // wrap around paycall
-                // operations.push(QuarkOperation({
-                //     nonce: , // TODO: get next nonce
-                //     chainId: chainId,
-                //     scriptAddress: scriptAddress,
-                //     scriptCalldata: abi.encodeWithSelector(BridgeActions.bridge.selector, recipient, amount),
-                //     scriptSources: scriptSources,
-                //     expiry: 99999999999 // TODO: never expire?
-                // })
-            } else {
-                address scriptAddress = getCodeAddress(codeJar, type(BridgeActions).creationCode);
-                operations.push(QuarkOperation({
-                    nonce: , // TODO: get next nonce
-                    chainId: chainId,
-                    scriptAddress: scriptAddress,
-                    // TODO: Do we have a bridge action script?
-                    scriptCalldata: abi.encodeWithSelector(BridgeActions.bridge.selector, recipient, amount),
-                    scriptSources: scriptSources,
-                    expiry: 99999999999 // TODO: never expire?
-                }));
+                if (chainAccountsList[i].chainId == chainId) {
+                    continue;
+                }
+
+                uint256 transferAssetBalanceOnBridgeChain = getAssetBalanceOnChain(assetSymbol, chainAccountsList[i].chainId, chainAccountsList);
+                if (transferAssetBalanceOnBridgeChain >= BRIDGE_MINIMUM_AMOUNT_USDC + BRIDGE_COST_OFFSET) {
+                    // Construct bridge operation
+                    uint256 amountToBridge = transferAssetBalanceOnBridgeChain - BRIDGE_COST_OFFSET >= amountLeft ? amountLeft : transferAssetBalanceOnBridgeChain;
+                    amountLeft -= transferAssetBalanceOnBridgeChain - BRIDGE_COST_OFFSET;
+                    
+                    if (bridgeActionCount >= maxBridgeAction) {
+                        revert("Too many bridge actions");
+                    }
+
+                    // TODO: construct action contexts
+                    // TODO: update to use the correct bridge action
+                    if (payment.isToken) {
+                        // wrap around paycall
+                        // operations.push(QuarkOperation({
+                        //     nonce: , // TODO: get next nonce
+                        //     chainId: chainId,
+                        //     scriptAddress: scriptAddress,
+                        //     scriptCalldata: abi.encodeWithSelector(BridgeActions.bridge.selector, recipient, amount),
+                        //     scriptSources: scriptSources,
+                        //     expiry: 99999999999 // TODO: never expire?
+                        // })
+                    } else {
+                        address scriptAddress = getCodeAddress(codeJar, type(BridgeActions).creationCode);
+                        operations.push(QuarkOperation({
+                            nonce: , // TODO: get next nonce
+                            chainId: chainId,
+                            scriptAddress: scriptAddress,
+                            // TODO: Do we have a bridge action script?
+                            scriptCalldata: abi.encodeWithSelector(BridgeActions.bridge.selector, recipient, amount),
+                            scriptSources: scriptSources,
+                            expiry: 99999999999 // TODO: never expire?
+                        }));
+                    }
+                    bridgeActionCount++;
+                }
             }
         }
 

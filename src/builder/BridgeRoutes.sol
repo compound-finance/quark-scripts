@@ -7,6 +7,17 @@ library BridgeRoutes {
         CCTP
     }
 
+    uint256 constant BASE_CHAIN_ID = 8453;
+    uint256 constant MAINNET_CHAIN_ID = 1;
+
+    mapping(uint256 => uint32) public chainIdToCCTPDomainId;
+
+    constructor() {
+        // Right now we only have Mainnet and Base
+        chainIdToCCTPDomainId[MAINNET_CHAIN_ID] = 0;
+        chainIdToCCTPDomainId[BASE_CHAIN_ID] = 6;
+    }
+
     struct Bridge {
         // Note: Cannot name these `address` nor `type` because those are both reserved keywords
         address bridgeAddress;
@@ -37,10 +48,15 @@ library BridgeRoutes {
     }
 
     function getBridgeForMainnet(uint256 dstChainId, string memory assetSymbol) internal pure returns (Bridge memory) {
+        if (dstChainId == MAINNET_CHAIN_ID) {
+            revert("Cannot bridge to the same chain");
+        }
+
         if (compareStrings(assetSymbol, "USDC")) {
             return Bridge({
                 bridgeAddress: 0xBd3fa81B58Ba92a82136038B25aDec7066af3155,
-                bridgeType: BridgeType.CCTP
+                bridgeType: BridgeType.CCTP, 
+                domainId: chainIdToCCTPDomainId[dstChainId]
             });
         } else {
             return Bridge({
@@ -52,10 +68,15 @@ library BridgeRoutes {
     }
 
     function getBridgeForBase(uint256 dstChainId, string memory assetSymbol) internal pure returns (Bridge memory) {
+        if (dstChainId == BASE_CHAIN_ID) {
+            revert("Cannot bridge to the same chain");
+        }
+        
         if (compareStrings(assetSymbol, "USDC")) {
             return Bridge({
                 bridgeAddress: 0x1682Ae6375C4E4A97e4B583BC394c861A46D8962,
-                bridgeType: BridgeType.CCTP
+                bridgeType: BridgeType.CCTP, 
+                domainId: chainIdToCCTPDomainId[dstChainId]
             });
         } else {
             return Bridge({
