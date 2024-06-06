@@ -4,6 +4,7 @@ pragma solidity ^0.8.23;
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
 import {TransferActions} from "../DeFiScripts.sol";
 import "./BridgeRoutes.sol";
+import "./Strings.sol";
 
 contract QuarkBuilder {
     /* ===== Constants ===== */
@@ -63,12 +64,15 @@ contract QuarkBuilder {
     }
 
     struct Payment {
-        // TODO: rename?
         bool isToken;
+        // Note: Payment `currency` should be the same across chains
         string currency;
-        // TODO: make into struct?
-        uint256[] chainIds;
-        uint256[] maxCosts;
+        PaymentMaxCost[] maxCosts;
+    }
+
+    struct PaymentMaxCost {
+        uint256 chainId;
+        uint256 amount;
     }
 
     /* ===== Output Types ===== */
@@ -122,7 +126,6 @@ contract QuarkBuilder {
         uint256 destinationChainId;
     }
 
-
     /* ===== Internal/Intermediate Types ===== */
 
     // Note: This is just the AssetPositions type with an extra `chainId` field
@@ -135,17 +138,12 @@ contract QuarkBuilder {
         AccountBalance[] accountBalances;
     }
 
-    // TODO: convert strings to lower case before comparing. maybe rename to `compareSymbols`
-    function compareStrings(string memory a, string memory b) internal pure returns (bool) {
-        return keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b)));
-    }
-
-    function filterAssetPositionsForSymbol(string memory assetSymbol, ChainAccount[] memory chainAccountsList) internal pure returns (AssetPositionsWithChainId[] memory) {
+    function filterAssetPositions(string memory assetSymbol, ChainAccount[] memory chainAccountsList) internal pure returns (AssetPositionsWithChainId[] memory) {
         uint numMatches = 0;
         // First loop to count the number of matching AssetPositions
         for (uint i = 0; i < chainAccountsList.length; ++i) {
             for (uint j = 0; j < chainAccountsList[i].assetPositionsList.length; ++j) {
-                if (compareStrings(chainAccountsList[i].assetPositionsList[j].symbol, assetSymbol)) {
+                if (Strings.stringEqIgnoreCase(chainAccountsList[i].assetPositionsList[j].symbol, assetSymbol)) {
                     numMatches++;
                 }
             }
@@ -156,7 +154,7 @@ contract QuarkBuilder {
         // Second loop to populate the matchingAssetPositions array
         for (uint i = 0; i < chainAccountsList.length; ++i) {
             for (uint j = 0; j < chainAccountsList[i].assetPositionsList.length; ++j) {
-                if (compareStrings(chainAccountsList[i].assetPositionsList[j].symbol, assetSymbol)) {
+                if (Strings.stringEqIgnoreCase(chainAccountsList[i].assetPositionsList[j].symbol, assetSymbol)) {
                     AssetPositions memory assetPositions = chainAccountsList[i].assetPositionsList[j];
                     matchingAssetPositions[index] = AssetPositionsWithChainId({
                         chainId: chainAccountsList[i].chainId,
@@ -182,7 +180,7 @@ contract QuarkBuilder {
                 continue
             }
             for (uint j = 0; j < chainAccountsList[i].assetPositionsList.length; ++j) {
-                if (compareStrings(chainAccountsList[i].assetPositionsList[j].symbol, assetSymbol)) {
+                if (Strings.stringEqIgnoreCase(chainAccountsList[i].assetPositionsList[j].symbol, assetSymbol)) {
                     AssetPositions memory assetPositions = chainAccountsList[i].assetPositionsList[j];
                     return AssetPositionsWithChainId({
                         chainId: chainAccountsList[i].chainId,
@@ -217,14 +215,10 @@ contract QuarkBuilder {
         Payment calldata payment,
         ChainAccounts[] calldata chainAccountsList
     ) external pure returns (BuilderResult memory) {
-        if (payment.chainIds.length != payment.maxCosts.length) {
-            revert InvalidInput();
-        }
-
-        AssetPositionsWithChainId[] transferAssetPositions = filterAssetPositionsForSymbol(assetSymbol, chainAccountsList);
+        AssetPositionsWithChainId[] transferAssetPositions = filterAssetPositions(assetSymbol, chainAccountsList);
         AssetPositionsWithChainId[] paymentAssetPositions;
         if (payment.isToken) {
-            paymentAssetPositions = filterAssetPositionsForSymbol(payment.currency, chainAccountsList);
+            paymentAssetPositions = filterAssetPositions(payment.currency, chainAccountsList);
         }
 
         // INSUFFICIENT_FUNDS
@@ -245,11 +239,13 @@ contract QuarkBuilder {
         // (amount of payment token on chain id - transfer amount (IF IS SAME TOKEN AND SAME CHAIN ID)) < maxPaymentAmount on chain id
         // Note: This check assumes we will not be bridging payment tokens for the user
         if (payment.isToken) {
-            for (uint i = 0; i < payment.chainIds.length; ++i) {
-                AssetPositionsWithChainId memory paymentAssetPosition = getAssetPositionForSymbolAndChain(payment.currency, payment.chainIds[i], chainAccountsList);
+            for (uint i = 0; i < payment.maxCosts.length; ++i) {
+                PaymentMaxCost memory maxCost = payment.maxCosts[i];
+                AssetPositionsWithChainId memory paymentAssetPosition = getAssetPositionForSymbolAndChain(payment.currency, maxCost.chainId, chainAccountsList);
                 uint256 paymentAssetBalanceOnChain = sumUpBalances(paymentAssetPosition);
-                uint256 paymentAssetNeeded = payment.maxCosts[i];
-                if (payment.currency == assetSymbol && chainId == payment.chainIds[i]) {
+                uint256 paymentAssetNeeded = maxCost.amount;
+                // If the payment token is the transfer token and this is the target chain, we need to account for the transfer amount when checking token balances
+                if (Strings.stringEqIgnoreCase(payment.currency, assetSymbol) && chainId == maxCost.chainId) {
                     paymentAssetNeeded += transferAmount;
                 }
                 if (paymentAssetBalanceOnChain < paymentAssetNeeded) {
