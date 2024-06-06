@@ -3,6 +3,7 @@ pragma solidity ^0.8.23;
 
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
 import {TransferActions} from "../DeFiScripts.sol";
+import {CCTPBridgeActions} from "../BridgeScripts.sol";
 import "./BridgeRoutes.sol";
 
 contract QuarkBuilder {
@@ -24,7 +25,7 @@ contract QuarkBuilder {
     /* ===== Custom Errors ===== */
 
     error AssetPositionNotFound();
-    error BridgeNotFound(uint256 srcChainId, uint256 dstChainId, string assetSymbol)
+    error BridgeNotFound(uint256 srcChainId, uint256 dstChainId, string assetSymbol);
     error FundsUnavailable();
     error InsufficientFunds();
     error InvalidInput();
@@ -293,6 +294,8 @@ contract QuarkBuilder {
             // Prepend a bridge action to the list of actions
             // Bridge `amount` of `chainAsset` to `recipient`
         QuarkOperation[] memory operations;
+        bytes[] memory actionContexts;
+
         // TODO: implement get assetBalanceOnChain
         uint256 transferAssetBalanceOnTargetChain = getAssetBalanceOnChain(assetSymbol, chainId, chainAccountsList);
         // Note: User will always have enough payment token on destination chain, since we already check that in the MaxCostTooHigh() check
@@ -310,6 +313,10 @@ contract QuarkBuilder {
                 }
 
                 if (chainAccountsList[i].chainId == chainId) {
+                    continue;
+                }
+
+                if (!BridgeRoutes.hasBridge(chainAccountsList[i].chainId,  , assetSymbol)) {
                     continue;
                 }
 
@@ -336,13 +343,18 @@ contract QuarkBuilder {
                         //     expiry: 99999999999 // TODO: never expire?
                         // })
                     } else {
-                        address scriptAddress = getCodeAddress(codeJar, type(BridgeActions).creationCode);
+                        Bridge memory bridge = BridgeRoutes.getBridge(srcChainId, chainId, assetSymbol);
+                        address scriptAddress = getCodeAddress(codeJar, type(CCTPBridgeActions).creationCode);
+                        address assetAddress = getAssetPositionForSymbolAndChain(assetSymbol, chainId, chainAccountsList).asset;
                         operations.push(QuarkOperation({
                             nonce: , // TODO: get next nonce
                             chainId: chainId,
                             scriptAddress: scriptAddress,
                             // TODO: Do we have a bridge action script?
-                            scriptCalldata: abi.encodeWithSelector(BridgeActions.bridge.selector, recipient, amount),
+                            scriptCalldata: abi.encodeCall(
+                                CCTPBridgeActions.bridgeUSDC,
+                                (bridge.bridgeAddress, amountToBridge, bridge.domainId, bytes32(uint256(uint160(recipient)), assetAddress)
+                            ),
                             scriptSources: scriptSources,
                             expiry: 99999999999 // TODO: never expire?
                         }));

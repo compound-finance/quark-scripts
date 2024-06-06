@@ -47,6 +47,20 @@ library BridgeRoutes {
         }
     }
 
+    function getBridge(uint256 srcChainId, uint256 dstChainId, string memory assetSymbol) internal pure returns (Bridge memory) {
+        if (srcChainId == MAINNET_CHAIN_ID) {
+            return getBridgeForMainnet(dstChainId, assetSymbol);
+        } else if (srcChainId == BASE_CHAIN_ID) {
+            return getBridgeForBase(dstChainId, assetSymbol);
+        } else {
+            return Bridge({
+                    bridgeAddress: address(0),
+                    bridgeType: BridgeType.NONE
+                });
+            // revert BridgeNotFound(1, dstChainid, assetSymbol);
+        }
+    }
+
     function getBridgeForMainnet(uint256 dstChainId, string memory assetSymbol) internal pure returns (Bridge memory) {
         if (dstChainId == MAINNET_CHAIN_ID) {
             revert("Cannot bridge to the same chain");
