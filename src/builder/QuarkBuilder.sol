@@ -172,7 +172,7 @@ contract QuarkBuilder {
         return matchingAssetPositions;
     }
 
-    function getAssetPositionForSymbolAndChain(string memory assetSymbol, uint256 chainId, ChainAccount[] memory chainAccountsList) internal pure returns (AssetPositionsWithChainId memory) {
+    function getAssetPositionsForSymbolAndChain(string memory assetSymbol, uint256 chainId, ChainAccount[] memory chainAccountsList) internal pure returns (AssetPositionsWithChainId memory) {
         uint index = 0;
         // Second loop to populate the matchingAssetPositions array
         for (uint i = 0; i < chainAccountsList.length; ++i) {
@@ -197,7 +197,7 @@ contract QuarkBuilder {
         revert AssetPositionNotFound();
     }
 
-    function sumUpBalances(AssetPositionsWithChainId memory assetPositions) internal pure returns (uint256) {
+    function sumBalances(AssetPositionsWithChainId memory assetPositions) internal pure returns (uint256) {
         uint256 totalBalance = 0;
         for (uint j = 0; j < assetPositions.accountBalances.length; ++j) {
             totalBalance += assetPositions.accountBalances[j].balance;
@@ -233,16 +233,15 @@ contract QuarkBuilder {
             revert InsufficientFunds();
         }
 
-        // TODO: Pay with bridged USDC?
+        // TODO: Pay with bridged payment.currency?
         // MAX_COST_TOO_HIGH
-        // There are not enough funds on each chain to satisfy the total max payment cost, after transferring.
-        // (amount of payment token on chain id - transfer amount (IF IS SAME TOKEN AND SAME CHAIN ID)) < maxPaymentAmount on chain id
+        // There is at least one chain that does not have sufficient payment assets to cover the maxCost for that chain.
         // Note: This check assumes we will not be bridging payment tokens for the user
         if (payment.isToken) {
             for (uint i = 0; i < payment.maxCosts.length; ++i) {
                 PaymentMaxCost memory maxCost = payment.maxCosts[i];
-                AssetPositionsWithChainId memory paymentAssetPosition = getAssetPositionForSymbolAndChain(payment.currency, maxCost.chainId, chainAccountsList);
-                uint256 paymentAssetBalanceOnChain = sumUpBalances(paymentAssetPosition);
+                AssetPositionsWithChainId memory paymentAssetPosition = getAssetPositionsForSymbolAndChain(payment.currency, maxCost.chainId, chainAccountsList);
+                uint256 paymentAssetBalanceOnChain = sumBalances(paymentAssetPosition);
                 uint256 paymentAssetNeeded = maxCost.amount;
                 // If the payment token is the transfer token and this is the target chain, we need to account for the transfer amount when checking token balances
                 if (Strings.stringEqIgnoreCase(payment.currency, assetSymbol) && chainId == maxCost.chainId) {
