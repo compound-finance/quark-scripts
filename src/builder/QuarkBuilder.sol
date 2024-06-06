@@ -5,9 +5,9 @@ import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
 import {TransferActions} from "../DeFiScripts.sol";
 
 contract QuarkBuilder {
-    string constant VERSION = "1";
+    /* ===== Constants ===== */
+    string constant VERSION = "1.0.0";
 
-    // TODO: move to Builder implementation
     string constant PAYMENT_METHOD_OFFCHAIN = "OFFCHAIN";
     string constant PAYMENT_METHOD_PAYCALL = "PAY_CALL";
     string constant PAYMENT_METHOD_QUOTECALL = "QUOTE_CALL";
@@ -18,8 +18,59 @@ contract QuarkBuilder {
     string constant PAYMENT_CURRENCY_USD = "usd";
     string constant PAYMENT_CURRENCY_USDC = "usdc";
 
+    /* ===== Custom Errors ===== */
+
+    error AssetPositionNotFound();
+    error BridgeNotFound(uint256 srcChainId, uint256 dstChainId, string assetSymbol)
+    error FundsUnavailable();
     error InsufficientFunds();
+    error InvalidInput();
     error MaxCostTooHigh();
+
+    /* ===== Input Types ===== */
+
+    struct ChainAccounts {
+        uint256 chainId;
+        QuarkState[] quarkStates;
+        AssetPositions[] assetPositionsList;
+    }
+
+    // We map this to the Portfolio data structure that the client will already have.
+    // This includes fields that builder may not necessarily need, however it makes
+    // the client encoding that much simpler.
+    struct QuarkState {
+        address account;
+        bool hasCode;
+        bool isQuark;
+        string quarkVersion;
+        uint256 quarkNextNonce;
+    }
+
+    // Similarly, this is designed to intentionally reduce the encoding burden for the client
+    // by making it equivalent in structure to data already in portfolios.
+    struct AssetPositions {
+        address asset;
+        string symbol;
+        uint256 decimals;
+        uint256 usdPrice;
+        AccountBalance[] accountBalances;
+    }
+
+    struct AccountBalance {
+        address account;
+        uint256 balance;
+    }
+
+    struct Payment {
+        // TODO: rename?
+        bool isToken;
+        string currency;
+        // TODO: make into struct?
+        uint256[] chainIds;
+        uint256[] maxCosts;
+    }
+
+    /* ===== Output Types ===== */
 
     struct BuilderResult {
         // version of the builder interface. (Same as VERSION, but attached to the output.)
@@ -70,26 +121,11 @@ contract QuarkBuilder {
         uint256 destinationChainId;
     }
 
-    struct ChainAccounts {
+
+    /* ===== Internal/Intermediate Types ===== */
+
+    struct AssetPositionsWithChainId {
         uint256 chainId;
-        QuarkState[] quarkStates;
-        AssetPositions[] assetPositionsList;
-    }
-
-    // We map this to the Portfolio data structure that the client will already have.
-    // This includes fields that builder may not necessarily need, however it makes
-    // the client encoding that much simpler.
-    struct QuarkState {
-        address account;
-        bool hasCode;
-        bool isQuark;
-        string quarkVersion;
-        uint256 quarkNextNonce;
-    }
-
-    // Similarly, this is designed to intentionally reduce the encoding burden for the client
-    // by making it equivalent in structure to data already in portfolios.
-    struct AssetPositions {
         address asset;
         string symbol;
         uint256 decimals;
@@ -97,23 +133,143 @@ contract QuarkBuilder {
         AccountBalance[] accountBalances;
     }
 
-    struct AccountBalance {
-        address account;
-        uint256 balance;
+    enum BridgeType {
+        NONE,
+        CCTP
     }
 
-    struct Payment {
-        bool isToken;
-        string currency;
-        uint256[] chainIds;
-        uint256[] maxCosts;
+    struct Bridge {
+        // Note: Cannot name these `address` nor `type` because those are both reserved keywords
+        address bridgeAddress;
+        BridgeType bridgeType;
     }
 
-    function getPriceFeed(string assetSymbol, uint256 chaindId) internal pure (address) {
+    // TODO: convert strings to lower case before comparing. maybe rename to `compareSymbols`
+    function compareStrings(string memory a, string memory b) internal pure returns (bool) {
+        return keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b)));
+    }
 
+    function filterAssetPositionsForSymbol(string memory assetSymbol, ChainAccount[] memory chainAccountsList) internal pure returns (AssetPositionsWithChainId[] memory) {
+        uint numMatches = 0;
+        // First loop to count the number of matching AssetPositions
+        for (uint i = 0; i < chainAccountsList.length; ++i) {
+            for (uint j = 0; j < chainAccountsList[i].assetPositionsList.length; ++j) {
+                if (compareStrings(chainAccountsList[i].assetPositionsList[j].symbol, assetSymbol)) {
+                    numMatches++;
+                }
+            }
+        }
+
+        AssetPositionsWithChainId[] memory matchingAssetPositions = new AssetPositionsWithChainId[](numMatches);
+        uint index = 0;
+        // Second loop to populate the matchingAssetPositions array
+        for (uint i = 0; i < chainAccountsList.length; ++i) {
+            for (uint j = 0; j < chainAccountsList[i].assetPositionsList.length; ++j) {
+                if (compareStrings(chainAccountsList[i].assetPositionsList[j].symbol, assetSymbol)) {
+                    AssetPositions memory assetPositions = chainAccountsList[i].assetPositionsList[j];
+                    matchingAssetPositions[index] = AssetPositionsWithChainId({
+                        chainId: chainAccountsList[i].chainId,
+                        asset: assetPositions.asset,
+                        symbol: assetPositions.symbol,
+                        decimals: assetPositions.decimals,
+                        usdPrice: assetPositions.usdPrice,
+                        accountBalances: assetPositions.accountBalances
+                    });
+                    index++;
+                }
+            }
+        }
+
+        return matchingAssetPositions;
+    }
+
+    function getAssetPositionForSymbolAndChain(string memory assetSymbol, uint256 chainId, ChainAccount[] memory chainAccountsList) internal pure returns (AssetPositionsWithChainId memory) {
+        uint index = 0;
+        // Second loop to populate the matchingAssetPositions array
+        for (uint i = 0; i < chainAccountsList.length; ++i) {
+            if (chainAccountsList[i].chainId != chainId) {
+                continue
+            }
+            for (uint j = 0; j < chainAccountsList[i].assetPositionsList.length; ++j) {
+                if (compareStrings(chainAccountsList[i].assetPositionsList[j].symbol, assetSymbol)) {
+                    AssetPositions memory assetPositions = chainAccountsList[i].assetPositionsList[j];
+                    return AssetPositionsWithChainId({
+                        chainId: chainAccountsList[i].chainId,
+                        asset: assetPositions.asset,
+                        symbol: assetPositions.symbol,
+                        decimals: assetPositions.decimals,
+                        usdPrice: assetPositions.usdPrice,
+                        accountBalances: assetPositions.accountBalances
+                    });
+                }
+            }
+        }
+
+        revert AssetPositionNotFound();
+    }
+
+    function sumUpBalances(AssetPositionsWithChainId memory assetPositions) internal pure returns (uint256) {
+        uint256 totalBalance = 0;
+        for (uint j = 0; j < assetPositions.accountBalances.length; ++j) {
+            totalBalance += assetPositions.accountBalances[j].balance;
+        }
+        return totalBalance;
+    }
+
+    function hasBridge(uint256 srcChainId, uint256 dstChainId, string memory assetSymbol) internal pure returns (bool) {
+        if (getBridge(srcChainId, dstChainid, assetSymbol).bridgeType == BridgeType.NONE) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    function getBridge(uint256 srcChainId, uint256 dstChainId, string memory assetSymbol) internal pure returns (Bridge memory) {
+        if (srcChainId == 1) {
+            return getBridgeForMainnet(dstChainId, assetSymbol);
+        } else if (srcChainId == 8453) {
+            return getBridgeForBase(dstChainId, assetSymbol);
+        } else {
+            return Bridge({
+                    bridgeAddress: address(0),
+                    bridgeType: BridgeType.NONE
+                });
+            // revert BridgeNotFound(1, dstChainid, assetSymbol);
+        }
+    }
+
+    function getBridgeForMainnet(uint256 dstChainId, string memory assetSymbol) internal pure returns (Bridge memory) {
+        if (compareStrings(assetSymbol, "USDC")) {
+            return Bridge({
+                bridgeAddress: 0xBd3fa81B58Ba92a82136038B25aDec7066af3155,
+                bridgeType: BridgeType.CCTP
+            });
+        } else {
+            return Bridge({
+                bridgeAddress: address(0),
+                bridgeType: BridgeType.NONE
+            })
+            // revert BridgeNotFound(1, dstChainid, assetSymbol);
+        }
+    }
+
+    function getBridgeForBase(uint256 dstChainId, string memory assetSymbol) internal pure returns (Bridge memory) {
+        if (compareStrings(assetSymbol, "USDC")) {
+            return Bridge({
+                bridgeAddress: 0x1682Ae6375C4E4A97e4B583BC394c861A46D8962,
+                type: BridgeType.CCTP
+            });
+        } else {
+            return Bridge({
+                bridgeAddress: address(0),
+                type: BridgeType.NONE
+            })
+            // revert BridgeNotFound(1, dstChainid, assetSymbol);
+        }
     }
 
     // TODO: handle transfer max
+    // TODO: support expiry
     function transfer(
         uint256 chainId,
         string assetSymbol,
@@ -122,39 +278,44 @@ contract QuarkBuilder {
         Payment calldata payment,
         ChainAccounts[] calldata chainAccountsList
     ) external pure returns (BuilderResult memory) {
-        // TODO: Input validation: Check that arrays are equal length (e.g. chainIds and maxCosts in Payment)
-        AssetPositions[] paymentAssetAccounts;
-        // Get transfer and payment token
-        // TODO: implement filterAccounts
-        transferAssetAccounts = filterAccounts(assetSymbol, chainAccountsList);
+        if (payment.chainIds.length != payment.maxCosts.length) {
+            revert InvalidInput();
+        }
+
+        AssetPositionsWithChainId[] transferAssetPositions = filterAssetPositionsForSymbol(assetSymbol, chainAccountsList);
+        AssetPositionsWithChainId[] paymentAssetPositions;
         if (payment.isToken) {
-            paymentAssetAccounts = filterAccounts(payment.currency, chainAccountsList);
+            paymentAssetPositions = filterAssetPositionsForSymbol(payment.currency, chainAccountsList);
         }
 
         // INSUFFICIENT_FUNDS
-        // There are not enough funds to fulfill the transfer.
-        // aggregate amount of asset on every chain < transfer amount
-        uint256 transferAssetBalance;
-        for (uint i = 0; i < transferAssetAccounts.length; ++i) {
-            for (uint j = 0; j < transferAssetAccounts[i].accountBalances.length; ++j) {
-                transferAssetBalance += transferAssetAccounts[i].accountBalances[j].balance;
+        // There are not enough aggregate funds on all chains to fulfill the transfer.
+        uint256 aggregateTransferAssetBalance;
+        for (uint i = 0; i < transferAssetPositions.length; ++i) {
+            for (uint j = 0; j < transferAssetPositions[i].accountBalances.length; ++j) {
+                aggregateTransferAssetBalance += transferAssetPositions[i].accountBalances[j].balance;
             }
         }
-        if (transferAssetBalance < amount) {
+        if (aggregateTransferAssetBalance < amount) {
             revert InsufficientFunds();
         }
 
+        // TODO: Pay with bridged USDC?
         // MAX_COST_TOO_HIGH
-        // There are not enough funds to satisfy the total max payment cost, after transferring.
+        // There are not enough funds on each chain to satisfy the total max payment cost, after transferring.
         // (amount of payment token on chain id - transfer amount (IF IS SAME TOKEN AND SAME CHAIN ID)) < maxPaymentAmount on chain id
-        for (uint i = 0; i < payment.maxCosts.length; ++i) {
-            paymentAssetBalanceOnChain = getBalanceOnChain(payment.currency, payment.chainIds[i], chainAccountsList);
-            if (payment.currency == assetSymbol && chainId == payment.chainIds[i]) {
-                // TODO: this could underflow
-                paymentAssetBalanceOnChain -= transferAmount;
-            }
-            if (paymentAssetBalanceOnChain < payment.maxCosts[i]) {
-                revert MaxCostTooHigh();
+        // Note: This check assumes we will not be bridging payment tokens for the user
+        if (payment.isToken) {
+            for (uint i = 0; i < payment.chainIds.length; ++i) {
+                AssetPositionsWithChainId memory paymentAssetPosition = getAssetPositionForSymbolAndChain(payment.currency, payment.chainIds[i], chainAccountsList);
+                uint256 paymentAssetBalanceOnChain = sumUpBalances(paymentAssetPosition);
+                uint256 paymentAssetNeeded = payment.maxCosts[i];
+                if (payment.currency == assetSymbol && chainId == payment.chainIds[i]) {
+                    paymentAssetNeeded += transferAmount;
+                }
+                if (paymentAssetBalanceOnChain < paymentAssetNeeded) {
+                    revert MaxCostTooHigh();
+                }
             }
         }
 
@@ -163,7 +324,18 @@ contract QuarkBuilder {
         // Funds cannot be bridged, e.g. no bridge exists
         // Funds cannot be withdrawn from comet, e.g. no reserves
         // In order to consider the availability here, we’d need comet data to be passed in as an input. (So, if we were including withdraw.)
-
+        uint256 aggregateTransferAssetAvailableBalance;
+        for (uint i = 0; i < transferAssetPositions.length; ++i) {
+            uint256 srcChainId = transferAssetPositions[i].chainId;
+            for (uint j = 0; j < transferAssetPositions[i].accountBalances.length; ++j) {
+                if (hasBridge(srcChainId, chainId, assetSymbol)) {
+                    aggregateTransferAssetAvailableBalance += transferAssetPositions[i].accountBalances[j].balance;
+                }
+            }
+        }
+        if (aggregateTransferAssetBalance < amount) {
+            revert FundsUnavailable();
+        }
 
         // Construct Quark Operations:
 
