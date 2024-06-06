@@ -303,6 +303,7 @@ contract QuarkBuilder {
             // Construct bridge operation if not enough funds on target chain
             // TODO: bridge routing logic (which bridge to prioritize, how many bridges?)
             // Iterate chainAccountList and find upto 2 chains that can provide enough fund
+            // Backend can provide optimal routes by adjust the order in chainAccountList.
             for (uint i = 0; i < chainAccountsList.length; ++i) {
                 if (amountLeft == 0) {
                     break;
@@ -349,6 +350,10 @@ contract QuarkBuilder {
                     bridgeActionCount++;
                 }
             }
+
+            if (amountLeft > 0) {
+                revert("Not enought fund even after bridge");
+            }
         }
 
         // Then, transfer `amount` of `chainAsset` to `recipient`
@@ -387,7 +392,7 @@ contract QuarkBuilder {
             }
         }
 
-        // TODO: construct QuarkOperation of size 1 or 2 depending on bridge or not
+        // TODO: construct QuarkOperation into static size array for QuarkAction.
         QuarkOperation[] memory operationsRst = new QuarkOperation[](operations.length);
         for (uint i = 0; i < operations.length; ++i) {
             operationsRst[i] = operations[i];
