@@ -4,6 +4,8 @@ pragma solidity ^0.8.23;
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
 import {TransferActions} from "../DeFiScripts.sol";
 import {CCTPBridgeActions} from "../BridgeScripts.sol";
+import {Paycall} from "../Paycall.sol";
+
 import "./BridgeRoutes.sol";
 
 contract QuarkBuilder {
@@ -182,8 +184,9 @@ contract QuarkBuilder {
         // Second loop to populate the matchingAssetPositions array
         for (uint i = 0; i < chainAccountsList.length; ++i) {
             if (chainAccountsList[i].chainId != chainId) {
-                continue
+                continue;
             }
+
             for (uint j = 0; j < chainAccountsList[i].assetPositionsList.length; ++j) {
                 if (compareStrings(chainAccountsList[i].assetPositionsList[j].symbol, assetSymbol)) {
                     AssetPositions memory assetPositions = chainAccountsList[i].assetPositionsList[j];
@@ -331,17 +334,31 @@ contract QuarkBuilder {
                     }
 
                     // TODO: construct action contexts
-                    // TODO: update to use the correct bridge action
                     if (payment.isToken) {
                         // wrap around paycall
-                        // operations.push(QuarkOperation({
-                        //     nonce: , // TODO: get next nonce
-                        //     chainId: chainId,
-                        //     scriptAddress: scriptAddress,
-                        //     scriptCalldata: abi.encodeWithSelector(BridgeActions.bridge.selector, recipient, amount),
-                        //     scriptSources: scriptSources,
-                        //     expiry: 99999999999 // TODO: never expire?
-                        // })
+                        Bridge memory bridge = BridgeRoutes.getBridge(srcChainId, chainId, assetSymbol);
+                        address paycallAddress = getCodeAddress(codeJar, type(Paycall).creationCode);
+                        address bridgeActionsAddress = getCodeAddress(codeJar, type(CCTPBridgeActions).creationCode);
+                        address assetAddress = getAssetPositionForSymbolAndChain(assetSymbol, chainId, chainAccountsList).asset;
+                        operations.push(QuarkOperation({
+                            nonce: , // TODO: get next nonce
+                            chainId: chainId,
+                            scriptAddress: paycallAddress,
+                            scriptCalldata: abi.encodeWithSelector(
+                                Paycall.run.selector, 
+                                bridgeActionsAddress,
+                                abi.encodeWithSelector(
+                                    CCTPBridgeActions.bridgeUSDC.selector, 
+                                    bridge.bridgeAddress, 
+                                    amountToBridge, 
+                                    bridge.domainId, 
+                                    bytes32(uint256(uint160(recipient)), 
+                                    assetAddress
+                                )
+                            ),
+                            scriptSources: scriptSources,
+                            expiry: 99999999999 // TODO: never expire?
+                        }));
                     } else {
                         Bridge memory bridge = BridgeRoutes.getBridge(srcChainId, chainId, assetSymbol);
                         address scriptAddress = getCodeAddress(codeJar, type(CCTPBridgeActions).creationCode);
@@ -350,7 +367,6 @@ contract QuarkBuilder {
                             nonce: , // TODO: get next nonce
                             chainId: chainId,
                             scriptAddress: scriptAddress,
-                            // TODO: Do we have a bridge action script?
                             scriptCalldata: abi.encodeCall(
                                 CCTPBridgeActions.bridgeUSDC,
                                 (bridge.bridgeAddress, amountToBridge, bridge.domainId, bytes32(uint256(uint160(recipient)), assetAddress)
