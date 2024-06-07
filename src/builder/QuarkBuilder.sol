@@ -240,16 +240,20 @@ contract QuarkBuilder {
         return totalBalance;
     }
 
+    struct TransferInput {
+        uint256 chainId;
+        address sender;
+        address recipient;
+        uint256 amount;
+        string assetSymbol;
+    }
+
     // TODO: handle transfer max
     // TODO: support expiry
     function transfer(
-        uint256 chainId,
-        address sender,
-        address recipient,
-        uint256 amount,
-        string memory assetSymbol,
+        TransferInput memory transferInput,
         Payment memory payment,
-        ChainAccounts[] calldata chainAccountsList
+        ChainAccounts[] memory chainAccountsList
     ) external pure returns (BuilderResult memory) {
         // INSUFFICIENT_FUNDS
         // There are not enough aggregate funds on all chains to fulfill the transfer.
@@ -257,9 +261,14 @@ contract QuarkBuilder {
             uint256 aggregateTransferAssetBalance;
             for (uint256 i = 0; i < chainAccountsList.length; ++i) {
                 aggregateTransferAssetBalance +=
-                    sumBalances(findAssetPositions(assetSymbol, chainAccountsList[i].assetPositionsList));
+                    sumBalances(
+                        findAssetPositions(
+                            transferInput.assetSymbol,
+                            chainAccountsList[i].assetPositionsList
+                        )
+                    );
             }
-            if (aggregateTransferAssetBalance < amount) {
+            if (aggregateTransferAssetBalance < transferInput.amount) {
                 revert InsufficientFunds();
             }
         }
@@ -277,16 +286,17 @@ contract QuarkBuilder {
                 for (uint256 i = 0; i < payment.maxCosts.length; ++i) {
                     uint256 paymentAssetBalanceOnChain = sumBalances(
                         findAssetPositions(
-                            assetSymbol,
+                            transferInput.assetSymbol,
                             payment.maxCosts[i].chainId,
                             paymentChainAccounts
                         )
                     );
                     uint256 paymentAssetNeeded = payment.maxCosts[i].amount;
                     // If the payment token is the transfer token and this is the target chain, we need to account for the transfer amount when checking token balances
-                    if (Strings.stringEqIgnoreCase(payment.currency, assetSymbol) && chainId == payment.maxCosts[i].chainId)
+                    if (Strings.stringEqIgnoreCase(payment.currency, transferInput.assetSymbol)
+                        && transferInput.chainId == payment.maxCosts[i].chainId)
                     {
-                        paymentAssetNeeded += amount;
+                        paymentAssetNeeded += transferInput.amount;
                     }
                     if (paymentAssetBalanceOnChain < paymentAssetNeeded) {
                         revert MaxCostTooHigh();
@@ -303,14 +313,17 @@ contract QuarkBuilder {
         {
             uint256 aggregateTransferAssetAvailableBalance;
             for (uint256 i = 0; i < chainAccountsList.length; ++i) {
-                AssetPositions memory positions = findAssetPositions(assetSymbol, chainAccountsList[i].assetPositionsList);
+                AssetPositions memory positions = findAssetPositions(
+                    transferInput.assetSymbol,
+                    chainAccountsList[i].assetPositionsList
+                );
                 for (uint256 j = 0; j < positions.accountBalances.length; ++j) {
-                    if (BridgeRoutes.hasBridge(chainAccountsList[i].chainId, chainId, assetSymbol)) {
+                    if (BridgeRoutes.hasBridge(chainAccountsList[i].chainId, transferInput.chainId, transferInput.assetSymbol)) {
                         aggregateTransferAssetAvailableBalance += positions.accountBalances[j].balance;
                     }
                 }
             }
-            if (aggregateTransferAssetAvailableBalance < amount) {
+            if (aggregateTransferAssetAvailableBalance < transferInput.amount) {
                 revert FundsUnavailable();
             }
         }
@@ -322,13 +335,14 @@ contract QuarkBuilder {
          * therefore the upper bound is chainAccountsList.length.
          */
         uint256 actionIndex = 0;
+        // TODO: actually allocate quark actions
         QuarkAction[] memory quarkActions = new QuarkAction[](chainAccountsList.length);
         IQuarkWallet.QuarkOperation[] memory quarkOperations = new IQuarkWallet.QuarkOperation[](chainAccountsList.length);
 
         AssetPositions memory chainAssetPositions =
-            findAssetPositions(assetSymbol, chainId, chainAccountsList);
+            findAssetPositions(transferInput.assetSymbol, transferInput.chainId, chainAccountsList);
 
-        if (sumBalances(chainAssetPositions) < amount) {
+        if (sumBalances(chainAssetPositions) < transferInput.amount) {
             // TODO: actually enumerate chain accounts other than the destination chain,
             // and check balances and choose amounts to send and from which.
             //
@@ -347,14 +361,14 @@ contract QuarkBuilder {
                 quarkOperations[actionIndex++] = BridgeUSDC(
                     BridgeUSDCInput({
                         chainAccountsList: chainAccountsList,
-                        assetSymbol: assetSymbol,
-                        amount: amount,
+                        assetSymbol: transferInput.assetSymbol,
+                        amount: transferInput.amount,
                         // where it comes from
                         originChainId: 8453,       // FIXME: originChainId
                         sender: address(0), // FIXME: sender
                         // where it goes
-                        destinationChainId: chainId,
-                        recipient: recipient
+                        destinationChainId: transferInput.chainId,
+                        recipient: transferInput.recipient
                     })
                 );
                 // TODO: also append a QuarkAction to the quarkActions array.
@@ -370,19 +384,19 @@ contract QuarkBuilder {
             quarkOperations[actionIndex++] = AssetTransfer(
                 AssetTransferInput({
                     chainAccountsList: chainAccountsList,
-                    assetSymbol: assetSymbol,
-                    amount: amount,
-                    chainId: chainId,
-                    sender: sender,
-                    recipient: recipient
+                    assetSymbol: transferInput.assetSymbol,
+                    amount: transferInput.amount,
+                    chainId: transferInput.chainId,
+                    sender: transferInput.sender,
+                    recipient: transferInput.recipient
                 })
             );
         }
 
         return BuilderResult({
             version: VERSION,
-            quarkOperations: new IQuarkWallet.QuarkOperation[](0),
-            quarkActions: new QuarkAction[](0),
+            quarkOperations: quarkOperations,
+            quarkActions: quarkActions,
             multiQuarkOperationDigest: new bytes(0),
             quarkOperationDigest: new bytes(0),
             paymentCurrency: payment.currency
