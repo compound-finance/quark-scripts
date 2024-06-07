@@ -393,6 +393,19 @@ contract QuarkBuilder {
         if (assetSymbol == "ETH") {
             if (payment.isToken) {
                 // wrap around paycall
+                address paycallAddress = getCodeAddress(codeJar, type(Paycall).creationCode);
+                operations.push(QuarkOperation({
+                    nonce: , // TODO: get next nonce
+                    chainId: chainId,
+                    scriptAddress: paycallAddress,
+                    scriptCalldata: abi.encodeWithSelector(
+                        Paycall.run.selector, 
+                        scriptAddress,
+                        abi.encodeWithSelector(TransferActions.transferNativeToken.selector, recipient, amount)
+                    ),
+                    scriptSources: scriptSources,
+                    expiry: 99999999999 // TODO: never expire?
+                }));
             } else {
                 // Native ETH transfer
                 operations.push(QuarkOperation({
@@ -407,6 +420,19 @@ contract QuarkBuilder {
         } else {
             if (payment.isToken) {
                 // wrap around paycall
+                address paycallAddress = getCodeAddress(codeJar, type(Paycall).creationCode);
+                operations.push(QuarkOperation({
+                    nonce: , // TODO: get next nonce
+                    chainId: chainId,
+                    scriptAddress: paycallAddress,
+                    scriptCalldata: abi.encodeWithSelector(
+                        Paycall.run.selector, 
+                        scriptAddress,
+                        abi.encodeWithSelector(TransferActions.transferERC20Token.selector, token, recipient, amount)
+                    ),
+                    scriptSources: scriptSources,
+                    expiry: 99999999999 // TODO: never expire?
+                }));
             } else {
                 // ERC20 transfer
                 operations.push(QuarkOperation({
