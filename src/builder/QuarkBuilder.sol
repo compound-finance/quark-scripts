@@ -24,6 +24,7 @@ contract QuarkBuilder {
 
     uint256 constant BRIDGE_COST_OFFSET_USDC = 1_000_000;
     uint256 constant BRIDGE_MINIMUM_AMOUNT_USDC = 1_000_000;
+    uint256 constant MAX_BRIDGE_ACTION = 2;
     /* ===== Custom Errors ===== */
 
     error AssetPositionNotFound();
@@ -296,15 +297,14 @@ contract QuarkBuilder {
             // Then bridging is required AND/OR withdraw from Comet is required
             // Prepend a bridge action to the list of actions
             // Bridge `amount` of `chainAsset` to `recipient`
-        QuarkOperation[] memory operations;
-        bytes[] memory actionContexts;
+        QuarkOperation[] memory operations = new QuarkOperation[](3);
+        bytes[] memory actionContexts = new bytes[](3);
 
         // TODO: implement get assetBalanceOnChain
         uint256 transferAssetBalanceOnTargetChain = getAssetBalanceOnChain(assetSymbol, chainId, chainAccountsList);
         // Note: User will always have enough payment token on destination chain, since we already check that in the MaxCostTooHigh() check
         if (transferAssetBalanceOnTargetChain < amount) {
             uint256 amountLeft = amount - transferAssetBalanceOnTargetChain;
-            uint256 maxBridgeAction = 2;
             uint256 bridgeActionCount = 0;
             // Construct bridge operation if not enough funds on target chain
             // TODO: bridge routing logic (which bridge to prioritize, how many bridges?)
@@ -329,7 +329,7 @@ contract QuarkBuilder {
                     uint256 amountToBridge = transferAssetBalanceOnBridgeChain - BRIDGE_COST_OFFSET >= amountLeft ? amountLeft : transferAssetBalanceOnBridgeChain;
                     amountLeft -= transferAssetBalanceOnBridgeChain - BRIDGE_COST_OFFSET;
                     
-                    if (bridgeActionCount >= maxBridgeAction) {
+                    if (bridgeActionCount >= MAX_BRIDGE_ACTION) {
                         revert("Too many bridge actions");
                     }
 
@@ -375,6 +375,15 @@ contract QuarkBuilder {
                             expiry: 99999999999 // TODO: never expire?
                         }));
                     }
+
+                    actionContext.push(abi.encode(BridgeActionContext({
+                        amount: amountToBridge,
+                        price: tokenPrice, // TODO: get token price
+                        token: assetAddress,
+                        chainId: srcChainId,
+                        recipient: recipient,
+                        destinationChainId: chainId
+                    })));
                     bridgeActionCount++;
                 }
             }
@@ -445,6 +454,14 @@ contract QuarkBuilder {
                 }));
             }
         }
+        
+        actionContext.push(abi.encode(BridgeActionContext({
+            amount: amount,
+            price: tokenPrice, // TODO: get token price
+            token: token,
+            chainId: chainId,
+            recipient: recipient
+        })));
 
         // TODO: construct QuarkOperation into static size array for QuarkAction.
         QuarkOperation[] memory operationsRst = new QuarkOperation[](operations.length);
