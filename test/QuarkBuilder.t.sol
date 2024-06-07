@@ -4,7 +4,7 @@ pragma solidity ^0.8.23;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-import {QuarkBuilder} from "../src/builder/QuarkBuilder.sol";
+import {QuarkBuilder, Actions, Accounts} from "../src/builder/QuarkBuilder.sol";
 import {TransferActions} from "../src/DeFiScripts.sol";
 
 contract QuarkBuilderTest is Test {
@@ -82,7 +82,7 @@ contract QuarkBuilderTest is Test {
         assertEq(result.quarkActions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
         assertEq(
             result.quarkActions[0].actionContext,
-            abi.encode(QuarkBuilder.TransferActionContext({
+            abi.encode(Actions.TransferActionContext({
                 amount: 1_000_000,
                 price: 1_0000_0000,
                 token: USDC_1,
@@ -151,14 +151,14 @@ contract QuarkBuilderTest is Test {
         });
     }
 
-    function chainAccountsList_(uint256 amount) internal pure returns (QuarkBuilder.ChainAccounts[] memory) {
-        QuarkBuilder.ChainAccounts[] memory chainAccountsList = new QuarkBuilder.ChainAccounts[](2);
-        chainAccountsList[0] = QuarkBuilder.ChainAccounts({
+    function chainAccountsList_(uint256 amount) internal pure returns (Accounts.ChainAccounts[] memory) {
+        Accounts.ChainAccounts[] memory chainAccountsList = new Accounts.ChainAccounts[](2);
+        chainAccountsList[0] = Accounts.ChainAccounts({
             chainId: 1,
             quarkStates: quarkStates_(address(0xa11ce), 12),
             assetPositionsList: assetPositionsList_(1, address(0xa11ce), uint256(amount / 2))
         });
-        chainAccountsList[1] = QuarkBuilder.ChainAccounts({
+        chainAccountsList[1] = Accounts.ChainAccounts({
             chainId: 8453,
             quarkStates: quarkStates_(address(0xb0b), 2),
             assetPositionsList: assetPositionsList_(8453, address(0xb0b), uint256(amount / 2))
@@ -166,8 +166,8 @@ contract QuarkBuilderTest is Test {
         return chainAccountsList;
     }
 
-    function quarkStates_() internal pure returns (QuarkBuilder.QuarkState[] memory) {
-        QuarkBuilder.QuarkState[] memory quarkStates = new QuarkBuilder.QuarkState[](1);
+    function quarkStates_() internal pure returns (Accounts.QuarkState[] memory) {
+        Accounts.QuarkState[] memory quarkStates = new Accounts.QuarkState[](1);
         quarkStates[0] = quarkState_();
         return quarkStates;
     }
@@ -181,10 +181,10 @@ contract QuarkBuilderTest is Test {
     function assetPositionsList_(uint256 chainId, address account, uint256 balance)
         internal
         pure
-        returns (QuarkBuilder.AssetPositions[] memory)
+        returns (Accounts.AssetPositions[] memory)
     {
-        QuarkBuilder.AssetPositions[] memory assetPositionsList = new QuarkBuilder.AssetPositions[](1);
-        assetPositionsList[0] = QuarkBuilder.AssetPositions({
+        Accounts.AssetPositions[] memory assetPositionsList = new Accounts.AssetPositions[](1);
+        assetPositionsList[0] = Accounts.AssetPositions({
             asset: usdc_(chainId),
             symbol: "USDC",
             decimals: 6,
@@ -194,9 +194,9 @@ contract QuarkBuilderTest is Test {
         return assetPositionsList;
     }
 
-    function accountBalances_(address account, uint256 balance) internal pure returns (QuarkBuilder.AccountBalance[] memory) {
-        QuarkBuilder.AccountBalance[] memory accountBalances = new QuarkBuilder.AccountBalance[](1);
-        accountBalances[0] = QuarkBuilder.AccountBalance({account: account, balance: balance});
+    function accountBalances_(address account, uint256 balance) internal pure returns (Accounts.AccountBalance[] memory) {
+        Accounts.AccountBalance[] memory accountBalances = new Accounts.AccountBalance[](1);
+        accountBalances[0] = Accounts.AccountBalance({account: account, balance: balance});
         return accountBalances;
     }
 
@@ -206,18 +206,18 @@ contract QuarkBuilderTest is Test {
         revert("no mock usdc for that chain id bye");
     }
 
-    function quarkStates_(address account, uint96 nextNonce) internal pure returns (QuarkBuilder.QuarkState[] memory) {
-        QuarkBuilder.QuarkState[] memory quarkStates = new QuarkBuilder.QuarkState[](1);
+    function quarkStates_(address account, uint96 nextNonce) internal pure returns (Accounts.QuarkState[] memory) {
+        Accounts.QuarkState[] memory quarkStates = new Accounts.QuarkState[](1);
         quarkStates[0] = quarkState_(account, nextNonce);
         return quarkStates;
     }
 
-    function quarkState_() internal pure returns (QuarkBuilder.QuarkState memory) {
+    function quarkState_() internal pure returns (Accounts.QuarkState memory) {
         return quarkState_(address(0xa11ce), 3);
     }
 
-    function quarkState_(address account, uint96 nextNonce) internal pure returns (QuarkBuilder.QuarkState memory) {
-        return QuarkBuilder.QuarkState({
+    function quarkState_(address account, uint96 nextNonce) internal pure returns (Accounts.QuarkState memory) {
+        return Accounts.QuarkState({
             account: account,
             hasCode: true,
             isQuark: true,
