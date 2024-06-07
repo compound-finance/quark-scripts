@@ -4,8 +4,11 @@ pragma solidity ^0.8.23;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-import {QuarkBuilder, Actions, Accounts} from "../src/builder/QuarkBuilder.sol";
 import {TransferActions} from "../src/DeFiScripts.sol";
+
+import {Actions} from "../src/builder/Actions.sol";
+import {Accounts} from "../src/builder/Accounts.sol";
+import {QuarkBuilder} from "../src/builder/QuarkBuilder.sol";
 
 contract QuarkBuilderTest is Test {
     function testInsufficientFunds() public {
@@ -73,15 +76,15 @@ contract QuarkBuilderTest is Test {
         );
 
         // check the actions
-        assertEq(result.quarkActions.length, 1, "one action");
-        assertEq(result.quarkActions[0].chainId, 1, "operation is on chainid 1");
-        assertEq(result.quarkActions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.quarkActions[0].actionType, "TRANSFER", "action type is 'TRANSFER'");
-        assertEq(result.quarkActions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
-        assertEq(result.quarkActions[0].paymentToken, address(0), "payment token is null");
-        assertEq(result.quarkActions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
+        assertEq(result.actions.length, 1, "one action");
+        assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
+        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[0].actionType, "TRANSFER", "action type is 'TRANSFER'");
+        assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
+        assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
+        assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
         assertEq(
-            result.quarkActions[0].actionContext,
+            result.actions[0].actionContext,
             abi.encode(Actions.TransferActionContext({
                 amount: 1_000_000,
                 price: 1_0000_0000,

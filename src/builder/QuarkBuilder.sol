@@ -1,23 +1,16 @@
 // SPDX-License-Identifier: BSD-3-Clause
-//
 pragma solidity ^0.8.23;
 
+import {Actions} from "./Actions.sol";
+import {Accounts} from "./Accounts.sol";
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
-import {TransferActions} from "../DeFiScripts.sol";
 
-import "./BridgeRoutes.sol";
-import "./Strings.sol";
+import {BridgeRoutes} from "./BridgeRoutes.sol";
+import {Strings} from "./Strings.sol";
 
 contract QuarkBuilder {
     /* ===== Constants ===== */
     string constant VERSION = "1.0.0";
-
-    string constant PAYMENT_METHOD_OFFCHAIN = "OFFCHAIN";
-    string constant PAYMENT_METHOD_PAYCALL = "PAY_CALL";
-    string constant PAYMENT_METHOD_QUOTECALL = "QUOTE_CALL";
-
-    string constant ACTION_TYPE_BRIDGE = "BRIDGE";
-    string constant ACTION_TYPE_TRANSFER = "TRANSFER";
 
     /* ===== Custom Errors ===== */
 
@@ -49,7 +42,7 @@ contract QuarkBuilder {
         // array of quark operations to execute to fulfill the client intent
         IQuarkWallet.QuarkOperation[] quarkOperations;
         // array of action context and other metadata corresponding 1:1 with quarkOperations
-        QuarkAction[] quarkActions;
+        Actions.Action[] actions;
         // EIP-712 digest to sign for a MultiQuarkOperation to fulfill the client intent.
         // Empty when quarkOperations.length == 0.
         bytes multiQuarkOperationDigest;
@@ -59,21 +52,6 @@ contract QuarkBuilder {
         // client-provided paymentCurrency string that was used to derive token addresses.
         // client may re-use this string to construct a request that simulates the transaction.
         string paymentCurrency;
-    }
-
-    // With QuarkAction, we try to define fields that are as 1:1 as possible with the
-    // simulate endpoint request schema.
-    struct QuarkAction {
-        uint256 chainId;
-        address quarkAccount;
-        string actionType;
-        bytes actionContext;
-        // One of the PAYMENT_METHOD_* constants.
-        string paymentMethod;
-        // Address of payment token on chainId.
-        // Null address if the payment method was OFFCHAIN.
-        address paymentToken;
-        uint256 paymentMaxCost;
     }
 
     /* ===== Helper Functions ===== */
@@ -107,7 +85,7 @@ contract QuarkBuilder {
          */
         uint256 actionIndex = 0;
         // TODO: actually allocate quark actions
-        QuarkAction[] memory quarkActions = new QuarkAction[](chainAccountsList.length);
+        Actions.Action[] memory actions = new Actions.Action[](chainAccountsList.length);
         IQuarkWallet.QuarkOperation[] memory quarkOperations = new IQuarkWallet.QuarkOperation[](chainAccountsList.length);
 
         if (needsBridgedFunds(transferIntent, chainAccountsList)) {
@@ -139,8 +117,8 @@ contract QuarkBuilder {
                         recipient: transferIntent.recipient
                     })
                 );
-                // TODO: also append a QuarkAction to the quarkActions array.
-                // See: BridgeUSDC TODO for returning a QuarkAction.
+                // TODO: also append a Actions.Action to the actions array.
+                // See: BridgeUSDC TODO for returning a Actions.Action.
             }
         }
 
@@ -163,7 +141,7 @@ contract QuarkBuilder {
 
         return BuilderResult({
             version: VERSION,
-            quarkActions: truncate(quarkActions, actionIndex),
+            actions: truncate(actions, actionIndex),
             quarkOperations: truncate(quarkOperations, actionIndex),
             paymentCurrency: payment.currency,
             // TODO: construct actual digests
@@ -267,12 +245,12 @@ contract QuarkBuilder {
     }
 
 
-    function truncate(QuarkAction[] memory actions, uint256 length)
+    function truncate(Actions.Action[] memory actions, uint256 length)
         internal
         pure
-        returns (QuarkAction[] memory)
+        returns (Actions.Action[] memory)
     {
-        QuarkAction[] memory result = new QuarkAction[](length);
+        Actions.Action[] memory result = new Actions.Action[](length);
         for (uint256 i = 0; i < length; ++i) {
             result[i] = actions[i];
         }
@@ -289,234 +267,5 @@ contract QuarkBuilder {
             result[i] = operations[i];
         }
         return result;
-    }
-}
-
-library Actions {
-    struct TransferActionContext {
-        uint256 amount;
-        uint256 price;
-        address token;
-        uint256 chainId;
-        address recipient;
-    }
-
-    struct BridgeActionContext {
-        uint256 amount;
-        uint256 price;
-        address token;
-        uint256 chainId;
-        address recipient;
-        uint256 destinationChainId;
-    }
-
-    struct BridgeUSDC {
-        Accounts.ChainAccounts[] chainAccountsList;
-        string assetSymbol;
-        uint256 amount;
-        uint256 originChainId;
-        address sender;
-        uint256 destinationChainId;
-        address recipient;
-    }
-
-    function bridgeUSDC(BridgeUSDC memory bridge)
-        internal
-        pure
-        returns (IQuarkWallet.QuarkOperation memory/*, QuarkAction memory*/)
-    {
-        require(Strings.stringEqIgnoreCase(bridge.assetSymbol, "USDC"));
-
-        Accounts.ChainAccounts memory originChainAccounts =
-            Accounts.findChainAccounts(bridge.originChainId, bridge.chainAccountsList);
-
-        Accounts.AssetPositions memory originUSDCPositions =
-            Accounts.findAssetPositions("USDC", originChainAccounts.assetPositionsList);
-
-        Accounts.QuarkState memory accountState =
-            Accounts.findQuarkState(bridge.sender, originChainAccounts.quarkStates);
-
-        bytes[] memory scriptSources = new bytes[](1);
-        scriptSources[0] = CCTP.bridgeScriptSource();
-
-        // CCTP bridge
-        return IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
-            scriptAddress: CodeJarHelper.getCodeAddress(bridge.originChainId, scriptSources[0]),
-            scriptCalldata: CCTP.encodeBridgeUSDC(
-                bridge.originChainId,
-                bridge.destinationChainId,
-                bridge.amount,
-                bridge.recipient,
-                originUSDCPositions.asset
-            ),
-            scriptSources: scriptSources,
-            expiry: 99999999999 // TODO: handle expiry
-        });
-    }
-
-    struct TransferAsset {
-        Accounts.ChainAccounts[] chainAccountsList;
-        string assetSymbol;
-        uint256 amount;
-        uint256 chainId;
-        address sender;
-        address recipient;
-    }
-
-    function transferAsset(TransferAsset memory transfer)
-        internal
-        pure
-        returns (IQuarkWallet.QuarkOperation memory/*, QuarkAction memory*/)
-    {
-        // TODO: create quark action and return as well
-        bytes[] memory scriptSources = new bytes[](1);
-        scriptSources[0] = type(TransferActions).creationCode;
-
-        Accounts.ChainAccounts memory accounts =
-            Accounts.findChainAccounts(transfer.chainId, transfer.chainAccountsList);
-
-        Accounts.AssetPositions memory assetPositions =
-            Accounts.findAssetPositions(transfer.assetSymbol, accounts.assetPositionsList);
-
-        Accounts.QuarkState memory accountState =
-            Accounts.findQuarkState(transfer.sender, accounts.quarkStates);
-
-        bytes memory scriptCalldata;
-        if (Strings.stringEqIgnoreCase(transfer.assetSymbol, "ETH")) {
-            // Native token transfer
-            scriptCalldata = abi.encodeWithSelector(
-                TransferActions.transferNativeToken.selector,
-                transfer.recipient,
-                transfer.amount
-            );
-        } else {
-            // ERC20 transfer
-            scriptCalldata = abi.encodeWithSelector(
-                TransferActions.transferERC20Token.selector,
-                assetPositions.asset,
-                transfer.recipient,
-                transfer.amount
-            );
-        }
-
-        return IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
-            scriptAddress: CodeJarHelper.getCodeAddress(
-                transfer.chainId,
-                type(TransferActions).creationCode
-            ),
-            scriptCalldata: scriptCalldata,
-            scriptSources: scriptSources,
-            expiry: 99999999999 // TODO: handle expiry
-        });
-    }
-}
-
-library Accounts {
-    struct ChainAccounts {
-        uint256 chainId;
-        QuarkState[] quarkStates;
-        AssetPositions[] assetPositionsList;
-    }
-
-    // We map this to the Portfolio data structure that the client will already have.
-    // This includes fields that builder may not necessarily need, however it makes
-    // the client encoding that much simpler.
-    struct QuarkState {
-        address account;
-        bool hasCode;
-        bool isQuark;
-        string quarkVersion;
-        uint96 quarkNextNonce;
-    }
-
-    // Similarly, this is designed to intentionally reduce the encoding burden for the client
-    // by making it equivalent in structure to data already in portfolios.
-    struct AssetPositions {
-        address asset;
-        string symbol;
-        uint256 decimals;
-        uint256 usdPrice;
-        AccountBalance[] accountBalances;
-    }
-
-    struct AccountBalance {
-        address account;
-        uint256 balance;
-    }
-
-    function findChainAccounts(uint256 chainId, ChainAccounts[] memory chainAccountsList)
-        internal
-        pure
-        returns (ChainAccounts memory found)
-    {
-        for (uint256 i = 0; i < chainAccountsList.length; ++i) {
-            if (chainAccountsList[i].chainId == chainId) {
-                return found = chainAccountsList[i];
-            }
-        }
-    }
-
-    function findAssetPositions(string memory assetSymbol, AssetPositions[] memory assetPositionsList)
-        internal
-        pure
-        returns (AssetPositions memory found)
-    {
-        for (uint256 i = 0; i < assetPositionsList.length; ++i) {
-            if (Strings.stringEqIgnoreCase(assetSymbol, assetPositionsList[i].symbol)) {
-                return found = assetPositionsList[i];
-            }
-        }
-    }
-
-    function findAssetPositions(string memory assetSymbol, uint256 chainId, ChainAccounts[] memory chainAccountsList)
-        internal
-        pure
-        returns (AssetPositions memory found)
-    {
-        ChainAccounts memory chainAccounts = findChainAccounts(chainId, chainAccountsList);
-        return findAssetPositions(
-            assetSymbol,
-            chainAccounts.assetPositionsList
-        );
-    }
-
-    function findQuarkState(address account, Accounts.QuarkState[] memory quarkStates)
-        internal
-        pure
-        returns (Accounts.QuarkState memory state)
-    {
-        for (uint256 i = 0; i < quarkStates.length; ++i) {
-            if (quarkStates[i].account == account) {
-                return state = quarkStates[i];
-            }
-        }
-    }
-
-    function sumBalances(AssetPositions memory assetPositions) internal pure returns (uint256) {
-        uint256 totalBalance = 0;
-        for (uint256 j = 0; j < assetPositions.accountBalances.length; ++j) {
-            totalBalance += assetPositions.accountBalances[j].balance;
-        }
-        return totalBalance;
-    }
-}
-
-library CodeJarHelper {
-    function knownCodeJar(uint256 chainId) internal pure returns (address) {
-        if (chainId == 1) {
-            return address(0xff); // FIXME
-        } else if (chainId == 8453) {
-            return address(0xfff); // FIXME
-        } else {
-            revert(); // FIXME
-        }
-    }
-
-    function getCodeAddress(uint256 chainId, bytes memory code) public pure returns (address) {
-        return address(
-            uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), knownCodeJar(chainId), uint256(0), keccak256(code)))))
-        );
     }
 }
