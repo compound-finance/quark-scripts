@@ -42,7 +42,7 @@ contract QuarkBuilderTest is Test {
         );
     }
 
-    function testTransferSucceedsLocally() public {
+    function testSimpleLocalTransferSucceeds() public {
         QuarkBuilder builder = new QuarkBuilder();
         QuarkBuilder.BuilderResult memory result = builder.transfer(
             // there is no bridge to chain 7777, so we cannot get to our funds
@@ -58,6 +58,7 @@ contract QuarkBuilderTest is Test {
         assertEq(result.quarkOperations.length, 1, "one operation");
         assertEq(
             result.quarkOperations[0].scriptAddress,
+            // FIXME: replace with literal address of correct result using correct CodeJar address
              address(uint160(uint256(keccak256(abi.encodePacked(
                  bytes1(0xff),
                  /* codeJar address */ address(0xff),
@@ -68,6 +69,7 @@ contract QuarkBuilderTest is Test {
         );
         assertEq(
             result.quarkOperations[0].scriptCalldata,
+            // TODO?: replace with actual hex output?
             abi.encodeCall(
                 TransferActions.transferERC20Token,
                 (usdc_(1), address(0xceecee), 1_000_000)
