@@ -376,7 +376,7 @@ contract QuarkBuilder {
                         }));
                     }
 
-                    actionContext.push(abi.encode(BridgeActionContext({
+                    actionContexts.push(abi.encode(BridgeActionContext({
                         amount: amountToBridge,
                         price: tokenPrice, // TODO: get token price
                         token: assetAddress,
@@ -455,7 +455,7 @@ contract QuarkBuilder {
             }
         }
         
-        actionContext.push(abi.encode(BridgeActionContext({
+        actionContexts.push(abi.encode(BridgeActionContext({
             amount: amount,
             price: tokenPrice, // TODO: get token price
             token: token,
@@ -463,15 +463,19 @@ contract QuarkBuilder {
             recipient: recipient
         })));
 
+
         // TODO: construct QuarkOperation into static size array for QuarkAction.
         QuarkOperation[] memory operationsRst = new QuarkOperation[](operations.length);
         for (uint i = 0; i < operations.length; ++i) {
             operationsRst[i] = operations[i];
         }
+
+        bytes memory encodedActionContexts = abi.encode(actionContexts);
+        
         return QuarkAction({
             version: version,
             actionType: actionType,
-            actionContext: actionContext,
+            actionContext: encodedActionContexts,
             operations: operationsRst
         });
         // TODO: return these
