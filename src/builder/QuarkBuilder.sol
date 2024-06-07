@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BSD-3-Clause
+//
 pragma solidity ^0.8.23;
 
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
 import {TransferActions} from "../DeFiScripts.sol";
-import {CCTPBridgeActions} from "../BridgeScripts.sol";
 
 import "./BridgeRoutes.sol";
 import "./Strings.sol";
@@ -284,7 +284,7 @@ contract QuarkBuilder {
                     chainAccountsList[i].assetPositionsList
                 );
                 for (uint256 j = 0; j < positions.accountBalances.length; ++j) {
-                    if (BridgeRoutes.hasBridge(chainAccountsList[i].chainId, transferInput.chainId, transferInput.assetSymbol)) {
+                    if (BridgeRoutes.canBridge(chainAccountsList[i].chainId, transferInput.chainId, transferInput.assetSymbol)) {
                         aggregateTransferAssetAvailableBalance += positions.accountBalances[j].balance;
                     }
                 }
@@ -436,9 +436,6 @@ contract QuarkBuilder {
         pure
         returns (IQuarkWallet.QuarkOperation memory/*, QuarkAction memory*/)
     {
-        bytes[] memory scriptSources = new bytes[](1);
-        scriptSources[0] = type(CCTPBridgeActions).creationCode;
-
         ChainAccounts memory originChainAccounts =
             findChainAccounts(bridgeInput.originChainId, bridgeInput.chainAccountsList);
 
@@ -448,10 +445,13 @@ contract QuarkBuilder {
         QuarkState memory accountState =
             findQuarkState(bridgeInput.sender, originChainAccounts.quarkStates);
 
+        bytes[] memory scriptSources = new bytes[](1);
+        scriptSources[0] = CCTP.bridgeScriptSource();
+
         // CCTP bridge
         return IQuarkWallet.QuarkOperation({
             nonce: accountState.quarkNextNonce,
-            scriptAddress: getCodeAddress(bridgeInput.originChainId, type(CCTPBridgeActions).creationCode),
+            scriptAddress: getCodeAddress(bridgeInput.originChainId, scriptSources[0]),
             scriptCalldata: CCTP.encodeBridgeUSDC(
                 bridgeInput.originChainId,
                 bridgeInput.destinationChainId,
