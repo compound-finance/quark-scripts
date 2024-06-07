@@ -208,6 +208,18 @@ contract QuarkBuilder {
         }
     }
 
+    function findAssetPositions(string memory assetSymbol, uint256 chainId, ChainAccounts[] memory chainAccountsList)
+        internal
+        pure
+        returns (AssetPositions memory found)
+    {
+        ChainAccounts memory chainAccounts = findChainAccounts(chainId, chainAccountsList);
+        return findAssetPositions(
+            assetSymbol,
+            chainAccounts.assetPositionsList
+        );
+    }
+
     function findQuarkState(address account, QuarkState[] memory quarkStates)
         internal
         pure
@@ -239,15 +251,13 @@ contract QuarkBuilder {
         Payment memory payment,
         ChainAccounts[] calldata chainAccountsList
     ) external pure returns (BuilderResult memory) {
-        ChainAccounts[] memory transferChainAccounts = filterChainAccounts(assetSymbol, chainAccountsList);
-
         // INSUFFICIENT_FUNDS
         // There are not enough aggregate funds on all chains to fulfill the transfer.
         {
             uint256 aggregateTransferAssetBalance;
-            for (uint256 i = 0; i < transferChainAccounts.length; ++i) {
+            for (uint256 i = 0; i < chainAccountsList.length; ++i) {
                 aggregateTransferAssetBalance +=
-                    sumBalances(findAssetPositions(assetSymbol, transferChainAccounts[i].assetPositionsList));
+                    sumBalances(findAssetPositions(assetSymbol, chainAccountsList[i].assetPositionsList));
             }
             if (aggregateTransferAssetBalance < amount) {
                 revert InsufficientFunds();
@@ -268,7 +278,8 @@ contract QuarkBuilder {
                     uint256 paymentAssetBalanceOnChain = sumBalances(
                         findAssetPositions(
                             assetSymbol,
-                            findChainAccounts(payment.maxCosts[i].chainId, paymentChainAccounts).assetPositionsList
+                            payment.maxCosts[i].chainId,
+                            paymentChainAccounts
                         )
                     );
                     uint256 paymentAssetNeeded = payment.maxCosts[i].amount;
@@ -291,11 +302,11 @@ contract QuarkBuilder {
         // In order to consider the availability here, we’d need comet data to be passed in as an input. (So, if we were including withdraw.)
         {
             uint256 aggregateTransferAssetAvailableBalance;
-            for (uint256 i = 0; i < transferChainAccounts.length; ++i) {
-                for (uint256 j = 0; j < transferChainAccounts[i].assetPositionsList[0].accountBalances.length; ++j) {
-                    if (BridgeRoutes.hasBridge(transferChainAccounts[i].chainId, chainId, assetSymbol)) {
-                        aggregateTransferAssetAvailableBalance +=
-                            transferChainAccounts[i].assetPositionsList[0].accountBalances[j].balance;
+            for (uint256 i = 0; i < chainAccountsList.length; ++i) {
+                AssetPositions memory positions = findAssetPositions(assetSymbol, chainAccountsList[i].assetPositionsList);
+                for (uint256 j = 0; j < positions.accountBalances.length; ++j) {
+                    if (BridgeRoutes.hasBridge(chainAccountsList[i].chainId, chainId, assetSymbol)) {
+                        aggregateTransferAssetAvailableBalance += positions.accountBalances[j].balance;
                     }
                 }
             }
@@ -304,28 +315,6 @@ contract QuarkBuilder {
             }
         }
 
-        return transfer_(TransferInput({
-            chainId: chainId,
-            sender: sender,
-            recipient: recipient,
-            amount: amount,
-            assetSymbol: assetSymbol,
-            payment: payment,
-            assetChainAccounts: transferChainAccounts
-        }));
-    }
-
-    struct TransferInput {
-        uint256 chainId;
-        address sender;
-        address recipient;
-        uint256 amount;
-        string assetSymbol;
-        Payment payment;
-        ChainAccounts[] assetChainAccounts;
-    }
-
-    function transfer_(TransferInput memory transferInput) internal pure returns (BuilderResult memory) {
         /*
          * at most one bridge operation per non-destination chain,
          * and at most one transferInput operation on the destination chain.
@@ -333,20 +322,13 @@ contract QuarkBuilder {
          * therefore the upper bound is chainAccountsList.length.
          */
         uint256 actionIndex = 0;
-        QuarkAction[] memory quarkActions =
-            new QuarkAction[](transferInput.assetChainAccounts.length);
-        IQuarkWallet.QuarkOperation[] memory quarkOperations =
-            new IQuarkWallet.QuarkOperation[](transferInput.assetChainAccounts.length);
+        QuarkAction[] memory quarkActions = new QuarkAction[](chainAccountsList.length);
+        IQuarkWallet.QuarkOperation[] memory quarkOperations = new IQuarkWallet.QuarkOperation[](chainAccountsList.length);
 
-        uint256 localBalance =
-            sumBalances(
-                findAssetPositions(
-                    transferInput.assetSymbol,
-                    findChainAccounts(transferInput.chainId, transferInput.assetChainAccounts).assetPositionsList
-                )
-            );
+        AssetPositions memory chainAssetPositions =
+            findAssetPositions(assetSymbol, chainId, chainAccountsList);
 
-        if (localBalance < transferInput.amount) {
+        if (sumBalances(chainAssetPositions) < amount) {
             // TODO: actually enumerate chain accounts other than the destination chain,
             // and check balances and choose amounts to send and from which.
             //
@@ -356,26 +338,24 @@ contract QuarkBuilder {
             //     sum the balances and if there's enough to cover the gap,
             //     bridge from each account in arbitrary order of appearance
             //     until there is enough.
-            if (transferInput.payment.isToken) {
+            if (payment.isToken) {
                 // wrap around paycall
                 // TODO: need to embed price feed addresses for known tokens before we can do paycall.
                 // ^^^ look up USDC price feeds for each supported chain?
                 // we only need USDC/USD and only on chains 1 (mainnet) and 8453 (base mainnet).
             } else {
                 quarkOperations[actionIndex++] = BridgeUSDC(
-                    transferInput.assetSymbol,
-                    transferInput.chainId,
-                    transferInput.recipient,
-                    transferInput.amount,
-                    // TODO: don't hardcode 8453 and accountBalances[0]; enumerate, check, etc.
-                    findChainAccounts(8453, transferInput.assetChainAccounts),
-                    findAssetPositions(
-                        transferInput.assetSymbol,
-                        findChainAccounts(
-                            8453,
-                            transferInput.assetChainAccounts
-                        ).assetPositionsList
-                    ).accountBalances[0].account
+                    BridgeUSDCInput({
+                        chainAccountsList: chainAccountsList,
+                        assetSymbol: assetSymbol,
+                        amount: amount,
+                        // where it comes from
+                        originChainId: 8453,       // FIXME: originChainId
+                        sender: address(0), // FIXME: sender
+                        // where it goes
+                        destinationChainId: chainId,
+                        recipient: recipient
+                    })
                 );
                 // TODO: also append a QuarkAction to the quarkActions array.
                 // See: BridgeUSDC TODO for returning a QuarkAction.
@@ -384,26 +364,20 @@ contract QuarkBuilder {
 
         // Then, transferInput `amount` of `assetSymbol` to `recipient`
         // TODO: construct action contexts
-        if (transferInput.payment.isToken) {
+        if (payment.isToken) {
             // wrap around paycall
         } else {
             quarkOperations[actionIndex++] = AssetTransfer(
-                transferInput.assetSymbol,
-                transferInput.chainId,
-                transferInput.recipient,
-                transferInput.amount,
-                findChainAccounts(transferInput.chainId, transferInput.assetChainAccounts),
-                transferInput.sender
+                AssetTransferInput({
+                    chainAccountsList: chainAccountsList,
+                    assetSymbol: assetSymbol,
+                    amount: amount,
+                    chainId: chainId,
+                    sender: sender,
+                    recipient: recipient
+                })
             );
         }
-
-        // TODO: construct QuarkOperation of size 1 or 2 depending on bridge or not
-        // return QuarkAction({
-        //     version: version,
-        //     actionType: actionType,
-        //     actionContext: actionContext,
-        //     operations: operations
-        // });
 
         return BuilderResult({
             version: VERSION,
@@ -411,80 +385,99 @@ contract QuarkBuilder {
             quarkActions: new QuarkAction[](0),
             multiQuarkOperationDigest: new bytes(0),
             quarkOperationDigest: new bytes(0),
-            paymentCurrency: transferInput.payment.currency
+            paymentCurrency: payment.currency
         });
     }
 
-    function AssetTransfer(
-        string memory assetSymbol,
-        uint256 dstChainId,
-        address recipient,
-        uint256 amount,
-        ChainAccounts memory transferOriginAccount,
-        address sender
-    ) internal pure returns (IQuarkWallet.QuarkOperation memory/*, QuarkAction memory*/) {
+    struct AssetTransferInput {
+        ChainAccounts[] chainAccountsList;
+        string assetSymbol;
+        uint256 amount;
+        uint256 chainId;
+        address sender;
+        address recipient;
+    }
+
+    function AssetTransfer(AssetTransferInput memory transferInput)
+        internal
+        pure
+        returns (IQuarkWallet.QuarkOperation memory/*, QuarkAction memory*/)
+    {
         // TODO: create quark action and return as well
         bytes[] memory scriptSources = new bytes[](1);
         scriptSources[0] = type(TransferActions).creationCode;
-        // uint256 chainId = transferOriginAccount.chainId;
-        AssetPositions memory transferAssetPositions =
-            findAssetPositions(assetSymbol, transferOriginAccount.assetPositionsList);
 
-        QuarkState memory accountState =
-            findQuarkState(sender, transferOriginAccount.quarkStates);
+        ChainAccounts memory accounts =
+            findChainAccounts(transferInput.chainId, transferInput.chainAccountsList);
+
+        AssetPositions memory assetPositions =
+            findAssetPositions(transferInput.assetSymbol, accounts.assetPositionsList);
+
+        QuarkState memory accountState = findQuarkState(transferInput.sender, accounts.quarkStates);
 
         bytes memory scriptCalldata;
-        if (Strings.stringEqIgnoreCase(assetSymbol, "ETH")) {
+        if (Strings.stringEqIgnoreCase(transferInput.assetSymbol, "ETH")) {
             scriptCalldata = abi.encodeWithSelector(
                 TransferActions.transferNativeToken.selector,
-                recipient,
-                amount
+                transferInput.recipient,
+                transferInput.amount
             );
         } else {
             scriptCalldata = abi.encodeWithSelector(
                 TransferActions.transferERC20Token.selector,
-                transferAssetPositions.asset,
-                recipient,
-                amount
+                assetPositions.asset,
+                transferInput.recipient,
+                transferInput.amount
             );
         }
 
         // ERC20 transfer
         return IQuarkWallet.QuarkOperation({
             nonce: accountState.quarkNextNonce,
-            scriptAddress: getCodeAddress(transferOriginAccount.chainId, type(TransferActions).creationCode),
+            scriptAddress: getCodeAddress(transferInput.chainId, type(TransferActions).creationCode),
             scriptCalldata: scriptCalldata,
             scriptSources: scriptSources,
             expiry: 99999999999 // TODO: handle expiry
         });
     }
 
-    function BridgeUSDC(
-        string memory assetSymbol,
-        uint256 dstChainId,
-        address recipient,
-        uint256 amount,
-        ChainAccounts memory bridgeOriginAccount,
-        address sender
-    ) internal pure returns (IQuarkWallet.QuarkOperation memory/*, QuarkAction memory*/) {
-        // TODO: create quark action and return as well
+    struct BridgeUSDCInput {
+        ChainAccounts[] chainAccountsList;
+        string assetSymbol;
+        uint256 amount;
+        uint256 originChainId;
+        address sender;
+        uint256 destinationChainId;
+        address recipient;
+    }
+
+    function BridgeUSDC(BridgeUSDCInput memory bridgeInput)
+        internal
+        pure
+        returns (IQuarkWallet.QuarkOperation memory/*, QuarkAction memory*/)
+    {
         bytes[] memory scriptSources = new bytes[](1);
         scriptSources[0] = type(CCTPBridgeActions).creationCode;
 
+        ChainAccounts memory originChainAccounts =
+            findChainAccounts(bridgeInput.originChainId, bridgeInput.chainAccountsList);
+
         AssetPositions memory bridgeAssetPositions =
-            findAssetPositions(assetSymbol, bridgeOriginAccount.assetPositionsList);
+            findAssetPositions(bridgeInput.assetSymbol, originChainAccounts.assetPositionsList);
 
         QuarkState memory accountState =
-            findQuarkState(sender, bridgeOriginAccount.quarkStates);
+            findQuarkState(bridgeInput.sender, originChainAccounts.quarkStates);
 
         // CCTP bridge
         return IQuarkWallet.QuarkOperation({
             nonce: accountState.quarkNextNonce,
-            scriptAddress: getCodeAddress(bridgeOriginAccount.chainId, type(CCTPBridgeActions).creationCode),
-            scriptCalldata: abi.encodeWithSelector(
-                CCTPBridgeActions.bridgeUSDC.selector,
-                recipient,
-                amount
+            scriptAddress: getCodeAddress(bridgeInput.originChainId, type(CCTPBridgeActions).creationCode),
+            scriptCalldata: CCTP.encodeBridgeUSDC(
+                bridgeInput.originChainId,
+                bridgeInput.destinationChainId,
+                bridgeInput.amount,
+                bridgeInput.recipient,
+                bridgeAssetPositions.asset
             ),
             scriptSources: scriptSources,
             expiry: 99999999999 // TODO: handle expiry

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.23;
 
+import {CCTPBridgeActions} from "../BridgeScripts.sol";
 import "./Strings.sol";
 
 library BridgeRoutes {
@@ -92,5 +93,18 @@ library CCTP {
     function canBridge(uint256 chainId, string memory assetSymbol) internal pure returns (bool) {
         return Strings.stringEqIgnoreCase(assetSymbol, "USDC")
             && knownOutgoingAddress(chainId) != address(0);
+    }
+
+    function encodeBridgeUSDC(
+        uint256 originChainId,
+        uint256 destChainId,
+        uint256 amount,
+        address recipient,
+        address usdc
+    ) internal pure returns (bytes memory) {
+        return abi.encodeCall(
+            CCTPBridgeActions.bridgeUSDC,
+            (knownOutgoingAddress(originChainId), amount, knownDomainId(destChainId), bytes32(uint256(uint160(recipient))), usdc)
+        );
     }
 }
