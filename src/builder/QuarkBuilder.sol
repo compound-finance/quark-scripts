@@ -298,7 +298,9 @@ contract QuarkBuilder {
             // Prepend a bridge action to the list of actions
             // Bridge `amount` of `chainAsset` to `recipient`
         QuarkOperation[] memory operations = new QuarkOperation[](3);
+        uint256 operationsIndex = 0;
         bytes[] memory actionContexts = new bytes[](3);
+        uint256 actionContextsIndex = 0;
 
         // TODO: implement get assetBalanceOnChain
         uint256 transferAssetBalanceOnTargetChain = getAssetBalanceOnChain(assetSymbol, chainId, chainAccountsList);
@@ -340,7 +342,7 @@ contract QuarkBuilder {
                         address paycallAddress = getCodeAddress(codeJar, type(Paycall).creationCode);
                         address bridgeActionsAddress = getCodeAddress(codeJar, type(CCTPBridgeActions).creationCode);
                         address assetAddress = getAssetPositionForSymbolAndChain(assetSymbol, chainId, chainAccountsList).asset;
-                        operations.push(QuarkOperation({
+                        operations[operationsIndex++] = QuarkOperation({
                             nonce: , // TODO: get next nonce
                             chainId: chainId,
                             scriptAddress: paycallAddress,
@@ -358,12 +360,12 @@ contract QuarkBuilder {
                             ),
                             scriptSources: scriptSources,
                             expiry: 99999999999 // TODO: never expire?
-                        }));
+                        });
                     } else {
                         Bridge memory bridge = BridgeRoutes.getBridge(srcChainId, chainId, assetSymbol);
                         address scriptAddress = getCodeAddress(codeJar, type(CCTPBridgeActions).creationCode);
                         address assetAddress = getAssetPositionForSymbolAndChain(assetSymbol, chainId, chainAccountsList).asset;
-                        operations.push(QuarkOperation({
+                        operations[operationsIndex++] = QuarkOperation({
                             nonce: , // TODO: get next nonce
                             chainId: chainId,
                             scriptAddress: scriptAddress,
@@ -373,17 +375,18 @@ contract QuarkBuilder {
                             ),
                             scriptSources: scriptSources,
                             expiry: 99999999999 // TODO: never expire?
-                        }));
+                        });
                     }
 
-                    actionContexts.push(abi.encode(BridgeActionContext({
+                    actionContexts[actionContextsIndex++] = abi.encode(BridgeActionContext({
                         amount: amountToBridge,
                         price: tokenPrice, // TODO: get token price
                         token: assetAddress,
                         chainId: srcChainId,
                         recipient: recipient,
                         destinationChainId: chainId
-                    })));
+                    }));
+
                     bridgeActionCount++;
                 }
             }
@@ -403,7 +406,7 @@ contract QuarkBuilder {
             if (payment.isToken) {
                 // wrap around paycall
                 address paycallAddress = getCodeAddress(codeJar, type(Paycall).creationCode);
-                operations.push(QuarkOperation({
+                operations[operationsIndex++] = QuarkOperation({
                     nonce: , // TODO: get next nonce
                     chainId: chainId,
                     scriptAddress: paycallAddress,
@@ -414,23 +417,23 @@ contract QuarkBuilder {
                     ),
                     scriptSources: scriptSources,
                     expiry: 99999999999 // TODO: never expire?
-                }));
+                });
             } else {
                 // Native ETH transfer
-                operations.push(QuarkOperation({
+                operations[operationsIndex++] = QuarkOperation({
                     nonce: , // TODO: get next nonce
                     chainId: chainId,
                     scriptAddress: scriptAddress,
                     scriptCalldata: abi.encodeWithSelector(TransferActions.transferNativeToken.selector, recipient, amount),
                     scriptSources: scriptSources,
                     expiry: 99999999999 // TODO: never expire?
-                }));
+                });                
             }
         } else {
             if (payment.isToken) {
                 // wrap around paycall
                 address paycallAddress = getCodeAddress(codeJar, type(Paycall).creationCode);
-                operations.push(QuarkOperation({
+                opertaions[operationsIndex++] = QuarkOperation({
                     nonce: , // TODO: get next nonce
                     chainId: chainId,
                     scriptAddress: paycallAddress,
@@ -441,43 +444,48 @@ contract QuarkBuilder {
                     ),
                     scriptSources: scriptSources,
                     expiry: 99999999999 // TODO: never expire?
-                }));
+                });
             } else {
                 // ERC20 transfer
-                operations.push(QuarkOperation({
+                operations[operationsIndex++] = QuarkOperation({
                     nonce: , // TODO: get next nonce
                     chainId: chainId,
                     scriptAddress: scriptAddress,
                     scriptCalldata: abi.encodeWithSelector(TransferActions.transferERC20Token.selector, token, recipient, amount),
                     scriptSources: scriptSources,
                     expiry: 99999999999 // TODO: never expire?
-                }));
+                });
             }
         }
         
-        actionContexts.push(abi.encode(BridgeActionContext({
+        actionContexts[actionContextsIndex++] = abi.encode(TransferActionContext({
             amount: amount,
             price: tokenPrice, // TODO: get token price
             token: token,
             chainId: chainId,
             recipient: recipient
-        })));
+        }));
 
-
-        // TODO: construct QuarkOperation into static size array for QuarkAction.
-        QuarkOperation[] memory operationsRst = new QuarkOperation[](operations.length);
-        for (uint i = 0; i < operations.length; ++i) {
+        // Construct QuarkOperation with the "right" size
+        QuarkOperation[] memory operationsRst = new QuarkOperation[](operationsIndex + 1);
+        for (uint i = 0; i < ooperationsIndex + 1; ++i) {
             operationsRst[i] = operations[i];
         }
 
-        bytes memory encodedActionContexts = abi.encode(actionContexts);
-        
+        // Construct the contexts with the right size
+        bytes[] memory actionContextsRst = new bytes[](actionContextsIndex + 1);
+        for (uint i = 0; i < actionContextsIndex + 1; ++i) {
+            actionContextsRst[i] = actionContexts[i];
+        }
+        bytes memory encodedActionContexts = abi.encode(actionContextsRst);
+
         return QuarkAction({
             version: version,
             actionType: actionType,
             actionContext: encodedActionContexts,
             operations: operationsRst
         });
+        
         // TODO: return these
         struct BuilderResult {
             // version of the builder interface. (Same as VERSION, but attached to the output.)
