@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.23;
 
+import {QuarkBuilder} from "./QuarkBuilder.sol";
 import {CCTPBridgeActions} from "../BridgeScripts.sol";
 
 import "./Strings.sol";
