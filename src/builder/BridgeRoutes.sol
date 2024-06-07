@@ -55,11 +55,10 @@ library CCTP {
         uint256 chainId;
         uint256 domainId;
         address outgoingAddress;
-        uint256 estimatedCost;
     }
 
-    error NoKnownBridge(uint256 chainId);
-    error MissingDomainId(uint256 chainId);
+    error NoKnownBridge(string bridgeType, uint256 chainId);
+    error NoKnownDomainId(string bridgeType, uint256 chainId);
 
     function knownDomainId(uint256 chainId) internal pure returns (uint32) {
         if (chainId == 1) {
@@ -67,16 +66,7 @@ library CCTP {
         } else if (chainId == 8453) {
             return 6;
         } else {
-            revert MissingDomainId(chainId);
-        }
-    }
-
-    function estimatedCost(uint256 chainId) internal pure returns (uint256) {
-        if (chainId == 1) {
-            return 1_000_000;
-        } else {
-            // TODO: what's the default? Do we need to revert?
-            return 0;
+            revert NoKnownDomainId("CCTP", chainId);
         }
     }
 
@@ -86,7 +76,7 @@ library CCTP {
         } else if (chainId == 8453) {
             return 0x1682Ae6375C4E4A97e4B583BC394c861A46D8962;
         } else {
-            return address(0);
+            revert NoKnownBridge("CCTP", chainId);
         }
     }
 
