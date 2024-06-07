@@ -154,36 +154,6 @@ contract QuarkBuilder {
         );
     }
 
-    function filterChainAccounts(string memory assetSymbol, ChainAccounts[] memory chainAccountsList)
-        internal
-        pure
-        returns (ChainAccounts[] memory filtered)
-    {
-        filtered = new ChainAccounts[](chainAccountsList.length);
-        for (uint256 i = 0; i < chainAccountsList.length; ++i) {
-            // NOTE: there can only be one asset positions struct for a given asset on a given chain.
-            AssetPositions memory selectedPositions;
-            for (uint256 j = 0; j < chainAccountsList[i].assetPositionsList.length; ++j) {
-                if (Strings.stringEqIgnoreCase(assetSymbol, chainAccountsList[i].assetPositionsList[j].symbol)) {
-                    selectedPositions = chainAccountsList[i].assetPositionsList[j];
-                    break;
-                }
-            }
-
-            AssetPositions[] memory positionsList;
-            if (selectedPositions.asset != address(0)) {
-                positionsList = new AssetPositions[](1);
-                positionsList[0] = selectedPositions;
-            }
-
-            filtered[i] = ChainAccounts({
-                chainId: chainAccountsList[i].chainId,
-                quarkStates: chainAccountsList[i].quarkStates,
-                assetPositionsList: positionsList
-            });
-        }
-    }
-
     function findChainAccounts(uint256 chainId, ChainAccounts[] memory chainAccountsList)
         internal
         pure
@@ -279,16 +249,12 @@ contract QuarkBuilder {
         // Note: This check assumes we will not be bridging payment tokens for the user
         {
             if (payment.isToken) {
-                ChainAccounts[] memory paymentChainAccounts;
-                if (payment.isToken) {
-                    paymentChainAccounts = filterChainAccounts(payment.currency, chainAccountsList);
-                }
                 for (uint256 i = 0; i < payment.maxCosts.length; ++i) {
                     uint256 paymentAssetBalanceOnChain = sumBalances(
                         findAssetPositions(
-                            transferInput.assetSymbol,
+                            payment.currency,
                             payment.maxCosts[i].chainId,
-                            paymentChainAccounts
+                            chainAccountsList
                         )
                     );
                     uint256 paymentAssetNeeded = payment.maxCosts[i].amount;
