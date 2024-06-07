@@ -130,6 +130,8 @@ contract QuarkBuilder {
     function codeJar(uint256 chainId) internal pure returns (address) {
         if (chainId == 1) {
             return address(0xff); // FIXME
+        } else if (chainId == 8453) {
+            return address(0xfff); // FIXME
         } else {
             revert(); // FIXME
         }
@@ -282,8 +284,8 @@ contract QuarkBuilder {
 
         return BuilderResult({
             version: VERSION,
-            quarkOperations: quarkOperations,
-            quarkActions: quarkActions,
+            quarkActions: truncate(quarkActions, actionIndex),
+            quarkOperations: truncate(quarkOperations, actionIndex),
             paymentCurrency: payment.currency,
             // TODO: construct actual digests
             multiQuarkOperationDigest: new bytes(0),
@@ -484,5 +486,29 @@ contract QuarkBuilder {
             scriptSources: scriptSources,
             expiry: 99999999999 // TODO: handle expiry
         });
+    }
+
+    function truncate(QuarkAction[] memory actions, uint256 length)
+        internal
+        pure
+        returns (QuarkAction[] memory)
+    {
+        QuarkAction[] memory result = new QuarkAction[](length);
+        for (uint256 i = 0; i < length; ++i) {
+            result[i] = actions[i];
+        }
+        return result;
+    }
+
+    function truncate(IQuarkWallet.QuarkOperation[] memory operations, uint256 length)
+        internal
+        pure
+        returns (IQuarkWallet.QuarkOperation[] memory)
+    {
+        IQuarkWallet.QuarkOperation[] memory result = new IQuarkWallet.QuarkOperation[](length);
+        for (uint256 i = 0; i < length; ++i) {
+            result[i] = operations[i];
+        }
+        return result;
     }
 }
