@@ -19,6 +19,8 @@ library Actions {
     string constant ACTION_TYPE_BRIDGE = "BRIDGE";
     string constant ACTION_TYPE_TRANSFER = "TRANSFER";
 
+    uint256 constant TRANSFER_EXPIRY_BUFFER = 10_000;
+
     /* ===== Custom Errors ===== */
 
     error InvalidAssetForBridge();
@@ -112,6 +114,16 @@ library Actions {
     }
 
     // TODO: Handle paycall
+    struct TransferAsset {
+        Accounts.ChainAccounts[] chainAccountsList;
+        string assetSymbol;
+        uint256 amount;
+        uint256 chainId;
+        address sender;
+        address recipient;
+        uint256 blockTimestamp;
+    }
+
     function transferAsset(TransferAsset memory transfer)
         internal
         pure
@@ -146,7 +158,7 @@ library Actions {
             scriptAddress: CodeJarHelper.getCodeAddress(transfer.chainId, type(TransferActions).creationCode),
             scriptCalldata: scriptCalldata,
             scriptSources: scriptSources,
-            expiry: 99999999999 // TODO: handle expiry
+            expiry: transfer.blockTimestamp + TRANSFER_EXPIRY_BUFFER
         });
 
         // Construct Action
