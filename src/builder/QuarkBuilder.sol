@@ -128,7 +128,7 @@ contract QuarkBuilder {
         if (payment.isToken) {
             // wrap around paycall
         } else {
-            quarkOperations[actionIndex] = Actions.transferAsset(
+            (quarkOperations[actionIndex], actions[actionIndex]) = Actions.transferAsset(
                 Actions.TransferAsset({
                     chainAccountsList: chainAccountsList,
                     assetSymbol: transferIntent.assetSymbol,
@@ -138,25 +138,6 @@ contract QuarkBuilder {
                     recipient: transferIntent.recipient
                 })
             );
-            Accounts.AssetPositions memory assetPositions =
-                Accounts.findAssetPositions(transferIntent.assetSymbol, transferIntent.chainId, chainAccountsList);
-            Actions.TransferActionContext memory transferActionContext = Actions.TransferActionContext({
-                amount: transferIntent.amount,
-                price: assetPositions.usdPrice,
-                token: assetPositions.asset,
-                chainId: transferIntent.chainId,
-                recipient: transferIntent.recipient
-            });
-            actions[actionIndex] = Actions.Action({
-                chainId: transferIntent.chainId,
-                quarkAccount: transferIntent.sender,
-                actionType: Actions.ACTION_TYPE_TRANSFER,
-                actionContext: abi.encode(transferActionContext),
-                paymentMethod: Actions.PAYMENT_METHOD_OFFCHAIN,
-                // Null address for OFFCHAIN payment.
-                paymentToken: address(0),
-                paymentMaxCost: 0
-            });
             actionIndex++;
         }
 

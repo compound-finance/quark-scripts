@@ -100,12 +100,12 @@ library Actions {
         address recipient;
     }
 
+    // TODO: Handle paycall
     function transferAsset(TransferAsset memory transfer)
         internal
         pure
-        returns (IQuarkWallet.QuarkOperation memory /*, QuarkAction memory*/ )
+        returns (IQuarkWallet.QuarkOperation memory, Action memory)
     {
-        // TODO: create quark action and return as well
         bytes[] memory scriptSources = new bytes[](1);
         scriptSources[0] = type(TransferActions).creationCode;
 
@@ -129,13 +129,34 @@ library Actions {
                 TransferActions.transferERC20Token.selector, assetPositions.asset, transfer.recipient, transfer.amount
             );
         }
-
-        return IQuarkWallet.QuarkOperation({
+        // Construct QuarkOperation
+        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
             nonce: accountState.quarkNextNonce,
             scriptAddress: CodeJarHelper.getCodeAddress(transfer.chainId, type(TransferActions).creationCode),
             scriptCalldata: scriptCalldata,
             scriptSources: scriptSources,
             expiry: 99999999999 // TODO: handle expiry
         });
+
+        // Construct Action
+        TransferActionContext memory transferActionContext = TransferActionContext({
+            amount: transfer.amount,
+            price: assetPositions.usdPrice,
+            token: assetPositions.asset,
+            chainId: transfer.chainId,
+            recipient: transfer.recipient
+        });
+        Action memory action = Actions.Action({
+            chainId: transfer.chainId,
+            quarkAccount: transfer.sender,
+            actionType: ACTION_TYPE_TRANSFER,
+            actionContext: abi.encode(transferActionContext),
+            paymentMethod: PAYMENT_METHOD_OFFCHAIN,
+            // Null address for OFFCHAIN payment.
+            paymentToken: address(0),
+            paymentMaxCost: 0
+        });
+
+        return (quarkOperation, action);
     }
 }
