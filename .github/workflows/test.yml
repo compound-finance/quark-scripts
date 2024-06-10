@@ -30,12 +30,12 @@ jobs:
       - name: Run Forge build
         run: |
           forge --version
-          forge build --via-ir --sizes
+          FOUNDRY_PROFILE=ir forge build --sizes
         id: build
 
       - name: Run Forge tests
         run: |
-          forge test --via-ir
+          FOUNDRY_PROFILE=ir forge test
         id: test
         env:
           NODE_PROVIDER_BYPASS_KEY: ${{ secrets.NODE_PROVIDER_BYPASS_KEY }}
