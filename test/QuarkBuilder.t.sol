@@ -59,21 +59,28 @@ contract QuarkBuilderTest is Test {
         assertEq(
             result.quarkOperations[0].scriptAddress,
             // FIXME: replace with literal address of correct result using correct CodeJar address
-             address(uint160(uint256(keccak256(abi.encodePacked(
-                 bytes1(0xff),
-                 /* codeJar address */ address(0xff),
-                 uint256(0),
-                 /* script bytecode */ keccak256(type(TransferActions).creationCode)
-             ))))),
-             "script address is correct given the code jar address on mainnet"
+            address(
+                uint160(
+                    uint256(
+                        keccak256(
+                            abi.encodePacked(
+                                bytes1(0xff),
+                                /* codeJar address */
+                                address(0xff),
+                                uint256(0),
+                                /* script bytecode */
+                                keccak256(type(TransferActions).creationCode)
+                            )
+                        )
+                    )
+                )
+            ),
+            "script address is correct given the code jar address on mainnet"
         );
         assertEq(
             result.quarkOperations[0].scriptCalldata,
             // TODO?: replace with actual hex output?
-            abi.encodeCall(
-                TransferActions.transferERC20Token,
-                (usdc_(1), address(0xceecee), 1_000_000)
-            ),
+            abi.encodeCall(TransferActions.transferERC20Token, (usdc_(1), address(0xceecee), 1_000_000)),
             "calldata is TransferActions.transferERC20Token(USDC_1, address(0xceecee), 1_000_000);"
         );
 
@@ -87,13 +94,15 @@ contract QuarkBuilderTest is Test {
         assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
         assertEq(
             result.actions[0].actionContext,
-            abi.encode(Actions.TransferActionContext({
-                amount: 1_000_000,
-                price: 1_0000_0000,
-                token: USDC_1,
-                chainId: 1,
-                recipient: address(0xceecee)
-            })),
+            abi.encode(
+                Actions.TransferActionContext({
+                    amount: 1_000_000,
+                    price: 1_0000_0000,
+                    token: USDC_1,
+                    chainId: 1,
+                    recipient: address(0xceecee)
+                })
+            ),
             "action context encoded from TransferActionContext"
         );
 
@@ -101,10 +110,6 @@ contract QuarkBuilderTest is Test {
         assertNotEq0(result.quarkOperationDigest, hex"", "non-empty single digest");
         assertNotEq0(result.multiQuarkOperationDigest, hex"", "non-empty single digest");
     }
-
-
-
-
 
     /**
      *
@@ -114,7 +119,6 @@ contract QuarkBuilderTest is Test {
      * a function call is used to mock some data, we suffix all of our fixture-generating
      * functions with a single underscore, like so: transferIntent_(...).
      */
-
     address constant USDC_1 = address(0xaa);
     address constant USDC_8453 = address(0xbb);
 
@@ -136,24 +140,24 @@ contract QuarkBuilderTest is Test {
         return paymentUsdc_(new QuarkBuilder.PaymentMaxCost[](0));
     }
 
-    function paymentUsdc_(QuarkBuilder.PaymentMaxCost[] memory maxCosts) internal pure returns (QuarkBuilder.Payment memory) {
-        return QuarkBuilder.Payment({
-            isToken: true,
-            currency: "usdc",
-            maxCosts: maxCosts
-        });
+    function paymentUsdc_(QuarkBuilder.PaymentMaxCost[] memory maxCosts)
+        internal
+        pure
+        returns (QuarkBuilder.Payment memory)
+    {
+        return QuarkBuilder.Payment({isToken: true, currency: "usdc", maxCosts: maxCosts});
     }
 
     function paymentUsd_() internal pure returns (QuarkBuilder.Payment memory) {
         return paymentUsd_(new QuarkBuilder.PaymentMaxCost[](0));
     }
 
-    function paymentUsd_(QuarkBuilder.PaymentMaxCost[] memory maxCosts) internal pure returns (QuarkBuilder.Payment memory) {
-        return QuarkBuilder.Payment({
-            isToken: false,
-            currency: "usd",
-            maxCosts: maxCosts
-        });
+    function paymentUsd_(QuarkBuilder.PaymentMaxCost[] memory maxCosts)
+        internal
+        pure
+        returns (QuarkBuilder.Payment memory)
+    {
+        return QuarkBuilder.Payment({isToken: false, currency: "usd", maxCosts: maxCosts});
     }
 
     function chainAccountsList_(uint256 amount) internal pure returns (Accounts.ChainAccounts[] memory) {
@@ -199,7 +203,11 @@ contract QuarkBuilderTest is Test {
         return assetPositionsList;
     }
 
-    function accountBalances_(address account, uint256 balance) internal pure returns (Accounts.AccountBalance[] memory) {
+    function accountBalances_(address account, uint256 balance)
+        internal
+        pure
+        returns (Accounts.AccountBalance[] memory)
+    {
         Accounts.AccountBalance[] memory accountBalances = new Accounts.AccountBalance[](1);
         accountBalances[0] = Accounts.AccountBalance({account: account, balance: balance});
         return accountBalances;

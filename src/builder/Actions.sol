@@ -63,7 +63,7 @@ library Actions {
     function bridgeUSDC(BridgeUSDC memory bridge)
         internal
         pure
-        returns (IQuarkWallet.QuarkOperation memory/*, QuarkAction memory*/)
+        returns (IQuarkWallet.QuarkOperation memory /*, QuarkAction memory*/ )
     {
         require(Strings.stringEqIgnoreCase(bridge.assetSymbol, "USDC"));
 
@@ -84,12 +84,8 @@ library Actions {
             nonce: accountState.quarkNextNonce,
             scriptAddress: CodeJarHelper.getCodeAddress(bridge.originChainId, scriptSources[0]),
             scriptCalldata: CCTP.encodeBridgeUSDC(
-                bridge.originChainId,
-                bridge.destinationChainId,
-                bridge.amount,
-                bridge.recipient,
-                originUSDCPositions.asset
-            ),
+                bridge.originChainId, bridge.destinationChainId, bridge.amount, bridge.recipient, originUSDCPositions.asset
+                ),
             scriptSources: scriptSources,
             expiry: 99999999999 // TODO: handle expiry
         });
@@ -107,7 +103,7 @@ library Actions {
     function transferAsset(TransferAsset memory transfer)
         internal
         pure
-        returns (IQuarkWallet.QuarkOperation memory/*, QuarkAction memory*/)
+        returns (IQuarkWallet.QuarkOperation memory /*, QuarkAction memory*/ )
     {
         // TODO: create quark action and return as well
         bytes[] memory scriptSources = new bytes[](1);
@@ -119,33 +115,24 @@ library Actions {
         Accounts.AssetPositions memory assetPositions =
             Accounts.findAssetPositions(transfer.assetSymbol, accounts.assetPositionsList);
 
-        Accounts.QuarkState memory accountState =
-            Accounts.findQuarkState(transfer.sender, accounts.quarkStates);
+        Accounts.QuarkState memory accountState = Accounts.findQuarkState(transfer.sender, accounts.quarkStates);
 
         bytes memory scriptCalldata;
         if (Strings.stringEqIgnoreCase(transfer.assetSymbol, "ETH")) {
             // Native token transfer
             scriptCalldata = abi.encodeWithSelector(
-                TransferActions.transferNativeToken.selector,
-                transfer.recipient,
-                transfer.amount
+                TransferActions.transferNativeToken.selector, transfer.recipient, transfer.amount
             );
         } else {
             // ERC20 transfer
             scriptCalldata = abi.encodeWithSelector(
-                TransferActions.transferERC20Token.selector,
-                assetPositions.asset,
-                transfer.recipient,
-                transfer.amount
+                TransferActions.transferERC20Token.selector, assetPositions.asset, transfer.recipient, transfer.amount
             );
         }
 
         return IQuarkWallet.QuarkOperation({
             nonce: accountState.quarkNextNonce,
-            scriptAddress: CodeJarHelper.getCodeAddress(
-                transfer.chainId,
-                type(TransferActions).creationCode
-            ),
+            scriptAddress: CodeJarHelper.getCodeAddress(transfer.chainId, type(TransferActions).creationCode),
             scriptCalldata: scriptCalldata,
             scriptSources: scriptSources,
             expiry: 99999999999 // TODO: handle expiry

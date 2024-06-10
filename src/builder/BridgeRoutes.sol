@@ -28,7 +28,7 @@ library CCTP {
 
     function knownChains() internal pure returns (CCTPChain[] memory) {
         CCTPChain[] memory chains = new CCTPChain[](2);
-        chains[0] = CCTPChain({chainId:    1, domainId: 0, bridge: 0xBd3fa81B58Ba92a82136038B25aDec7066af3155});
+        chains[0] = CCTPChain({chainId: 1, domainId: 0, bridge: 0xBd3fa81B58Ba92a82136038B25aDec7066af3155});
         chains[1] = CCTPChain({chainId: 8453, domainId: 6, bridge: 0x1682Ae6375C4E4A97e4B583BC394c861A46D8962});
         return chains;
     }
@@ -42,9 +42,12 @@ library CCTP {
         }
     }
 
-    function canBridge(uint256 srcChainId, uint256 dstChainId, string memory assetSymbol) internal pure returns (bool) {
-        return Strings.stringEqIgnoreCase(assetSymbol, "USDC")
-            && knownChain(srcChainId).bridge != address(0)
+    function canBridge(uint256 srcChainId, uint256 dstChainId, string memory assetSymbol)
+        internal
+        pure
+        returns (bool)
+    {
+        return Strings.stringEqIgnoreCase(assetSymbol, "USDC") && knownChain(srcChainId).bridge != address(0)
             && knownChain(dstChainId).chainId == dstChainId;
     }
 
