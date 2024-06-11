@@ -83,7 +83,9 @@ contract QuarkBuilderTest is Test {
             abi.encodeCall(TransferActions.transferERC20Token, (usdc_(1), address(0xceecee), 1e6)),
             "calldata is TransferActions.transferERC20Token(USDC_1, address(0xceecee), 1e6);"
         );
-        assertEq(result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days");
+        assertEq(
+            result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
+        );
 
         // check the actions
         assertEq(result.actions.length, 1, "one action");
