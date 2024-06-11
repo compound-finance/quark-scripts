@@ -63,7 +63,7 @@ library Actions {
     function bridgeUSDC(BridgeUSDC memory bridge)
         internal
         pure
-        returns (IQuarkWallet.QuarkOperation memory/*, QuarkAction memory*/)
+        returns (IQuarkWallet.QuarkOperation memory /*, QuarkAction memory*/ )
     {
         require(Strings.stringEqIgnoreCase(bridge.assetSymbol, "USDC"));
 
@@ -84,12 +84,8 @@ library Actions {
             nonce: accountState.quarkNextNonce,
             scriptAddress: CodeJarHelper.getCodeAddress(bridge.originChainId, scriptSources[0]),
             scriptCalldata: CCTP.encodeBridgeUSDC(
-                bridge.originChainId,
-                bridge.destinationChainId,
-                bridge.amount,
-                bridge.recipient,
-                originUSDCPositions.asset
-            ),
+                bridge.originChainId, bridge.destinationChainId, bridge.amount, bridge.recipient, originUSDCPositions.asset
+                ),
             scriptSources: scriptSources,
             expiry: 99999999999 // TODO: handle expiry
         });
@@ -104,12 +100,12 @@ library Actions {
         address recipient;
     }
 
+    // TODO: Handle paycall
     function transferAsset(TransferAsset memory transfer)
         internal
         pure
-        returns (IQuarkWallet.QuarkOperation memory/*, QuarkAction memory*/)
+        returns (IQuarkWallet.QuarkOperation memory, Action memory)
     {
-        // TODO: create quark action and return as well
         bytes[] memory scriptSources = new bytes[](1);
         scriptSources[0] = type(TransferActions).creationCode;
 
@@ -119,36 +115,48 @@ library Actions {
         Accounts.AssetPositions memory assetPositions =
             Accounts.findAssetPositions(transfer.assetSymbol, accounts.assetPositionsList);
 
-        Accounts.QuarkState memory accountState =
-            Accounts.findQuarkState(transfer.sender, accounts.quarkStates);
+        Accounts.QuarkState memory accountState = Accounts.findQuarkState(transfer.sender, accounts.quarkStates);
 
         bytes memory scriptCalldata;
         if (Strings.stringEqIgnoreCase(transfer.assetSymbol, "ETH")) {
             // Native token transfer
             scriptCalldata = abi.encodeWithSelector(
-                TransferActions.transferNativeToken.selector,
-                transfer.recipient,
-                transfer.amount
+                TransferActions.transferNativeToken.selector, transfer.recipient, transfer.amount
             );
         } else {
             // ERC20 transfer
             scriptCalldata = abi.encodeWithSelector(
-                TransferActions.transferERC20Token.selector,
-                assetPositions.asset,
-                transfer.recipient,
-                transfer.amount
+                TransferActions.transferERC20Token.selector, assetPositions.asset, transfer.recipient, transfer.amount
             );
         }
-
-        return IQuarkWallet.QuarkOperation({
+        // Construct QuarkOperation
+        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
             nonce: accountState.quarkNextNonce,
-            scriptAddress: CodeJarHelper.getCodeAddress(
-                transfer.chainId,
-                type(TransferActions).creationCode
-            ),
+            scriptAddress: CodeJarHelper.getCodeAddress(transfer.chainId, type(TransferActions).creationCode),
             scriptCalldata: scriptCalldata,
             scriptSources: scriptSources,
             expiry: 99999999999 // TODO: handle expiry
         });
+
+        // Construct Action
+        TransferActionContext memory transferActionContext = TransferActionContext({
+            amount: transfer.amount,
+            price: assetPositions.usdPrice,
+            token: assetPositions.asset,
+            chainId: transfer.chainId,
+            recipient: transfer.recipient
+        });
+        Action memory action = Actions.Action({
+            chainId: transfer.chainId,
+            quarkAccount: transfer.sender,
+            actionType: ACTION_TYPE_TRANSFER,
+            actionContext: abi.encode(transferActionContext),
+            paymentMethod: PAYMENT_METHOD_OFFCHAIN,
+            // Null address for OFFCHAIN payment.
+            paymentToken: address(0),
+            paymentMaxCost: 0
+        });
+
+        return (quarkOperation, action);
     }
 }
