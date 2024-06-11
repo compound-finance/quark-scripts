@@ -19,7 +19,7 @@ library Actions {
     string constant ACTION_TYPE_BRIDGE = "BRIDGE";
     string constant ACTION_TYPE_TRANSFER = "TRANSFER";
 
-    uint256 constant TRANSFER_EXPIRY_BUFFER = 10_000;
+    uint256 constant TRANSFER_EXPIRY_BUFFER = 7 days;
 
     /* ===== Custom Errors ===== */
 
