@@ -34,6 +34,7 @@ library Actions {
         uint256 chainId;
         address sender;
         address recipient;
+        uint256 blockTimestamp;
     }
 
     struct BridgeUSDC {
@@ -114,15 +115,6 @@ library Actions {
     }
 
     // TODO: Handle paycall
-    struct TransferAsset {
-        Accounts.ChainAccounts[] chainAccountsList;
-        string assetSymbol;
-        uint256 amount;
-        uint256 chainId;
-        address sender;
-        address recipient;
-        uint256 blockTimestamp;
-    }
 
     function transferAsset(TransferAsset memory transfer)
         internal
