@@ -11,12 +11,40 @@ import {TransferActions} from "../DeFiScripts.sol";
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
 
 library Actions {
+    /* ===== Constants ===== */
     string constant PAYMENT_METHOD_OFFCHAIN = "OFFCHAIN";
     string constant PAYMENT_METHOD_PAYCALL = "PAY_CALL";
     string constant PAYMENT_METHOD_QUOTECALL = "QUOTE_CALL";
 
     string constant ACTION_TYPE_BRIDGE = "BRIDGE";
     string constant ACTION_TYPE_TRANSFER = "TRANSFER";
+
+    /* ===== Custom Errors ===== */
+
+    error InvalidAssetForBridge();
+
+    /* ===== Input Types ===== */
+
+    struct TransferAsset {
+        Accounts.ChainAccounts[] chainAccountsList;
+        string assetSymbol;
+        uint256 amount;
+        uint256 chainId;
+        address sender;
+        address recipient;
+    }
+
+    struct BridgeUSDC {
+        Accounts.ChainAccounts[] chainAccountsList;
+        string assetSymbol;
+        uint256 amount;
+        uint256 originChainId;
+        address sender;
+        uint256 destinationChainId;
+        address recipient;
+    }
+
+    /* ===== Output Types ===== */
 
     // With Action, we try to define fields that are as 1:1 as possible with
     // the simulate endpoint request schema.
@@ -50,22 +78,14 @@ library Actions {
         uint256 destinationChainId;
     }
 
-    struct BridgeUSDC {
-        Accounts.ChainAccounts[] chainAccountsList;
-        string assetSymbol;
-        uint256 amount;
-        uint256 originChainId;
-        address sender;
-        uint256 destinationChainId;
-        address recipient;
-    }
-
     function bridgeUSDC(BridgeUSDC memory bridge)
         internal
         pure
         returns (IQuarkWallet.QuarkOperation memory /*, QuarkAction memory*/ )
     {
-        require(Strings.stringEqIgnoreCase(bridge.assetSymbol, "USDC"));
+        if (!Strings.stringEqIgnoreCase(bridge.assetSymbol, "USDC")) {
+            revert InvalidAssetForBridge();
+        }
 
         Accounts.ChainAccounts memory originChainAccounts =
             Accounts.findChainAccounts(bridge.originChainId, bridge.chainAccountsList);
@@ -89,15 +109,6 @@ library Actions {
             scriptSources: scriptSources,
             expiry: 99999999999 // TODO: handle expiry
         });
-    }
-
-    struct TransferAsset {
-        Accounts.ChainAccounts[] chainAccountsList;
-        string assetSymbol;
-        uint256 amount;
-        uint256 chainId;
-        address sender;
-        address recipient;
     }
 
     // TODO: Handle paycall

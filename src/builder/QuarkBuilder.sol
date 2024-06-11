@@ -10,6 +10,7 @@ import {Strings} from "./Strings.sol";
 
 contract QuarkBuilder {
     /* ===== Constants ===== */
+
     string constant VERSION = "1.0.0";
 
     /* ===== Custom Errors ===== */
