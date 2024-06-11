@@ -117,7 +117,8 @@ contract QuarkBuilder {
                         sender: address(0), // FIXME: sender
                         // where it goes
                         destinationChainId: transferIntent.chainId,
-                        recipient: transferIntent.recipient
+                        recipient: transferIntent.recipient,
+                        blockTimestamp: transferIntent.blockTimestamp
                     })
                 );
                 // TODO: also append a Actions.Action to the actions array.

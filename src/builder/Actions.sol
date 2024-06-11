@@ -20,6 +20,7 @@ library Actions {
     string constant ACTION_TYPE_TRANSFER = "TRANSFER";
 
     uint256 constant TRANSFER_EXPIRY_BUFFER = 7 days;
+    uint256 constant BRIDGE_EXPIRY_BUFFER = 7 days;
 
     /* ===== Custom Errors ===== */
 
@@ -45,6 +46,7 @@ library Actions {
         address sender;
         uint256 destinationChainId;
         address recipient;
+        uint256 blockTimestamp;
     }
 
     /* ===== Output Types ===== */
@@ -110,7 +112,7 @@ library Actions {
                 bridge.originChainId, bridge.destinationChainId, bridge.amount, bridge.recipient, originUSDCPositions.asset
                 ),
             scriptSources: scriptSources,
-            expiry: 99999999999 // TODO: handle expiry
+            expiry: bridge.blockTimestamp + BRIDGE_EXPIRY_BUFFER
         });
     }
 
