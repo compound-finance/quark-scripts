@@ -8,14 +8,17 @@ import {TransferActions} from "../src/DeFiScripts.sol";
 
 import {Actions} from "../src/builder/Actions.sol";
 import {Accounts} from "../src/builder/Accounts.sol";
+import {CodeJarHelper} from "../src/builder/CodeJarHelper.sol";
 import {QuarkBuilder} from "../src/builder/QuarkBuilder.sol";
 
 contract QuarkBuilderTest is Test {
+    uint256 constant BLOCK_TIMESTAMP = 123_456_789;
+
     function testInsufficientFunds() public {
         QuarkBuilder builder = new QuarkBuilder();
         vm.expectRevert(QuarkBuilder.InsufficientFunds.selector);
         builder.transfer(
-            transferUsdc_(1, 10e6, address(0xfe11a)), // transfer 10USDC on chain 1 to 0xfe11a
+            transferUsdc_(1, 10e6, address(0xfe11a), BLOCK_TIMESTAMP), // transfer 10USDC on chain 1 to 0xfe11a
             chainAccountsList_(0e6), // but we are holding 0USDC on all chains
             paymentUsd_()
         );
@@ -25,7 +28,7 @@ contract QuarkBuilderTest is Test {
         QuarkBuilder builder = new QuarkBuilder();
         vm.expectRevert(QuarkBuilder.MaxCostTooHigh.selector);
         builder.transfer(
-            transferUsdc_(1, 1e6, address(0xfe11a)), // transfer 1USDC on chain 1 to 0xfe11a
+            transferUsdc_(1, 1e6, address(0xfe11a), BLOCK_TIMESTAMP), // transfer 1USDC on chain 1 to 0xfe11a
             chainAccountsList_(2e6), // holding 2USDC
             paymentUsdc_(maxCosts_(1, 1_000e6)) // but costs 1,000USDC
         );
@@ -36,7 +39,7 @@ contract QuarkBuilderTest is Test {
         vm.expectRevert(QuarkBuilder.FundsUnavailable.selector);
         builder.transfer(
             // there is no bridge to chain 7777, so we cannot get to our funds
-            transferUsdc_(7777, 2e6, address(0xfe11a)), // transfer 2USDC on chain 7777 to 0xfe11a
+            transferUsdc_(7777, 2e6, address(0xfe11a), BLOCK_TIMESTAMP), // transfer 2USDC on chain 7777 to 0xfe11a
             chainAccountsList_(3e6), // holding 3USDC on chains 1, 8453
             paymentUsd_()
         );
@@ -45,7 +48,7 @@ contract QuarkBuilderTest is Test {
     function testSimpleLocalTransferSucceeds() public {
         QuarkBuilder builder = new QuarkBuilder();
         QuarkBuilder.BuilderResult memory result = builder.transfer(
-            transferUsdc_(1, 1e6, address(0xceecee)), // transfer 1 usdc on chain 1 to 0xceecee
+            transferUsdc_(1, 1e6, address(0xceecee), BLOCK_TIMESTAMP), // transfer 1 usdc on chain 1 to 0xceecee
             chainAccountsList_(3e6), // holding 3USDC on chains 1, 8453
             paymentUsd_()
         );
@@ -57,7 +60,6 @@ contract QuarkBuilderTest is Test {
         assertEq(result.quarkOperations.length, 1, "one operation");
         assertEq(
             result.quarkOperations[0].scriptAddress,
-            // FIXME: replace with literal address of correct result using correct CodeJar address
             address(
                 uint160(
                     uint256(
@@ -65,7 +67,7 @@ contract QuarkBuilderTest is Test {
                             abi.encodePacked(
                                 bytes1(0xff),
                                 /* codeJar address */
-                                address(0xff),
+                                address(CodeJarHelper.CODE_JAR_ADDRESS),
                                 uint256(0),
                                 /* script bytecode */
                                 keccak256(type(TransferActions).creationCode)
@@ -80,6 +82,9 @@ contract QuarkBuilderTest is Test {
             result.quarkOperations[0].scriptCalldata,
             abi.encodeCall(TransferActions.transferERC20Token, (usdc_(1), address(0xceecee), 1e6)),
             "calldata is TransferActions.transferERC20Token(USDC_1, address(0xceecee), 1e6);"
+        );
+        assertEq(
+            result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
 
         // check the actions
@@ -120,7 +125,7 @@ contract QuarkBuilderTest is Test {
     address constant USDC_1 = address(0xaa);
     address constant USDC_8453 = address(0xbb);
 
-    function transferUsdc_(uint256 chainId, uint256 amount, address recipient)
+    function transferUsdc_(uint256 chainId, uint256 amount, address recipient, uint256 blockTimestamp)
         internal
         pure
         returns (QuarkBuilder.TransferIntent memory)
@@ -130,7 +135,8 @@ contract QuarkBuilderTest is Test {
             sender: address(0xa11ce),
             recipient: recipient,
             amount: amount,
-            assetSymbol: "USDC"
+            assetSymbol: "USDC",
+            blockTimestamp: blockTimestamp
         });
     }
 
