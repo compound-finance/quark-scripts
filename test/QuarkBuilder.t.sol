@@ -8,6 +8,7 @@ import {TransferActions} from "../src/DeFiScripts.sol";
 
 import {Actions} from "../src/builder/Actions.sol";
 import {Accounts} from "../src/builder/Accounts.sol";
+import {CodeJarHelper} from "../src/builder/CodeJarHelper.sol";
 import {QuarkBuilder} from "../src/builder/QuarkBuilder.sol";
 
 contract QuarkBuilderTest is Test {
@@ -59,7 +60,6 @@ contract QuarkBuilderTest is Test {
         assertEq(result.quarkOperations.length, 1, "one operation");
         assertEq(
             result.quarkOperations[0].scriptAddress,
-            // FIXME: replace with literal address of correct result using correct CodeJar address
             address(
                 uint160(
                     uint256(
@@ -67,7 +67,7 @@ contract QuarkBuilderTest is Test {
                             abi.encodePacked(
                                 bytes1(0xff),
                                 /* codeJar address */
-                                address(0xff),
+                                address(CodeJarHelper.CODE_JAR_ADDRESS),
                                 uint256(0),
                                 /* script bytecode */
                                 keccak256(type(TransferActions).creationCode)
