@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.23;
 
-import {Actions} from "./Actions.sol";
-import {Accounts} from "./Accounts.sol";
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
 
+import {Actions} from "./Actions.sol";
+import {Accounts} from "./Accounts.sol";
 import {BridgeRoutes} from "./BridgeRoutes.sol";
+import {EIP712Helper} from "./EIP712Helper.sol";
 import {Strings} from "./Strings.sol";
 
 contract QuarkBuilder {
@@ -46,10 +47,10 @@ contract QuarkBuilder {
         Actions.Action[] actions;
         // EIP-712 digest to sign for a MultiQuarkOperation to fulfill the client intent.
         // Empty when quarkOperations.length == 0.
-        bytes multiQuarkOperationDigest;
+        bytes32 multiQuarkOperationDigest;
         // EIP-712 digest to sign for a single QuarkOperation to fulfill the client intent.
         // Empty when quarkOperations.length != 1.
-        bytes quarkOperationDigest;
+        bytes32 quarkOperationDigest;
         // client-provided paymentCurrency string that was used to derive token addresses.
         // client may re-use this string to construct a request that simulates the transaction.
         string paymentCurrency;
@@ -145,15 +146,27 @@ contract QuarkBuilder {
             actionIndex++;
         }
 
+        // Construct EIP712 digests
+        // We leave `multiQuarkOperationDigest` empty if there is only a single QuarkOperation
+        // We leave `quarkOperationDigest` if there are more than one QuarkOperations
+        actions = truncate(actions, actionIndex);
+        quarkOperations = truncate(quarkOperations, actionIndex);
+        bytes32 quarkOperationDigest;
+        bytes32 multiQuarkOperationDigest;
+        if (quarkOperations.length == 1) {
+            quarkOperationDigest =
+                EIP712Helper.getDigestForQuarkOperation(quarkOperations[0], actions[0].quarkAccount, actions[0].chainId);
+        } else if (quarkOperations.length > 1) {
+            multiQuarkOperationDigest = EIP712Helper.getDigestForMultiQuarkOperation(quarkOperations, actions);
+        }
+
         return BuilderResult({
             version: VERSION,
-            actions: truncate(actions, actionIndex),
-            quarkOperations: truncate(quarkOperations, actionIndex),
+            actions: actions,
+            quarkOperations: quarkOperations,
             paymentCurrency: payment.currency,
-            // TODO: construct actual digests
-            multiQuarkOperationDigest: new bytes(0),
-            // TODO: construct actual digests
-            quarkOperationDigest: new bytes(0)
+            multiQuarkOperationDigest: multiQuarkOperationDigest,
+            quarkOperationDigest: quarkOperationDigest
         });
     }
 
