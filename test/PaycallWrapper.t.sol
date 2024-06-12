@@ -46,17 +46,17 @@ contract PaycallWrapperTest is Test {
         IQuarkWallet.QuarkOperation memory wrappedPaycallOp = PaycallWrapper.wrap(op, 1, 20e6);
 
         // Check the transfer action is wrapped in a paycall
-        assertEq(wrappedPaycallOp.nonce, op.nonce, "nonce is the same");
+        assertEq(wrappedPaycallOp.nonce, op.nonce, "nonce should be the same");
         assertEq(
             wrappedPaycallOp.scriptAddress,
             CodeJarHelper.getCodeAddress(1, type(Paycall).creationCode),
-            "script address is paycall"
+            "script address should be paycall"
         );
-        assertEq(wrappedPaycallOp.expiry, 99999999999, "expiry is the same");
+        assertEq(wrappedPaycallOp.expiry, 99999999999, "expiry should be the same");
         assertEq(
             wrappedPaycallOp.scriptCalldata,
             abi.encodeWithSelector(Paycall.run.selector, op.scriptAddress, op.scriptCalldata, 20e6),
-            "calldata is Paycall.run(op.scriptAddress, op.scriptCalldata, 20e6)"
+            "calldata should be Paycall.run(op.scriptAddress, op.scriptCalldata, 20e6)"
         );
     }
 }
