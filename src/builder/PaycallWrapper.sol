@@ -17,19 +17,12 @@ library PaycallWrapper {
 
         return IQuarkWallet.QuarkOperation({
             nonce: operation.nonce,
-            scriptAddress: CodeJarHelper.getCodeAddress(
-                chainId,
-                type(Paycall).creationCode
-            ),
+            scriptAddress: CodeJarHelper.getCodeAddress(chainId, type(Paycall).creationCode),
             scriptCalldata: abi.encodeWithSelector(
-                Paycall.run.selector,
-                operation.scriptAddress, 
-                operation.scriptCalldata, 
-                maxPaymentCost
+                Paycall.run.selector, operation.scriptAddress, operation.scriptCalldata, maxPaymentCost
             ),
             scriptSources: scriptSources,
             expiry: operation.expiry
         });
     }
-    
 }

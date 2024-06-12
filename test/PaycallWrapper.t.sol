@@ -17,7 +17,6 @@ import {TransferActions} from "src/DeFiScripts.sol";
 
 contract PaycallWrapperTest is Test {
     QuarkWalletProxyFactory public factory;
-    Counter public counter;
     uint256 alicePrivateKey = 0xa11ce;
     address alice = vm.addr(alicePrivateKey);
     CodeJar codeJar;
@@ -38,12 +37,7 @@ contract PaycallWrapperTest is Test {
         IQuarkWallet.QuarkOperation memory op = IQuarkWallet.QuarkOperation({
             nonce: wallet.stateManager().nextNonce(address(wallet)),
             scriptAddress: CodeJarHelper.getCodeAddress(1, type(TransferActions).creationCode),
-            scriptCalldata: abi.encodeWithSelector(
-                TransferActions.transferERC20Token.selector,
-                USDC,
-                address(this),
-                10e6
-            ),
+            scriptCalldata: abi.encodeWithSelector(TransferActions.transferERC20Token.selector, USDC, address(this), 10e6),
             scriptSources: scriptSources,
             expiry: 99999999999
         });
@@ -53,14 +47,16 @@ contract PaycallWrapperTest is Test {
 
         // Check the transfer action is wrapped in a paycall
         assertEq(wrappedPaycallOp.nonce, op.nonce, "nonce is the same");
-        assertEq(wrappedPaycallOp.scriptAddress, CodeJarHelper.getCodeAddress(1, type(Paycall).creationCode), "script address is paycall");
+        assertEq(
+            wrappedPaycallOp.scriptAddress,
+            CodeJarHelper.getCodeAddress(1, type(Paycall).creationCode),
+            "script address is paycall"
+        );
         assertEq(wrappedPaycallOp.expiry, 99999999999, "expiry is the same");
-        assertEq(wrappedPaycallOp.scriptCalldata, abi.encodeWithSelector(
-            Paycall.run.selector,
-            op.scriptAddress,
-            op.scriptCalldata,
-            20e6
-        ), "calldata is Paycall.run(op.scriptAddress, op.scriptCalldata, 20e6)");
-
+        assertEq(
+            wrappedPaycallOp.scriptCalldata,
+            abi.encodeWithSelector(Paycall.run.selector, op.scriptAddress, op.scriptCalldata, 20e6),
+            "calldata is Paycall.run(op.scriptAddress, op.scriptCalldata, 20e6)"
+        );
     }
 }
