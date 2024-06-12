@@ -65,6 +65,7 @@ contract QuarkBuilder {
         uint256 amount;
         address sender;
         address recipient;
+        uint256 blockTimestamp;
     }
 
     // TODO: handle transfer max
@@ -116,7 +117,8 @@ contract QuarkBuilder {
                         sender: address(0), // FIXME: sender
                         // where it goes
                         destinationChainId: transferIntent.chainId,
-                        recipient: transferIntent.recipient
+                        recipient: transferIntent.recipient,
+                        blockTimestamp: transferIntent.blockTimestamp
                     })
                 );
                 // TODO: also append a Actions.Action to the actions array.
@@ -136,7 +138,8 @@ contract QuarkBuilder {
                     amount: transferIntent.amount,
                     chainId: transferIntent.chainId,
                     sender: transferIntent.sender,
-                    recipient: transferIntent.recipient
+                    recipient: transferIntent.recipient,
+                    blockTimestamp: transferIntent.blockTimestamp
                 })
             );
             actionIndex++;
