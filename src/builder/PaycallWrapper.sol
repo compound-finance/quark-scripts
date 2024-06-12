@@ -12,8 +12,11 @@ library PaycallWrapper {
         pure
         returns (IQuarkWallet.QuarkOperation memory)
     {
-        bytes[] memory scriptSources = new bytes[](1);
-        scriptSources[0] = type(Paycall).creationCode;
+        bytes[] memory scriptSources = new bytes[](operation.scriptSources.length + 1);
+        for (uint256 i = 0; i < operation.scriptSources.length; i++) {
+            scriptSources[i] = operation.scriptSources[i];
+        }
+        scriptSources[operation.scriptSources.length] = type(Paycall).creationCode;
 
         return IQuarkWallet.QuarkOperation({
             nonce: operation.nonce,

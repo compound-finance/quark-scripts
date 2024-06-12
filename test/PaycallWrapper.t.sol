@@ -52,6 +52,13 @@ contract PaycallWrapperTest is Test {
             CodeJarHelper.getCodeAddress(1, type(Paycall).creationCode),
             "script address should be paycall"
         );
+        assertEq(wrappedPaycallOp.scriptSources.length, 2, "script sources should be 2 (TransferAction + Paycall)");
+        assertEq(
+            wrappedPaycallOp.scriptSources[0],
+            type(TransferActions).creationCode,
+            "script sources [0] should be TransferAction"
+        );
+        assertEq(wrappedPaycallOp.scriptSources[1], type(Paycall).creationCode, "script sources [1] should be Paycall");
         assertEq(wrappedPaycallOp.expiry, 99999999999, "expiry should be the same");
         assertEq(
             wrappedPaycallOp.scriptCalldata,
