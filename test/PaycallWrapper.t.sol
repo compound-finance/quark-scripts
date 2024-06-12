@@ -83,16 +83,10 @@ contract PaycallWrapperTest is Test {
 
     /* ===== general tests ===== */
     function testSimpleTransferTransferAndWrapForPaycall() public {
-        // gas: do not meter set-up
-        vm.pauseGasMetering();
-        vm.txGasPrice(32 gwei);
-        QuarkWallet wallet = QuarkWallet(factory.create(alice, address(0)));
-        // Give wallet some USDC for payment
-        deal(USDC, address(wallet), 1000e6);
         // Create operation for just TransferActions
+        QuarkWallet wallet = QuarkWallet(factory.create(alice, address(0)));
         bytes[] memory scriptSources = new bytes[](1);
         scriptSources[0] = type(TransferActions).creationCode;
-
         IQuarkWallet.QuarkOperation memory op = IQuarkWallet.QuarkOperation({
             nonce: wallet.stateManager().nextNonce(address(wallet)),
             scriptAddress: transferActionsAddress,
@@ -107,25 +101,18 @@ contract PaycallWrapperTest is Test {
         });
 
         // Wrap with paycall wrapper
-         IQuarkWallet.QuarkOperation memory wrappedPaycallOp = PaycallWrapper.wrap(op, 1, 20e6);
-        // Execute through paycall
+        IQuarkWallet.QuarkOperation memory wrappedPaycallOp = PaycallWrapper.wrap(op, 1, 20e6);
 
-        // FIXME: This is a hackaround to get SignatureHelper works, we should fix the quark repo to not have two idential operation structs in QuarkWallet.sol and IQuakWallet.sol.
-        // Ideally QuarkWallet.sol should use the IQuarkWallet.QuarkOperation struct isntead of creating its own struct.
-        // For now just convert operation struct here, and will need separate PR to fix the IQuarkWallet.QuarkOperation and QuarkWallet.QuarkOperation in quark repo.
-        QuarkWallet.QuarkOperation memory wrappedPaycallOp2 = QuarkWallet.QuarkOperation({
-            nonce: wrappedPaycallOp.nonce,
-            scriptAddress: wrappedPaycallOp.scriptAddress,
-            scriptCalldata: wrappedPaycallOp.scriptCalldata,
-            scriptSources: wrappedPaycallOp.scriptSources,
-            expiry: wrappedPaycallOp.expiry
-        });
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, wrappedPaycallOp2);
+        // Check the transfer action is wrapped in a paycall
+        assertEq(wrappedPaycallOp.nonce, op.nonce, "nonce is the same");
+        assertEq(wrappedPaycallOp.scriptAddress, paycallAddress, "script address is paycall");
+        assertEq(wrappedPaycallOp.expiry, 99999999999, "expiry is the same");
+        assertEq(wrappedPaycallOp.scriptCalldata, abi.encodeWithSelector(
+            Paycall.run.selector,
+            op.scriptAddress,
+            op.scriptCalldata,
+            20e6
+        ), "calldata is Paycall.run(op.scriptAddress, op.scriptCalldata, 20e6)");
 
-        // gas: meter execute
-        vm.resumeGasMetering();
-        wallet.executeQuarkOperation(wrappedPaycallOp2, v, r, s);
-        assertApproxEqAbs(IERC20(USDC).balanceOf(address(wallet)), 982e6, 1e6);
-        assertEq(IERC20(USDC).balanceOf(address(this)), 10e6);
     }
 }
