@@ -66,10 +66,7 @@ library Accounts {
         returns (AssetPositions memory found)
     {
         ChainAccounts memory chainAccounts = findChainAccounts(chainId, chainAccountsList);
-        return findAssetPositions(
-            assetSymbol,
-            chainAccounts.assetPositionsList
-        );
+        return findAssetPositions(assetSymbol, chainAccounts.assetPositionsList);
     }
 
     function findQuarkState(address account, Accounts.QuarkState[] memory quarkStates)

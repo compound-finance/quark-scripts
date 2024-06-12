@@ -14,7 +14,9 @@ library CodeJarHelper {
 
     function getCodeAddress(uint256 chainId, bytes memory code) public pure returns (address) {
         return address(
-            uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), knownCodeJar(chainId), uint256(0), keccak256(code)))))
+            uint160(
+                uint256(keccak256(abi.encodePacked(bytes1(0xff), knownCodeJar(chainId), uint256(0), keccak256(code))))
+            )
         );
     }
 }
