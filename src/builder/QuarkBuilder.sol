@@ -128,6 +128,7 @@ contract QuarkBuilder {
                 quarkOperations[actionIndex] = PaycallWrapper.wrap(
                     quarkOperations[actionIndex],
                     8453, // FIXME: originChainId
+                    payment.currency,
                     findMaxCost(payment, 8453)
                 );
             }
@@ -152,7 +153,10 @@ contract QuarkBuilder {
         if (payment.isToken) {
             // Wrap around paycall
             quarkOperations[actionIndex] = PaycallWrapper.wrap(
-                quarkOperations[actionIndex], transferIntent.chainId, findMaxCost(payment, transferIntent.chainId)
+                quarkOperations[actionIndex],
+                transferIntent.chainId,
+                payment.currency,
+                findMaxCost(payment, transferIntent.chainId)
             );
         }
 
