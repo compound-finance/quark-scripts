@@ -83,8 +83,8 @@ library Accounts {
 
     function sumBalances(AssetPositions memory assetPositions) internal pure returns (uint256) {
         uint256 totalBalance = 0;
-        for (uint256 j = 0; j < assetPositions.accountBalances.length; ++j) {
-            totalBalance += assetPositions.accountBalances[j].balance;
+        for (uint256 i = 0; i < assetPositions.accountBalances.length; ++i) {
+            totalBalance += assetPositions.accountBalances[i].balance;
         }
         return totalBalance;
     }
