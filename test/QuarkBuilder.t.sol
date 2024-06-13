@@ -10,9 +10,13 @@ import {Actions} from "../src/builder/Actions.sol";
 import {Accounts} from "../src/builder/Accounts.sol";
 import {CodeJarHelper} from "../src/builder/CodeJarHelper.sol";
 import {QuarkBuilder} from "../src/builder/QuarkBuilder.sol";
+import {Paycall} from "../src/Paycall.sol";
+import {PaycallWrapper} from "../src/builder/PaycallWrapper.sol";
 
 contract QuarkBuilderTest is Test {
     uint256 constant BLOCK_TIMESTAMP = 123_456_789;
+    address constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address constant ETH_USD_PRICE_FEED = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
 
     function testInsufficientFunds() public {
         QuarkBuilder builder = new QuarkBuilder();
@@ -82,6 +86,70 @@ contract QuarkBuilderTest is Test {
             result.quarkOperations[0].scriptCalldata,
             abi.encodeCall(TransferActions.transferERC20Token, (usdc_(1), address(0xceecee), 1e6)),
             "calldata is TransferActions.transferERC20Token(USDC_1, address(0xceecee), 1e6);"
+        );
+        assertEq(
+            result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
+        );
+
+        // check the actions
+        assertEq(result.actions.length, 1, "one action");
+        assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
+        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[0].actionType, "TRANSFER", "action type is 'TRANSFER'");
+        assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
+        assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
+        assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
+        assertEq(
+            result.actions[0].actionContext,
+            abi.encode(
+                Actions.TransferActionContext({
+                    amount: 1e6,
+                    price: 1e8,
+                    token: USDC_1,
+                    chainId: 1,
+                    recipient: address(0xceecee)
+                })
+            ),
+            "action context encoded from TransferActionContext"
+        );
+
+        // TODO: actually generate digests
+        // assertNotEq0(result.quarkOperationDigest, hex"", "non-empty single digest");
+        // assertNotEq0(result.multiQuarkOperationDigest, hex"", "non-empty single digest");
+    }
+
+    function testSimpleLocalTransferWithPaycallWrapperSucceeds() public {
+        QuarkBuilder builder = new QuarkBuilder();
+        QuarkBuilder.BuilderResult memory result = builder.transfer(
+            transferUsdc_(1, 1e6, address(0xceecee), BLOCK_TIMESTAMP), // transfer 1 usdc on chain 1 to 0xceecee
+            chainAccountsList_(3e6), // holding 3USDC on chains 1, 8453
+            paymentUsdc_()
+        );
+
+        address transferActionsAddress = CodeJarHelper.getCodeAddress(1, type(TransferActions).creationCode);
+        address paycallAddress = CodeJarHelper.getCodeAddress(
+            1, abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED, USDC))
+        );
+
+        assertEq(result.version, "1.0.0", "version 1");
+        assertEq(result.paymentCurrency, "usdc", "usd currency");
+
+        // Check the quark operations
+        assertEq(result.quarkOperations.length, 1, "one operation");
+        assertEq(
+            result.quarkOperations[0].scriptAddress,
+            paycallAddress,
+            "script address is correct given the code jar address on mainnet"
+        );
+        assertEq(
+            result.quarkOperations[0].scriptCalldata,
+            abi.encodeWithSelector(
+                Paycall.run.selector,
+                transferActionsAddress,
+                abi.encodeWithSelector(TransferActions.transferERC20Token.selector, usdc_(1), address(0xceecee), 1e6),
+                40e6
+            ),
+            "calldata is Paycall.run(TransferActions.transferERC20Token(USDC_1, address(0xceecee), 1e6), 20e6);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
