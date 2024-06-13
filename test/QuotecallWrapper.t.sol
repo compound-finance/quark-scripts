@@ -44,7 +44,7 @@ contract QuotecallWrapperTest is Test {
         });
 
         // Wrap with Quotecall wrapper
-        IQuarkWallet.QuarkOperation memory wrappedQuotecallOp = QuotecallWrapper.wrap(op, 1, 20e6);
+        IQuarkWallet.QuarkOperation memory wrappedQuotecallOp = QuotecallWrapper.wrap(op, 1, "USDC", 20e6);
 
         // Check the transfer action is wrapped in a Quotecall
         assertEq(wrappedQuotecallOp.nonce, op.nonce, "nonce should be the same");
