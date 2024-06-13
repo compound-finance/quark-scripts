@@ -37,7 +37,8 @@ library PaymentTokens {
     function knownToken(string memory tokenSymbol, uint256 chainId) internal pure returns (PaymentToken memory) {
         PaymentToken[] memory paymentTokens = knownTokens();
         for (uint256 i = 0; i < paymentTokens.length; ++i) {
-            if (paymentTokens[i].chainId == chainId && Strings.stringEqIgnoreCase(tokenSymbol, paymentTokens[i].symbol)) {
+            if (paymentTokens[i].chainId == chainId && Strings.stringEqIgnoreCase(tokenSymbol, paymentTokens[i].symbol))
+            {
                 return paymentTokens[i];
             }
         }
