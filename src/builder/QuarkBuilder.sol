@@ -71,6 +71,9 @@ contract QuarkBuilder {
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
     ) external pure returns (BuilderResult memory) {
+        // TransferMax flag
+        bool transferMax = transferIntent.amount == type(uint256).max;
+
         assertSufficientFunds(transferIntent, chainAccountsList);
         assertFundsAvailable(transferIntent, chainAccountsList);
         assertPaymentAffordable(transferIntent, chainAccountsList, payment);
