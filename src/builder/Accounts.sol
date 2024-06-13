@@ -88,4 +88,13 @@ library Accounts {
         }
         return totalBalance;
     }
+
+    function getBalanceOnChain(string memory assetSymbol, uint256 chainId, ChainAccounts[] memory chainAccountsList)
+        internal
+        pure
+        returns (uint256)
+    {
+        AssetPositions memory positions = findAssetPositions(assetSymbol, chainId, chainAccountsList);
+        return sumBalances(positions);
+    }
 }

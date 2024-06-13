@@ -74,17 +74,17 @@ library CCTP {
     }
 
     function encodeBridgeUSDC(
-        uint256 originChainId,
-        uint256 destChainId,
+        uint256 srcChainId,
+        uint256 dstChainId,
         uint256 amount,
         address recipient,
         address usdcAddress
     ) internal pure returns (bytes memory) {
         return abi.encodeWithSelector(
             CCTPBridgeActions.bridgeUSDC.selector,
-            knownBridge(originChainId),
+            knownBridge(srcChainId),
             amount,
-            knownDomainId(destChainId),
+            knownDomainId(dstChainId),
             bytes32(uint256(uint160(recipient))),
             usdcAddress
         );

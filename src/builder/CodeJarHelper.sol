@@ -7,7 +7,7 @@ library CodeJarHelper {
     /// @notice The address for CodeJar on all chains
     address constant CODE_JAR_ADDRESS = 0x2b68764bCfE9fCD8d5a30a281F141f69b69Ae3C8;
 
-    function getCodeAddress(uint256 chainId, bytes memory code) public pure returns (address) {
+    function getCodeAddress(bytes memory code) public pure returns (address) {
         return address(
             uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), CODE_JAR_ADDRESS, uint256(0), keccak256(code)))))
         );

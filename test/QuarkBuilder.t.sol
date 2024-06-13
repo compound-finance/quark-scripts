@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
 import {TransferActions} from "../src/DeFiScripts.sol";
+import {CCTPBridgeActions} from "../src/BridgeScripts.sol";
 
 import {Actions} from "../src/builder/Actions.sol";
 import {Accounts} from "../src/builder/Accounts.sol";
@@ -19,7 +20,7 @@ contract QuarkBuilderTest is Test {
         vm.expectRevert(QuarkBuilder.InsufficientFunds.selector);
         builder.transfer(
             transferUsdc_(1, 10e6, address(0xfe11a), BLOCK_TIMESTAMP), // transfer 10USDC on chain 1 to 0xfe11a
-            chainAccountsList_(0e6), // but we are holding 0USDC on all chains
+            chainAccountsList_(0e6), // but we are holding 0 USDC in total across 1, 8453
             paymentUsd_()
         );
     }
@@ -29,7 +30,7 @@ contract QuarkBuilderTest is Test {
         vm.expectRevert(QuarkBuilder.MaxCostTooHigh.selector);
         builder.transfer(
             transferUsdc_(1, 1e6, address(0xfe11a), BLOCK_TIMESTAMP), // transfer 1USDC on chain 1 to 0xfe11a
-            chainAccountsList_(2e6), // holding 2USDC
+            chainAccountsList_(2e6), // holding 2 USDC in total across 1, 8453
             paymentUsdc_(maxCosts_(1, 1_000e6)) // but costs 1,000USDC
         );
     }
@@ -40,7 +41,7 @@ contract QuarkBuilderTest is Test {
         builder.transfer(
             // there is no bridge to chain 7777, so we cannot get to our funds
             transferUsdc_(7777, 2e6, address(0xfe11a), BLOCK_TIMESTAMP), // transfer 2USDC on chain 7777 to 0xfe11a
-            chainAccountsList_(3e6), // holding 3USDC on chains 1, 8453
+            chainAccountsList_(3e6), // holding 3 USDC in total across chains 1, 8453
             paymentUsd_()
         );
     }
@@ -49,7 +50,7 @@ contract QuarkBuilderTest is Test {
         QuarkBuilder builder = new QuarkBuilder();
         QuarkBuilder.BuilderResult memory result = builder.transfer(
             transferUsdc_(1, 1e6, address(0xceecee), BLOCK_TIMESTAMP), // transfer 1 usdc on chain 1 to 0xceecee
-            chainAccountsList_(3e6), // holding 3USDC on chains 1, 8453
+            chainAccountsList_(3e6), // holding 3 USDC in total across chains 1, 8453
             paymentUsd_()
         );
 
@@ -113,7 +114,131 @@ contract QuarkBuilderTest is Test {
         assertEq(result.multiQuarkOperationDigest, hex"", "empty multi digest");
     }
 
-    // TODO: Test multiQuarkOperationDigest when Bridge operation logic is implemented
+    function testSimpleBridgeTransferSucceeds() public {
+        QuarkBuilder builder = new QuarkBuilder();
+        // Note: There are 3e6 USDC on each chain, so the Builder should attempt to bridge 2 USDC to chain 8453
+        QuarkBuilder.BuilderResult memory result = builder.transfer(
+            transferUsdc_(8453, 5e6, address(0xceecee), BLOCK_TIMESTAMP), // transfer 5 USDC on chain 8453 to 0xceecee
+            chainAccountsList_(6e6), // holding 6 USDC in total across chains 1, 8453
+            paymentUsd_()
+        );
+
+        assertEq(result.version, "1.0.0", "version 1");
+        assertEq(result.paymentCurrency, "usd", "usd currency");
+
+        // Check the quark operations
+        assertEq(result.quarkOperations.length, 2, "two operations");
+        assertEq(
+            result.quarkOperations[0].scriptAddress,
+            address(
+                uint160(
+                    uint256(
+                        keccak256(
+                            abi.encodePacked(
+                                bytes1(0xff),
+                                /* codeJar address */
+                                address(CodeJarHelper.CODE_JAR_ADDRESS),
+                                uint256(0),
+                                /* script bytecode */
+                                keccak256(type(CCTPBridgeActions).creationCode)
+                            )
+                        )
+                    )
+                )
+            ),
+            "script address for bridge action is correct given the code jar address"
+        );
+        assertEq(
+            result.quarkOperations[0].scriptCalldata,
+            abi.encodeCall(
+                CCTPBridgeActions.bridgeUSDC,
+                (
+                    address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155),
+                    2e6,
+                    6,
+                    bytes32(uint256(uint160(0xa11ce))),
+                    usdc_(1)
+                )
+            ),
+            "calldata is CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 2e6, 6, bytes32(uint256(uint160(0xa11ce))), usdc_(1)));"
+        );
+        assertEq(
+            result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
+        );
+        assertEq(
+            result.quarkOperations[1].scriptAddress,
+            address(
+                uint160(
+                    uint256(
+                        keccak256(
+                            abi.encodePacked(
+                                bytes1(0xff),
+                                /* codeJar address */
+                                address(CodeJarHelper.CODE_JAR_ADDRESS),
+                                uint256(0),
+                                /* script bytecode */
+                                keccak256(type(TransferActions).creationCode)
+                            )
+                        )
+                    )
+                )
+            ),
+            "script address for transfer is correct given the code jar address"
+        );
+        assertEq(
+            result.quarkOperations[1].scriptCalldata,
+            abi.encodeCall(TransferActions.transferERC20Token, (usdc_(8453), address(0xceecee), 5e6)),
+            "calldata is TransferActions.transferERC20Token(USDC_8453, address(0xceecee), 5e6);"
+        );
+        assertEq(
+            result.quarkOperations[1].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
+        );
+
+        // Check the actions
+        assertEq(result.actions.length, 2, "one action");
+        assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
+        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[0].actionType, "BRIDGE", "action type is 'BRIDGE'");
+        assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
+        assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
+        assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
+        assertEq(
+            result.actions[0].actionContext,
+            abi.encode(
+                Actions.BridgeActionContext({
+                    amount: 2e6,
+                    price: 1e8,
+                    token: USDC_1,
+                    chainId: 1,
+                    recipient: address(0xa11ce),
+                    destinationChainId: 8453
+                })
+            ),
+            "action context encoded from BridgeActionContext"
+        );
+        assertEq(result.actions[1].chainId, 8453, "operation is on chainid 8453");
+        assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[1].actionType, "TRANSFER", "action type is 'TRANSFER'");
+        assertEq(result.actions[1].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
+        assertEq(result.actions[1].paymentToken, address(0), "payment token is null");
+        assertEq(result.actions[1].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
+        assertEq(
+            result.actions[1].actionContext,
+            abi.encode(
+                Actions.TransferActionContext({
+                    amount: 5e6,
+                    price: 1e8,
+                    token: USDC_8453,
+                    chainId: 8453,
+                    recipient: address(0xceecee)
+                })
+            ),
+            "action context encoded from TransferActionContext"
+        );
+
+        assertEq(result.quarkOperationDigest, hex"", "empty single digest");
+        assertNotEq(result.multiQuarkOperationDigest, hex"", "non-empty multi digest");
+    }
 
     /**
      *
