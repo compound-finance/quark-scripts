@@ -29,7 +29,7 @@ contract QuotecallWrapperTest is Test {
     }
 
     /* ===== general tests ===== */
-    function testSimpleTransferTransferAndWrapForQuotecall() public {
+    function testSimpleTransferAndWrapForQuotecall() public {
         // Create operation for just TransferActions
         QuarkWallet wallet = QuarkWallet(factory.create(alice, address(0)));
         bytes[] memory scriptSources = new bytes[](1);
