@@ -21,7 +21,6 @@ library PaycallWrapper {
         for (uint256 i = 0; i < operation.scriptSources.length; i++) {
             scriptSources[i] = operation.scriptSources[i];
         }
-
         scriptSources[operation.scriptSources.length] = paycallSource;
 
         return IQuarkWallet.QuarkOperation({
