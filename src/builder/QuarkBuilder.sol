@@ -13,8 +13,7 @@ contract QuarkBuilder {
     /* ===== Constants ===== */
 
     string constant VERSION = "1.0.0";
-    uint256 constant BRIDGE_MINIMUM_AMOUNT_USDC = 1_000_000;
-    uint256 constant MAX_BRIDGE_ACTION = 2;
+    uint256 constant MAX_BRIDGE_ACTION = 1;
 
     /* ===== Custom Errors ===== */
 
@@ -125,12 +124,8 @@ contract QuarkBuilder {
                     Accounts.findAssetPositions(transferIntent.assetSymbol, srcChainAccounts.assetPositionsList);
                 Accounts.AccountBalance[] memory srcAccountBalances = srcAssetPositions.accountBalances;
                 // TODO: Make logic smarter. Currently, this uses a greedy algorithm.
+                // e.g. Optimize by trying to bridge with the least amount of bridge operations
                 for (uint256 j = 0; j < srcAccountBalances.length; ++j) {
-                    // TODO: May need to factor in bridge fees for non-CCTP bridges
-                    if (srcAccountBalances[j].balance < BRIDGE_MINIMUM_AMOUNT_USDC) {
-                        continue;
-                    }
-
                     if (bridgeActionCount >= MAX_BRIDGE_ACTION) {
                         revert TooManyBridgeOperations();
                     }
@@ -143,9 +138,8 @@ contract QuarkBuilder {
                     if (payment.isToken) {
                         // TODO: wrap around paycall
                     } else {
-                        // TODO: Should change to handle non-USDC bridges later on
-                        (quarkOperations[actionIndex], actions[actionIndex]) = Actions.bridgeUSDC(
-                            Actions.BridgeUSDC({
+                        (quarkOperations[actionIndex], actions[actionIndex]) = Actions.bridgeAsset(
+                            Actions.BridgeAsset({
                                 chainAccountsList: chainAccountsList,
                                 assetSymbol: transferIntent.assetSymbol,
                                 amount: amountToBridge,

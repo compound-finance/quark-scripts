@@ -24,6 +24,7 @@ library Actions {
 
     /* ===== Custom Errors ===== */
 
+    error BridgingUnsupportedForAsset();
     error InvalidAssetForBridge();
 
     /* ===== Input Types ===== */
@@ -38,7 +39,7 @@ library Actions {
         uint256 blockTimestamp;
     }
 
-    struct BridgeUSDC {
+    struct BridgeAsset {
         Accounts.ChainAccounts[] chainAccountsList;
         string assetSymbol;
         uint256 amount;
@@ -83,7 +84,19 @@ library Actions {
         uint256 destinationChainId;
     }
 
-    function bridgeUSDC(BridgeUSDC memory bridge)
+    function bridgeAsset(BridgeAsset memory bridge)
+        internal
+        pure
+        returns (IQuarkWallet.QuarkOperation memory, Action memory)
+    {
+        if (Strings.stringEqIgnoreCase(bridge.assetSymbol, "USDC")) {
+            return bridgeUSDC(bridge);
+        } else {
+            revert BridgingUnsupportedForAsset();
+        }
+    }
+
+    function bridgeUSDC(BridgeAsset memory bridge)
         internal
         pure
         returns (IQuarkWallet.QuarkOperation memory, Action memory)
@@ -119,7 +132,6 @@ library Actions {
             amount: bridge.amount,
             price: srcUSDCPositions.usdPrice,
             token: srcUSDCPositions.asset,
-            // TODO: srcChainId
             chainId: bridge.srcChainId,
             recipient: bridge.recipient,
             destinationChainId: bridge.destinationChainId
