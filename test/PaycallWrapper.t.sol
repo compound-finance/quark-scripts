@@ -44,7 +44,7 @@ contract PaycallWrapperTest is Test {
         });
 
         // Wrap with paycall wrapper
-        IQuarkWallet.QuarkOperation memory wrappedPaycallOp = PaycallWrapper.wrap(op, 1, 20e6);
+        IQuarkWallet.QuarkOperation memory wrappedPaycallOp = PaycallWrapper.wrap(op, 1, "USDC", 20e6);
 
         // Check the transfer action is wrapped in a paycall
         assertEq(wrappedPaycallOp.nonce, op.nonce, "nonce should be the same");

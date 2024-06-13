@@ -8,12 +8,13 @@ import {PaymentTokens} from "./PaymentTokens.sol";
 
 // Helper library to wrap a QuarkOperation from Actions.sol for a Paycall
 library PaycallWrapper {
-    function wrap(IQuarkWallet.QuarkOperation memory operation, uint256 chainId, uint256 maxPaymentCost)
-        internal
-        pure
-        returns (IQuarkWallet.QuarkOperation memory)
-    {
-        PaymentTokens.PaymentToken memory paymentToken = PaymentTokens.knownToken(chainId);
+    function wrap(
+        IQuarkWallet.QuarkOperation memory operation,
+        uint256 chainId,
+        string memory paymentTokenSymbol,
+        uint256 maxPaymentCost
+    ) internal pure returns (IQuarkWallet.QuarkOperation memory) {
+        PaymentTokens.PaymentToken memory paymentToken = PaymentTokens.knownToken(paymentTokenSymbol, chainId);
         bytes memory paycallSource =
             abi.encodePacked(type(Paycall).creationCode, abi.encode(paymentToken.priceFeed, paymentToken.token));
         bytes[] memory scriptSources = new bytes[](operation.scriptSources.length + 1);
