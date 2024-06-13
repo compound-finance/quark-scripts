@@ -7,11 +7,15 @@ import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
 
 import {BridgeRoutes} from "./BridgeRoutes.sol";
 import {Strings} from "./Strings.sol";
+import {PaycallWrapper} from "./PaycallWrapper.sol";
 
 contract QuarkBuilder {
     /* ===== Constants ===== */
 
     string constant VERSION = "1.0.0";
+
+    // Note: This is a default max cost for passing into paycall if PaymentMaxCost is missing for particular chainId
+    uint256 constant DEFAULT_MAX_PAYCALL_COST = 40e6;
 
     /* ===== Custom Errors ===== */
 
@@ -101,49 +105,58 @@ contract QuarkBuilder {
             //     sum the balances and if there's enough to cover the gap,
             //     bridge from each account in arbitrary order of appearance
             //     until there is enough.
-            if (payment.isToken) {
-                // wrap around paycall
-                // TODO: need to embed price feed addresses for known tokens before we can do paycall.
-                // ^^^ look up USDC price feeds for each supported chain?
-                // we only need USDC/USD and only on chains 1 (mainnet) and 8453 (base mainnet).
-            } else {
-                quarkOperations[actionIndex++] = Actions.bridgeUSDC(
-                    Actions.BridgeUSDC({
-                        chainAccountsList: chainAccountsList,
-                        assetSymbol: transferIntent.assetSymbol,
-                        amount: transferIntent.amount,
-                        // where it comes from
-                        originChainId: 8453, // FIXME: originChainId
-                        sender: address(0), // FIXME: sender
-                        // where it goes
-                        destinationChainId: transferIntent.chainId,
-                        recipient: transferIntent.recipient,
-                        blockTimestamp: transferIntent.blockTimestamp
-                    })
-                );
-                // TODO: also append a Actions.Action to the actions array.
-                // See: BridgeUSDC TODO for returning a Actions.Action.
-            }
-        }
 
-        // Then, transferIntent `amount` of `assetSymbol` to `recipient`
-        // TODO: construct action contexts
-        if (payment.isToken) {
-            // wrap around paycall
-        } else {
-            (quarkOperations[actionIndex], actions[actionIndex]) = Actions.transferAsset(
-                Actions.TransferAsset({
+            // TODO: also append a Actions.Action to the actions array.
+            // See: BridgeUSDC TODO for returning a Actions.Action.
+            quarkOperations[actionIndex] = Actions.bridgeUSDC(
+                Actions.BridgeUSDC({
                     chainAccountsList: chainAccountsList,
                     assetSymbol: transferIntent.assetSymbol,
                     amount: transferIntent.amount,
-                    chainId: transferIntent.chainId,
-                    sender: transferIntent.sender,
+                    // where it comes from
+                    originChainId: 8453, // FIXME: originChainId
+                    sender: address(0), // FIXME: sender
+                    // where it goes
+                    destinationChainId: transferIntent.chainId,
                     recipient: transferIntent.recipient,
                     blockTimestamp: transferIntent.blockTimestamp
                 })
             );
+
+            // Wrap around paycall
+            if (payment.isToken) {
+                quarkOperations[actionIndex] = PaycallWrapper.wrap(
+                    quarkOperations[actionIndex],
+                    8453, // FIXME: originChainId
+                    findMaxCost(payment, 8453)
+                );
+            }
+
             actionIndex++;
         }
+
+        // Then, transferIntent `amount` of `assetSymbol` to `recipient`
+        // TODO: construct action contexts
+        (quarkOperations[actionIndex], actions[actionIndex]) = Actions.transferAsset(
+            Actions.TransferAsset({
+                chainAccountsList: chainAccountsList,
+                assetSymbol: transferIntent.assetSymbol,
+                amount: transferIntent.amount,
+                chainId: transferIntent.chainId,
+                sender: transferIntent.sender,
+                recipient: transferIntent.recipient,
+                blockTimestamp: transferIntent.blockTimestamp
+            })
+        );
+
+        if (payment.isToken) {
+            // Wrap around paycall
+            quarkOperations[actionIndex] = PaycallWrapper.wrap(
+                quarkOperations[actionIndex], transferIntent.chainId, findMaxCost(payment, transferIntent.chainId)
+            );
+        }
+
+        actionIndex++;
 
         return BuilderResult({
             version: VERSION,
@@ -264,5 +277,14 @@ contract QuarkBuilder {
             result[i] = operations[i];
         }
         return result;
+    }
+
+    function findMaxCost(Payment memory payment, uint256 chainId) internal pure returns (uint256) {
+        for (uint256 i = 0; i < payment.maxCosts.length; ++i) {
+            if (payment.maxCosts[i].chainId == chainId) {
+                return payment.maxCosts[i].amount;
+            }
+        }
+        return DEFAULT_MAX_PAYCALL_COST;
     }
 }
