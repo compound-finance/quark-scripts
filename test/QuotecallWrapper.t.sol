@@ -22,6 +22,7 @@ contract QuotecallWrapperTest is Test {
     CodeJar codeJar;
 
     address constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address constant ETH_USD_PRICE_FEED = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
 
     function setUp() public {
         factory = new QuarkWalletProxyFactory(address(new QuarkWallet(new CodeJar(), new QuarkStateManager())));
@@ -49,8 +50,21 @@ contract QuotecallWrapperTest is Test {
         assertEq(wrappedQuotecallOp.nonce, op.nonce, "nonce should be the same");
         assertEq(
             wrappedQuotecallOp.scriptAddress,
-            CodeJarHelper.getCodeAddress(1, type(Quotecall).creationCode),
+            CodeJarHelper.getCodeAddress(
+                1, abi.encodePacked(type(Quotecall).creationCode, abi.encode(ETH_USD_PRICE_FEED, USDC))
+            ),
             "script address should be Quotecall"
+        );
+        assertEq(wrappedQuotecallOp.scriptSources.length, 2, "script sources should be 2 (TransferAction + Quotecall)");
+        assertEq(
+            wrappedQuotecallOp.scriptSources[0],
+            type(TransferActions).creationCode,
+            "script sources [0] should be TransferAction"
+        );
+        assertEq(
+            wrappedQuotecallOp.scriptSources[1],
+            abi.encodePacked(type(Quotecall).creationCode, abi.encode(ETH_USD_PRICE_FEED, USDC)),
+            "script sources [1] should be Quotecall"
         );
         assertEq(wrappedQuotecallOp.expiry, 99999999999, "expiry should be the same");
         assertEq(
