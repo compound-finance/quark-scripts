@@ -73,7 +73,7 @@ contract QuarkBuilder {
     ) external pure returns (BuilderResult memory) {
         // TransferMax flag
         bool transferMax = transferIntent.amount == type(uint256).max;
-        // Convert transferIntent to user balance
+        // Convert transferIntent to user aggregated balance
         if (transferMax) {
             transferIntent.amount = aggregateAssetBalance(transferIntent.assetSymbol, chainAccountsList);
         }
@@ -161,10 +161,10 @@ contract QuarkBuilder {
             }
         }
 
-        // Need to re-adjust the transferIntent.amount when transferMax is true and transfer token is payment token at the same time
+        // Need to re-adjust the transferIntent.amount before operation struct is created when transferMax is true and transfer token is payment token at the same time
         // Will need to allocate some for the payment at the end
         if (transferMax && Strings.stringEqIgnoreCase(payment.currency, transferIntent.assetSymbol)) {
-            // Just need subtract the max cost from the transferIntent.amount
+            // Subtract the max cost (quotecall cost) from the transferIntent.amount
             transferIntent.amount -= findMaxCost(payment, transferIntent.chainId);
         }
 
