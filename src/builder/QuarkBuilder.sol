@@ -73,6 +73,10 @@ contract QuarkBuilder {
     ) external pure returns (BuilderResult memory) {
         // TransferMax flag
         bool transferMax = transferIntent.amount == type(uint256).max;
+        // Convert transferIntent to user balance
+        if (transferMax) {
+            transferIntent.amount = aggregateAssetBalance(transferIntent.assetSymbol, chainAccountsList);
+        }
 
         assertSufficientFunds(transferIntent, chainAccountsList);
         assertFundsAvailable(transferIntent, chainAccountsList);
@@ -157,6 +161,13 @@ contract QuarkBuilder {
             }
         }
 
+        // Need to re-adjust the transferIntent.amount when transferMax is true and transfer token is payment token at the same time
+        // Will need to allocate some for the payment at the end
+        if (transferMax && Strings.stringEqIgnoreCase(payment.currency, transferIntent.assetSymbol)) {
+            // Just need subtract the max cost from the transferIntent.amount
+            transferIntent.amount -= findMaxCost(payment, transferIntent.chainId);
+        }
+
         // Then, transferIntent `amount` of `assetSymbol` to `recipient`
         (quarkOperations[actionIndex], actions[actionIndex]) = Actions.transferAsset(
             Actions.TransferAsset({
@@ -197,16 +208,24 @@ contract QuarkBuilder {
         });
     }
 
+    function aggregateAssetBalance(string memory tokenSymbol, Accounts.ChainAccounts[] memory chainAccountsList)
+        internal
+        pure
+        returns (uint256)
+    {
+        uint256 aggregateTransferAssetBalance;
+        for (uint256 i = 0; i < chainAccountsList.length; ++i) {
+            aggregateTransferAssetBalance +=
+                Accounts.sumBalances(Accounts.findAssetPositions(tokenSymbol, chainAccountsList[i].assetPositionsList));
+        }
+        return aggregateTransferAssetBalance;
+    }
+
     function assertSufficientFunds(
         TransferIntent memory transferIntent,
         Accounts.ChainAccounts[] memory chainAccountsList
     ) internal pure {
-        uint256 aggregateTransferAssetBalance;
-        for (uint256 i = 0; i < chainAccountsList.length; ++i) {
-            aggregateTransferAssetBalance += Accounts.sumBalances(
-                Accounts.findAssetPositions(transferIntent.assetSymbol, chainAccountsList[i].assetPositionsList)
-            );
-        }
+        uint256 aggregateTransferAssetBalance = aggregateAssetBalance(transferIntent.assetSymbol, chainAccountsList);
         // There are not enough aggregate funds on all chains to fulfill the transfer.
         if (aggregateTransferAssetBalance < transferIntent.amount) {
             revert InsufficientFunds();
