@@ -75,12 +75,6 @@ contract QuarkBuilder {
         uint256 blockTimestamp;
     }
 
-    struct BridgePayload {
-        uint256 amountLeftToBridge;
-        uint256 bridgeActionCount;
-        uint256 amountToBridge;
-    }
-
     // TODO: handle transfer max
     // TODO: support expiry
     function transfer(
@@ -106,20 +100,16 @@ contract QuarkBuilder {
 
         if (needsBridgedFunds(transferIntent, chainAccountsList)) {
             // Note: Assumes that the asset uses the same # of decimals on each chain
-            BridgePayload memory bp = BridgePayload(
-                transferIntent.amount
-                    - Accounts.getBalanceOnChain(transferIntent.assetSymbol, transferIntent.chainId, chainAccountsList),
-                0,
-                0
-            );
-            // uint256 amountLeftToBridge = transferIntent.amount - Accounts.getBalanceOnChain(transferIntent.assetSymbol, transferIntent.chainId, chainAccountsList);
-            // uint256 bridgeActionCount = 0;
+            uint256 balanceOnDstChain =
+                Accounts.getBalanceOnChain(transferIntent.assetSymbol, transferIntent.chainId, chainAccountsList);
+            uint256 amountLeftToBridge = transferIntent.amount - balanceOnDstChain;
 
+            uint256 bridgeActionCount = 0;
             // TODO: bridge routing logic (which bridge to prioritize, how many bridges?)
             // Iterate chainAccountList and find upto 2 chains that can provide enough fund
             // Backend can provide optimal routes by adjust the order in chainAccountList.
             for (uint256 i = 0; i < chainAccountsList.length; ++i) {
-                if (bp.amountLeftToBridge == 0) {
+                if (amountLeftToBridge == 0) {
                     break;
                 }
 
@@ -140,30 +130,30 @@ contract QuarkBuilder {
                 // TODO: Make logic smarter. Currently, this uses a greedy algorithm.
                 // e.g. Optimize by trying to bridge with the least amount of bridge operations
                 for (uint256 j = 0; j < srcAccountBalances.length; ++j) {
-                    if (bp.bridgeActionCount >= MAX_BRIDGE_ACTION) {
+                    if (bridgeActionCount >= MAX_BRIDGE_ACTION) {
                         revert TooManyBridgeOperations();
                     }
 
-                    bp.amountToBridge = srcAccountBalances[j].balance >= bp.amountLeftToBridge
-                        ? bp.amountLeftToBridge
+                    uint256 amountToBridge = srcAccountBalances[j].balance >= amountLeftToBridge
+                        ? amountLeftToBridge
                         : srcAccountBalances[j].balance;
-                    bp.amountLeftToBridge -= bp.amountToBridge;
+                    amountLeftToBridge -= amountToBridge;
 
                     (quarkOperations[actionIndex], actions[actionIndex]) = Actions.bridgeAsset(
-                        Actions.BridgeAsset({
-                            chainAccountsList: chainAccountsList,
-                            assetSymbol: transferIntent.assetSymbol,
-                            amount: bp.amountToBridge,
-                            // where it comes from
-                            srcChainId: srcChainAccounts.chainId,
-                            sender: srcAccountBalances[j].account,
-                            // where it goes
-                            destinationChainId: transferIntent.chainId,
-                            recipient: transferIntent.sender,
-                            blockTimestamp: transferIntent.blockTimestamp
-                        })
-                    );
-
+                            Actions.BridgeAsset({
+                                chainAccountsList: chainAccountsList,
+                                assetSymbol: transferIntent.assetSymbol,
+                                amount: amountToBridge,
+                                // where it comes from
+                                srcChainId: srcChainAccounts.chainId,
+                                sender: srcAccountBalances[j].account,
+                                // where it goes
+                                destinationChainId: transferIntent.chainId,
+                                recipient: transferIntent.sender,
+                                blockTimestamp: transferIntent.blockTimestamp
+                            })
+                        );
+                    
                     if (payment.isToken) {
                         quarkOperations[actionIndex] = PaycallWrapper.wrap(
                             quarkOperations[actionIndex],
@@ -174,11 +164,11 @@ contract QuarkBuilder {
                     }
 
                     actionIndex++;
-                    bp.bridgeActionCount++;
+                    bridgeActionCount++;
                 }
             }
 
-            if (bp.amountLeftToBridge > 0) {
+            if (amountLeftToBridge > 0) {
                 revert FundsUnavailable();
             }
         }
