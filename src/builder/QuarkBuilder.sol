@@ -9,6 +9,7 @@ import {BridgeRoutes} from "./BridgeRoutes.sol";
 import {EIP712Helper} from "./EIP712Helper.sol";
 import {Strings} from "./Strings.sol";
 import {PaycallWrapper} from "./PaycallWrapper.sol";
+import {PaymentInfo} from "./PaymentInfo.sol";
 
 contract QuarkBuilder {
     /* ===== Constants ===== */
@@ -29,18 +30,6 @@ contract QuarkBuilder {
     error TooManyBridgeOperations();
 
     /* ===== Input Types ===== */
-
-    struct Payment {
-        bool isToken;
-        // Note: Payment `currency` should be the same across chains
-        string currency;
-        PaymentMaxCost[] maxCosts;
-    }
-
-    struct PaymentMaxCost {
-        uint256 chainId;
-        uint256 amount;
-    }
 
     /* ===== Output Types ===== */
 
@@ -80,7 +69,7 @@ contract QuarkBuilder {
     function transfer(
         TransferIntent memory transferIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
-        Payment memory payment
+        PaymentInfo.Payment memory payment
     ) external pure returns (BuilderResult memory) {
         assertSufficientFunds(transferIntent, chainAccountsList);
         assertFundsAvailable(transferIntent, chainAccountsList);
@@ -151,17 +140,9 @@ contract QuarkBuilder {
                             destinationChainId: transferIntent.chainId,
                             recipient: transferIntent.sender,
                             blockTimestamp: transferIntent.blockTimestamp
-                        })
+                        }),
+                        payment
                     );
-
-                    if (payment.isToken) {
-                        quarkOperations[actionIndex] = PaycallWrapper.wrap(
-                            quarkOperations[actionIndex],
-                            srcChainAccounts.chainId,
-                            payment.currency,
-                            findMaxCost(payment, srcChainAccounts.chainId)
-                        );
-                    }
 
                     actionIndex++;
                     bridgeActionCount++;
@@ -183,18 +164,9 @@ contract QuarkBuilder {
                 sender: transferIntent.sender,
                 recipient: transferIntent.recipient,
                 blockTimestamp: transferIntent.blockTimestamp
-            })
+            }),
+            payment
         );
-
-        if (payment.isToken) {
-            // Wrap around paycall
-            quarkOperations[actionIndex] = PaycallWrapper.wrap(
-                quarkOperations[actionIndex],
-                transferIntent.chainId,
-                payment.currency,
-                findMaxCost(payment, transferIntent.chainId)
-            );
-        }
 
         actionIndex++;
 
@@ -282,7 +254,7 @@ contract QuarkBuilder {
     function assertPaymentAffordable(
         TransferIntent memory transferIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
-        Payment memory payment
+        PaymentInfo.Payment memory payment
     ) internal pure {
         if (payment.isToken) {
             for (uint256 i = 0; i < payment.maxCosts.length; ++i) {
@@ -328,14 +300,5 @@ contract QuarkBuilder {
             result[i] = operations[i];
         }
         return result;
-    }
-
-    function findMaxCost(Payment memory payment, uint256 chainId) internal pure returns (uint256) {
-        for (uint256 i = 0; i < payment.maxCosts.length; ++i) {
-            if (payment.maxCosts[i].chainId == chainId) {
-                return payment.maxCosts[i].amount;
-            }
-        }
-        return DEFAULT_MAX_PAYCALL_COST;
     }
 }

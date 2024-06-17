@@ -13,6 +13,7 @@ import {CodeJarHelper} from "../src/builder/CodeJarHelper.sol";
 import {QuarkBuilder} from "../src/builder/QuarkBuilder.sol";
 import {Paycall} from "../src/Paycall.sol";
 import {PaycallWrapper} from "../src/builder/PaycallWrapper.sol";
+import {PaymentInfo} from "../src/builder/PaymentInfo.sol";
 
 contract QuarkBuilderTest is Test {
     uint256 constant BLOCK_TIMESTAMP = 123_456_789;
@@ -120,10 +121,12 @@ contract QuarkBuilderTest is Test {
 
     function testSimpleLocalTransferWithPaycallWrapperSucceeds() public {
         QuarkBuilder builder = new QuarkBuilder();
+        PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
+        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 1e5});
         QuarkBuilder.BuilderResult memory result = builder.transfer(
             transferUsdc_(1, 1e6, address(0xceecee), BLOCK_TIMESTAMP), // transfer 1 usdc on chain 1 to 0xceecee
             chainAccountsList_(3e6), // holding 3USDC on chains 1, 8453
-            paymentUsdc_()
+            paymentUsdc_(maxCosts)
         );
 
         address transferActionsAddress = CodeJarHelper.getCodeAddress(type(TransferActions).creationCode);
@@ -147,7 +150,7 @@ contract QuarkBuilderTest is Test {
                 Paycall.run.selector,
                 transferActionsAddress,
                 abi.encodeWithSelector(TransferActions.transferERC20Token.selector, usdc_(1), address(0xceecee), 1e6),
-                40e6
+                1e5
             ),
             "calldata is Paycall.run(TransferActions.transferERC20Token(USDC_1, address(0xceecee), 1e6), 20e6);"
         );
@@ -159,9 +162,9 @@ contract QuarkBuilderTest is Test {
         assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
         assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
         assertEq(result.actions[0].actionType, "TRANSFER", "action type is 'TRANSFER'");
-        assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
-        assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
-        assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
+        assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
+        assertEq(result.actions[0].paymentToken, USDC, "payment token is USDC");
+        assertEq(result.actions[0].paymentMaxCost, 1e5, "payment max is set to 1e5 in this test case");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
@@ -180,7 +183,6 @@ contract QuarkBuilderTest is Test {
         // assertNotEq0(result.multiQuarkOperationDigest, hex"", "non-empty single digest");
     }
 
-    // TODO: Test multiQuarkOperationDigest when Bridge operation logic is implemented
     function testSimpleBridgeTransferSucceeds() public {
         QuarkBuilder builder = new QuarkBuilder();
         // Note: There are 3e6 USDC on each chain, so the Builder should attempt to bridge 2 USDC to chain 8453
@@ -333,28 +335,28 @@ contract QuarkBuilderTest is Test {
         });
     }
 
-    function paymentUsdc_() internal pure returns (QuarkBuilder.Payment memory) {
-        return paymentUsdc_(new QuarkBuilder.PaymentMaxCost[](0));
+    function paymentUsdc_() internal pure returns (PaymentInfo.Payment memory) {
+        return paymentUsdc_(new PaymentInfo.PaymentMaxCost[](0));
     }
 
-    function paymentUsdc_(QuarkBuilder.PaymentMaxCost[] memory maxCosts)
+    function paymentUsdc_(PaymentInfo.PaymentMaxCost[] memory maxCosts)
         internal
         pure
-        returns (QuarkBuilder.Payment memory)
+        returns (PaymentInfo.Payment memory)
     {
-        return QuarkBuilder.Payment({isToken: true, currency: "usdc", maxCosts: maxCosts});
+        return PaymentInfo.Payment({isToken: true, currency: "usdc", maxCosts: maxCosts});
     }
 
-    function paymentUsd_() internal pure returns (QuarkBuilder.Payment memory) {
-        return paymentUsd_(new QuarkBuilder.PaymentMaxCost[](0));
+    function paymentUsd_() internal pure returns (PaymentInfo.Payment memory) {
+        return paymentUsd_(new PaymentInfo.PaymentMaxCost[](0));
     }
 
-    function paymentUsd_(QuarkBuilder.PaymentMaxCost[] memory maxCosts)
+    function paymentUsd_(PaymentInfo.PaymentMaxCost[] memory maxCosts)
         internal
         pure
-        returns (QuarkBuilder.Payment memory)
+        returns (PaymentInfo.Payment memory)
     {
-        return QuarkBuilder.Payment({isToken: false, currency: "usd", maxCosts: maxCosts});
+        return PaymentInfo.Payment({isToken: false, currency: "usd", maxCosts: maxCosts});
     }
 
     function chainAccountsList_(uint256 amount) internal pure returns (Accounts.ChainAccounts[] memory) {
@@ -378,9 +380,9 @@ contract QuarkBuilderTest is Test {
         return quarkStates;
     }
 
-    function maxCosts_(uint256 chainId, uint256 amount) internal pure returns (QuarkBuilder.PaymentMaxCost[] memory) {
-        QuarkBuilder.PaymentMaxCost[] memory maxCosts = new QuarkBuilder.PaymentMaxCost[](1);
-        maxCosts[0] = QuarkBuilder.PaymentMaxCost({chainId: chainId, amount: amount});
+    function maxCosts_(uint256 chainId, uint256 amount) internal pure returns (PaymentInfo.PaymentMaxCost[] memory) {
+        PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
+        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: chainId, amount: amount});
         return maxCosts;
     }
 
