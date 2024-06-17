@@ -178,9 +178,9 @@ contract QuarkBuilderTest is Test {
             ),
             "action context encoded from TransferActionContext"
         );
-        // TODO: actually generate digests
-        // assertNotEq0(result.quarkOperationDigest, hex"", "non-empty single digest");
-        // assertNotEq0(result.multiQuarkOperationDigest, hex"", "non-empty single digest");
+
+        assertNotEq(result.quarkOperationDigest, hex"", "non-empty single digest");
+        assertEq(result.multiQuarkOperationDigest, hex"", "empty multi digest");
     }
 
     function testSimpleBridgeTransferSucceeds() public {
