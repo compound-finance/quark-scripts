@@ -1,76 +1,14 @@
-# Quark
+# Quark Scripts
 
 ## Overview
 
-Quark is an Ethereum smart contract wallet system, designed to run custom code — termed Quark Operations — with each transaction. This functionality is achieved through Quark wallet's capability to execute code from a separate contract via a `callcode` or `delegatecall` operation. The system leverages _Code Jar_, using `CREATE2` to deploy EVM bytecode for efficient code re-use. Additionally, the _Quark State Manager_ contract plays a pivotal role in managing nonces and ensuring isolated storage per operation, thus preventing storage conflicts. The system also includes a wallet factory for deterministic wallet creation and a suite of Core Scripts — audited, versatile contracts that form the foundation for complex Quark Operations such as multicalls and flash-loans.
+Quark is an Ethereum smart contract wallet system, designed to run custom code — termed Quark Operations — with each transaction. Quark scripts are the custom code that run in the context of a Quark wallet. Scripts are versatile and allow Quark wallets to execute any arbitrary code, which can enable use-cases such as flashloaning and repaying a borrow in a single transaction.
 
-## Contracts
-
-### Code Jar
-
-_Code Jar_ maps callable contract code to addresses which can then be delegate-called to. Specifically, _Code Jar_ uses `CREATE2` to find or create a contract address whose code matches some given input code (EVM opcodes encoded as data). The calling contract (e.g. a wallet) may call _Code Jar_'s `saveCode` function and then run `delegatecall` on the resulting address, which effectively executes arbitrary code.
-
-### Quark Wallet
-
-_Quark Wallet_ is a scriptable wallet located at a counterfactual address derived from an owner EOA. The same EOA will have the same Quark Wallet address across all chains if deployed from the same _Quark Wallet Factory_.
-
-_Quark Wallet_ executes _Quark Operations_ containing a transaction script (or address pointing to a transaction script) and `calldata` representing an encoded function call into that script.
-
-_Quark Operations_ are either directly executed or authorized by signature, and can include replayable transactions and support callbacks for complex operations like flash-loans. See the [Quark Wallet Features](#quark-wallet-features) section for more details.
-
-### Quark State Manager
-
-_Quark State Manager_ is a contract that manages nonces and ensures isolated storage for each Quark wallet and operation, preventing storage clashes between different wallets and operations.
-
-### Wallet Factory
-
-The _Quark Wallet Factory_ is the central contract for deploying new _Quark Wallets_ at pre-determined addresses. It is generally deployed with peer contracts via _Code Jar_ deployments.
-
-### Quark Script
-
-_Quark Script_ is an extensible contract that exposes helper functions for other Quark scripts to inherit from. The helper functions include those for enabling callbacks, allowing replay of _Quark Operations_, and reading from and writing to a key in the _Quark State Manager_.
-
-### Core Scripts
-
-Core scripts are a set of important scripts that should be deployed via _Code Jar_ to cover essential operations that will likely be used by a large number of _Quark Operations_. Examples of _Core Scripts_ include _Multicall_, _Ethcall_, _Paycall_ and flashloans with callbacks.
-
-## System Diagrams
-
-### Happy path for wallet creation and execution of Quark Operation
-
-```mermaid
-flowchart TB
-    factory[Quark Wallet Factory]
-    wallet[Quark Wallet]
-    jar[Code Jar]
-    script[Quark Script]
-    state[Quark State Manager]
-
-    factory -- 1. createAndExecute --> wallet
-    wallet -- 2. saveCode --> jar
-    jar -- 3. CREATE2  --> script
-    wallet -- 4. setActiveNonceAndCallback --> state
-    state -- 5. executeScriptWithNonceLock --> wallet
-    wallet -- 6. Executes script\nusing callcode --> script
-```
-
-## Quark Wallet Features
-
-### Separation of Signer and Executor
-
-The `signer` and `executor` roles are separate roles in the _Quark Wallet_. The `signer` is able to sign Quark operations that can be executed by the _Quark Wallet_. The `executor` is able to directly execute scripts on the _Quark Wallet_. Theoretically, the same address can be both the `signer` and `executor` of a _Quark Wallet_. Similarly, the `signer` and/or `executor` can be set to the null (zero) address to effectively remove that role from the wallet.
-
-The separation of these two roles allows for a sub-wallet system, where a wallet can be the `executor` for another wallet but both wallets share the same `signer`. This is discussed in more detail in the [Sub-wallets section](#sub-wallets).
-
-### Sub-wallets
-
-Sub-wallets are _Quark wallets_ controlled by another _Quark wallet_. Specifically, the sub-wallet's `executor` is another _Quark wallet_ (dubbed the "main wallet"), meaning the main wallet can directly execute scripts on the sub-wallet. This allows for complex interactions that span multiple _Quark wallets_ to be executed via a single signature.
-
-For example, let _Wallet A_ be the `executor` of _Wallet B_. Alice is the `signer` for _Wallet A_. If Alice wants to borrow USDC from Comet in _Wallet A_, transfer the USDC to _Wallet B_, and then supply the USDC to Comet from _Wallet B_, she can accomplish this with a single signature of a _Quark operation_. The final action of "supply USDC to Comet in Wallet B" can be invoked by a direct execution call from _Wallet A_.
+## Quark Script Features
 
 ### Replayable Scripts
 
-Replayable scripts are Quark scripts that can re-executed multiple times using the same signature of a _Quark operation_. More specifically, replayable scripts explicitly clear the nonce used by the transaction (can be done via the `allowReplay` helper function in [`QuarkScript.sol`](./quark-core/src/QuarkScript.sol)) to allow for the same nonce to be re-used with the same script address.
+Replayable scripts are Quark scripts that can re-executed multiple times using the same signature of a _Quark operation_. More specifically, replayable scripts explicitly clear the nonce used by the transaction (can be done via the `allowReplay` helper function in [`QuarkScript.sol`](./lib/quark/src/quark-core/src/QuarkScript.sol)) to allow for the same nonce to be re-used with the same script address.
 
 An example use-case for replayable scripts is recurring purchases. If a user wanted to buy X WETH using 1,000 USDC every Wednesday until 10,000 USDC is spent, they can achieve this by signing a single _Quark operation_ of a replayable script ([example](./test/lib/RecurringPurchase.sol)). A submitter can then submit this same signed _Quark operation_ every Wednesday to execute the recurring purchase. The replayable script should have checks to ensure conditions are met before purchasing the WETH.
 
@@ -84,33 +22,13 @@ One danger of flexible `calldata` in replayable scripts is that previously signe
 
 ### Callbacks
 
-Callbacks are an opt-in feature of Quark scripts that allow for an external contract to call into the Quark script (in the context of the _Quark wallet_) during the same transaction. An example use-case of callbacks is Uniswap flashloans ([example script](./quark-core-scripts/src/UniswapFlashLoan.sol)), where the Uniswap pool will call back into the _Quark wallet_ to make sure that the loan is paid off before ending the transaction.
+Callbacks are an opt-in feature of Quark scripts that allow for an external contract to call into the Quark script (in the context of the _Quark wallet_) during the same transaction. An example use-case of callbacks is Uniswap flashloans ([example script](./src/UniswapFlashLoan.sol)), where the Uniswap pool will call back into the _Quark wallet_ to make sure that the loan is paid off before ending the transaction.
 
-Callbacks need to be explicitly turned on by Quark scripts. Specifically, this is done by writing the callback target address to the callback storage slot in _Quark State Manager_ (can be done via the `allowCallback` helper function in [`QuarkScript.sol`](./quark-core/src/QuarkScript.sol)).
+Callbacks need to be explicitly turned on by Quark scripts. Specifically, this is done by writing the callback target address to the callback storage slot in _Quark State Manager_ (can be done via the `allowCallback` helper function in [`QuarkScript.sol`](./lib/quark/src/quark-core/src/QuarkScript.sol)).
 
-### Dependencies
+## Quark Builder
 
-Please note that project dependencies must be installed in the root directory (not in sub-project directories), and any new entries added to `remappings.txt` must also be added to a `remappings-relative.txt` with a `..` prefix in order for sub-projects to be able to import them.
-
-In other words, if an entry is added to `remappings.txt` like:
-```
-v3-core=/lib/v3-core
-```
-
-Then a corresponding entry must be added to `remappings-relative.txt` so that sub-projects can properly resolve the path:
-```
-v3-core=../lib/v3-core
-```
-
-See [Sub-project Remappings](#sub-project-remappings) for more details.
-
-### Sub-project Remappings
-
-As a consequence of the sub-project structure, source files can no longer use relative imports. Instead, a remapping to each sub-project directory is defined, and all imports are sub-project namespaced, even within the same sub-project: instead of `import "./QuarkWallet.sol";`, it must be written `import "quark-core/src/QuarkWallet.sol";`.
-
-In the root-level `remappings.txt` file, these remappings look ordinary, like `quark-core=./quark-core/`. However, each sub-project needs its own remappings in order to build, and these need to be relative to the root directory even though the project has its own subdirectory; as a result, in each subproject, a `remappings.txt` symlink is created to the `remappings-relative.txt` file in the root directory. This `remappings-relative.txt` file adjusts all of the remappings in the regular root-level `remappings.txt` to be prefixed with a `..` so that they will resolve relative to the root directory, and not the sub-project's directory.
-
-Whenever a new remapping is added to `remappings.txt`, a corresponding entry must be added to `remappings-relative.txt` that prefixes the remapping path with `..` to maintain sub-project compiles; this is covered with an example in the [Dependencies](#dependencies) section.
+[Quark Builder](./src/builder/QuarkBuilder.sol) is a library of functions that simplifies the complexities around building _Quark operations_. The code is written in Solidity, but not meant to be deployed on-chain. Rather, it is designed to run locally in a client to construct _Quark operations_ based on user intents (e.g. "transfer 5 USDC to 0xABC... on chain 10").
 
 ## Fork tests and NODE_PROVIDER_BYPASS_KEY
 
@@ -152,16 +70,10 @@ $ git add .gas-snapshot && git commit -m "commit new baseline gas snapshot"
 
 ## Deploy
 
-To run the deploy, first, find the Code Jar address, or deploy Code Jar via:
+To run the deploy, first, find the Code Jar address, or deploy Quark scripts via:
 
 ```sh
-./script/deploy-code-jar.sh
-```
-
-Then deploy Quark via:
-
-```sh
-CODE_JAR=... ./script/deploy-quark.sh
+./script/deploy-quark-scripts.sh
 ```
 
 To actually deploy contracts on-chain, the following env variables need to be set:
@@ -178,5 +90,5 @@ CODE_JAR=
 Once the env variables are defined, run the following command:
 
 ```sh
-set -a && source .env && ./script/deploy-quark.sh --broadcast
+set -a && source .env && ./script/deploy-quark-scripts.sh --broadcast
 ```
