@@ -127,7 +127,9 @@ contract QuarkBuilderTest is Test {
         );
 
         address transferActionsAddress = CodeJarHelper.getCodeAddress(type(TransferActions).creationCode);
-        address paycallAddress = CodeJarHelper.getCodeAddress(abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED, USDC)));
+        address paycallAddress = CodeJarHelper.getCodeAddress(
+            abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED, USDC))
+        );
 
         assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usdc", "usd currency");
@@ -147,7 +149,8 @@ contract QuarkBuilderTest is Test {
                 abi.encodeWithSelector(TransferActions.transferERC20Token.selector, usdc_(1), address(0xceecee), 1e6),
                 40e6
             ),
-            "calldata is Paycall.run(TransferActions.transferERC20Token(USDC_1, address(0xceecee), 1e6), 20e6);");
+            "calldata is Paycall.run(TransferActions.transferERC20Token(USDC_1, address(0xceecee), 1e6), 20e6);"
+        );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
@@ -162,7 +165,7 @@ contract QuarkBuilderTest is Test {
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
-                    Actions.TransferActionContext({
+                Actions.TransferActionContext({
                     amount: 1e6,
                     price: 1e8,
                     token: USDC_1,

@@ -50,7 +50,9 @@ contract PaycallWrapperTest is Test {
         assertEq(wrappedPaycallOp.nonce, op.nonce, "nonce should be the same");
         assertEq(
             wrappedPaycallOp.scriptAddress,
-            CodeJarHelper.getCodeAddress(abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED, USDC))),
+            CodeJarHelper.getCodeAddress(
+                abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED, USDC))
+            ),
             "script address should be paycall"
         );
         assertEq(wrappedPaycallOp.scriptSources.length, 2, "script sources should be 2 (TransferAction + Paycall)");
