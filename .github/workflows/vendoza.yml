@@ -5,7 +5,7 @@ on:
   pull_request:
 
 env:
-  FOUNDRY_PROFILE: ci
+  FOUNDRY_PROFILE: ir
 
 jobs:
   check:
