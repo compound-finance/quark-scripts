@@ -106,12 +106,12 @@ contract QuarkBuilder {
 
         if (needsBridgedFunds(transferIntent, chainAccountsList)) {
             // Note: Assumes that the asset uses the same # of decimals on each chain
-            BridgePayload memory bp = BridgePayload({
-                amountLeftToBridge: transferIntent.amount
+            BridgePayload memory bp = BridgePayload(
+                transferIntent.amount
                     - Accounts.getBalanceOnChain(transferIntent.assetSymbol, transferIntent.chainId, chainAccountsList),
-                bridgeActionCount: 0,
-                amountToBridge: 0
-            });
+                0,
+                0
+            );
             // uint256 amountLeftToBridge = transferIntent.amount - Accounts.getBalanceOnChain(transferIntent.assetSymbol, transferIntent.chainId, chainAccountsList);
             // uint256 bridgeActionCount = 0;
 
