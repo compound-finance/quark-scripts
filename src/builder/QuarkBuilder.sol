@@ -13,6 +13,7 @@ contract QuarkBuilder {
     /* ===== Constants ===== */
 
     string constant VERSION = "1.0.0";
+    uint256 constant MAX_BRIDGE_ACTION = 1;
 
     /* ===== Custom Errors ===== */
 
@@ -21,6 +22,7 @@ contract QuarkBuilder {
     error InsufficientFunds();
     error InvalidInput();
     error MaxCostTooHigh();
+    error TooManyBridgeOperations();
 
     /* ===== Input Types ===== */
 
@@ -93,42 +95,75 @@ contract QuarkBuilder {
             new IQuarkWallet.QuarkOperation[](chainAccountsList.length);
 
         if (needsBridgedFunds(transferIntent, chainAccountsList)) {
-            // TODO: actually enumerate chain accounts other than the destination chain,
-            // and check balances and choose amounts to send and from which.
-            //
-            // for now: simplify!
-            // only check 8453 (Base mainnet);
-            //   check every account;
-            //     sum the balances and if there's enough to cover the gap,
-            //     bridge from each account in arbitrary order of appearance
-            //     until there is enough.
-            if (payment.isToken) {
-                // wrap around paycall
-                // TODO: need to embed price feed addresses for known tokens before we can do paycall.
-                // ^^^ look up USDC price feeds for each supported chain?
-                // we only need USDC/USD and only on chains 1 (mainnet) and 8453 (base mainnet).
-            } else {
-                quarkOperations[actionIndex++] = Actions.bridgeUSDC(
-                    Actions.BridgeUSDC({
-                        chainAccountsList: chainAccountsList,
-                        assetSymbol: transferIntent.assetSymbol,
-                        amount: transferIntent.amount,
-                        // where it comes from
-                        originChainId: 8453, // FIXME: originChainId
-                        sender: address(0), // FIXME: sender
-                        // where it goes
-                        destinationChainId: transferIntent.chainId,
-                        recipient: transferIntent.recipient,
-                        blockTimestamp: transferIntent.blockTimestamp
-                    })
-                );
-                // TODO: also append a Actions.Action to the actions array.
-                // See: BridgeUSDC TODO for returning a Actions.Action.
+            // Note: Assumes that the asset uses the same # of decimals on each chain
+            uint256 balanceOnDstChain =
+                Accounts.getBalanceOnChain(transferIntent.assetSymbol, transferIntent.chainId, chainAccountsList);
+            uint256 amountLeftToBridge = transferIntent.amount - balanceOnDstChain;
+
+            uint256 bridgeActionCount = 0;
+            // TODO: bridge routing logic (which bridge to prioritize, how many bridges?)
+            // Iterate chainAccountList and find upto 2 chains that can provide enough fund
+            // Backend can provide optimal routes by adjust the order in chainAccountList.
+            for (uint256 i = 0; i < chainAccountsList.length; ++i) {
+                if (amountLeftToBridge == 0) {
+                    break;
+                }
+
+                Accounts.ChainAccounts memory srcChainAccounts = chainAccountsList[i];
+                if (srcChainAccounts.chainId == transferIntent.chainId) {
+                    continue;
+                }
+
+                if (
+                    !BridgeRoutes.canBridge(srcChainAccounts.chainId, transferIntent.chainId, transferIntent.assetSymbol)
+                ) {
+                    continue;
+                }
+
+                Accounts.AssetPositions memory srcAssetPositions =
+                    Accounts.findAssetPositions(transferIntent.assetSymbol, srcChainAccounts.assetPositionsList);
+                Accounts.AccountBalance[] memory srcAccountBalances = srcAssetPositions.accountBalances;
+                // TODO: Make logic smarter. Currently, this uses a greedy algorithm.
+                // e.g. Optimize by trying to bridge with the least amount of bridge operations
+                for (uint256 j = 0; j < srcAccountBalances.length; ++j) {
+                    if (bridgeActionCount >= MAX_BRIDGE_ACTION) {
+                        revert TooManyBridgeOperations();
+                    }
+
+                    uint256 amountToBridge = srcAccountBalances[j].balance >= amountLeftToBridge
+                        ? amountLeftToBridge
+                        : srcAccountBalances[j].balance;
+                    amountLeftToBridge -= amountToBridge;
+
+                    if (payment.isToken) {
+                        // TODO: wrap around paycall
+                    } else {
+                        (quarkOperations[actionIndex], actions[actionIndex]) = Actions.bridgeAsset(
+                            Actions.BridgeAsset({
+                                chainAccountsList: chainAccountsList,
+                                assetSymbol: transferIntent.assetSymbol,
+                                amount: amountToBridge,
+                                // where it comes from
+                                srcChainId: srcChainAccounts.chainId,
+                                sender: srcAccountBalances[j].account,
+                                // where it goes
+                                destinationChainId: transferIntent.chainId,
+                                recipient: transferIntent.sender,
+                                blockTimestamp: transferIntent.blockTimestamp
+                            })
+                        );
+                        actionIndex++;
+                        bridgeActionCount++;
+                    }
+                }
+            }
+
+            if (amountLeftToBridge > 0) {
+                revert FundsUnavailable();
             }
         }
 
         // Then, transferIntent `amount` of `assetSymbol` to `recipient`
-        // TODO: construct action contexts
         if (payment.isToken) {
             // wrap around paycall
         } else {
@@ -221,9 +256,8 @@ contract QuarkBuilder {
         pure
         returns (bool)
     {
-        Accounts.AssetPositions memory localPositions =
-            Accounts.findAssetPositions(transferIntent.assetSymbol, transferIntent.chainId, chainAccountsList);
-        return Accounts.sumBalances(localPositions) < transferIntent.amount;
+        return Accounts.getBalanceOnChain(transferIntent.assetSymbol, transferIntent.chainId, chainAccountsList)
+            < transferIntent.amount;
     }
 
     // Assert that each chain has sufficient funds to cover the max cost for that chain.

@@ -24,6 +24,7 @@ library Actions {
 
     /* ===== Custom Errors ===== */
 
+    error BridgingUnsupportedForAsset();
     error InvalidAssetForBridge();
 
     /* ===== Input Types ===== */
@@ -38,11 +39,11 @@ library Actions {
         uint256 blockTimestamp;
     }
 
-    struct BridgeUSDC {
+    struct BridgeAsset {
         Accounts.ChainAccounts[] chainAccountsList;
         string assetSymbol;
         uint256 amount;
-        uint256 originChainId;
+        uint256 srcChainId;
         address sender;
         uint256 destinationChainId;
         address recipient;
@@ -83,37 +84,70 @@ library Actions {
         uint256 destinationChainId;
     }
 
-    function bridgeUSDC(BridgeUSDC memory bridge)
+    function bridgeAsset(BridgeAsset memory bridge)
         internal
         pure
-        returns (IQuarkWallet.QuarkOperation memory /*, QuarkAction memory*/ )
+        returns (IQuarkWallet.QuarkOperation memory, Action memory)
+    {
+        if (Strings.stringEqIgnoreCase(bridge.assetSymbol, "USDC")) {
+            return bridgeUSDC(bridge);
+        } else {
+            revert BridgingUnsupportedForAsset();
+        }
+    }
+
+    function bridgeUSDC(BridgeAsset memory bridge)
+        internal
+        pure
+        returns (IQuarkWallet.QuarkOperation memory, Action memory)
     {
         if (!Strings.stringEqIgnoreCase(bridge.assetSymbol, "USDC")) {
             revert InvalidAssetForBridge();
         }
 
-        Accounts.ChainAccounts memory originChainAccounts =
-            Accounts.findChainAccounts(bridge.originChainId, bridge.chainAccountsList);
+        Accounts.ChainAccounts memory srcChainAccounts =
+            Accounts.findChainAccounts(bridge.srcChainId, bridge.chainAccountsList);
 
-        Accounts.AssetPositions memory originUSDCPositions =
-            Accounts.findAssetPositions("USDC", originChainAccounts.assetPositionsList);
+        Accounts.AssetPositions memory srcUSDCPositions =
+            Accounts.findAssetPositions("USDC", srcChainAccounts.assetPositionsList);
 
-        Accounts.QuarkState memory accountState =
-            Accounts.findQuarkState(bridge.sender, originChainAccounts.quarkStates);
+        Accounts.QuarkState memory accountState = Accounts.findQuarkState(bridge.sender, srcChainAccounts.quarkStates);
 
         bytes[] memory scriptSources = new bytes[](1);
         scriptSources[0] = CCTP.bridgeScriptSource();
 
-        // CCTP bridge
-        return IQuarkWallet.QuarkOperation({
+        // Construct QuarkOperation
+        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
             nonce: accountState.quarkNextNonce,
-            scriptAddress: CodeJarHelper.getCodeAddress(bridge.originChainId, scriptSources[0]),
+            scriptAddress: CodeJarHelper.getCodeAddress(scriptSources[0]),
             scriptCalldata: CCTP.encodeBridgeUSDC(
-                bridge.originChainId, bridge.destinationChainId, bridge.amount, bridge.recipient, originUSDCPositions.asset
+                bridge.srcChainId, bridge.destinationChainId, bridge.amount, bridge.recipient, srcUSDCPositions.asset
                 ),
             scriptSources: scriptSources,
             expiry: bridge.blockTimestamp + BRIDGE_EXPIRY_BUFFER
         });
+
+        // Construct Action
+        BridgeActionContext memory bridgeActionContext = BridgeActionContext({
+            amount: bridge.amount,
+            price: srcUSDCPositions.usdPrice,
+            token: srcUSDCPositions.asset,
+            chainId: bridge.srcChainId,
+            recipient: bridge.recipient,
+            destinationChainId: bridge.destinationChainId
+        });
+        Action memory action = Actions.Action({
+            chainId: bridge.srcChainId,
+            quarkAccount: bridge.sender,
+            actionType: ACTION_TYPE_BRIDGE,
+            actionContext: abi.encode(bridgeActionContext),
+            paymentMethod: PAYMENT_METHOD_OFFCHAIN,
+            // Null address for OFFCHAIN payment.
+            paymentToken: address(0),
+            paymentMaxCost: 0
+        });
+
+        return (quarkOperation, action);
     }
 
     // TODO: Handle paycall
@@ -149,7 +183,7 @@ library Actions {
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
             nonce: accountState.quarkNextNonce,
-            scriptAddress: CodeJarHelper.getCodeAddress(transfer.chainId, type(TransferActions).creationCode),
+            scriptAddress: CodeJarHelper.getCodeAddress(type(TransferActions).creationCode),
             scriptCalldata: scriptCalldata,
             scriptSources: scriptSources,
             expiry: transfer.blockTimestamp + TRANSFER_EXPIRY_BUFFER
