@@ -140,20 +140,20 @@ contract QuarkBuilder {
                     amountLeftToBridge -= amountToBridge;
 
                     (quarkOperations[actionIndex], actions[actionIndex]) = Actions.bridgeAsset(
-                            Actions.BridgeAsset({
-                                chainAccountsList: chainAccountsList,
-                                assetSymbol: transferIntent.assetSymbol,
-                                amount: amountToBridge,
-                                // where it comes from
-                                srcChainId: srcChainAccounts.chainId,
-                                sender: srcAccountBalances[j].account,
-                                // where it goes
-                                destinationChainId: transferIntent.chainId,
-                                recipient: transferIntent.sender,
-                                blockTimestamp: transferIntent.blockTimestamp
-                            })
-                        );
-                    
+                        Actions.BridgeAsset({
+                            chainAccountsList: chainAccountsList,
+                            assetSymbol: transferIntent.assetSymbol,
+                            amount: amountToBridge,
+                            // where it comes from
+                            srcChainId: srcChainAccounts.chainId,
+                            sender: srcAccountBalances[j].account,
+                            // where it goes
+                            destinationChainId: transferIntent.chainId,
+                            recipient: transferIntent.sender,
+                            blockTimestamp: transferIntent.blockTimestamp
+                        })
+                    );
+
                     if (payment.isToken) {
                         quarkOperations[actionIndex] = PaycallWrapper.wrap(
                             quarkOperations[actionIndex],
