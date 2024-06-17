@@ -112,6 +112,8 @@ contract QuarkBuilder {
                 bridgeActionCount: 0,
                 amountToBridge: 0
             });
+            // uint256 amountLeftToBridge = transferIntent.amount - Accounts.getBalanceOnChain(transferIntent.assetSymbol, transferIntent.chainId, chainAccountsList);
+            // uint256 bridgeActionCount = 0;
 
             // TODO: bridge routing logic (which bridge to prioritize, how many bridges?)
             // Iterate chainAccountList and find upto 2 chains that can provide enough fund
