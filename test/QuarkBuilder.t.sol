@@ -119,7 +119,7 @@ contract QuarkBuilderTest is Test {
         assertEq(result.multiQuarkOperationDigest, hex"", "empty multi digest");
     }
 
-    function testSimpleLocalTransferWithPaycallWrapperSucceeds() public {
+    function testSimpleLocalTransferWithPaycallSucceeds() public {
         QuarkBuilder builder = new QuarkBuilder();
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
         maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 1e5});
