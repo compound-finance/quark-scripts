@@ -25,7 +25,7 @@ library PaycallWrapper {
 
         return IQuarkWallet.QuarkOperation({
             nonce: operation.nonce,
-            scriptAddress: CodeJarHelper.getCodeAddress(chainId, paycallSource),
+            scriptAddress: CodeJarHelper.getCodeAddress(paycallSource),
             scriptCalldata: abi.encodeWithSelector(
                 Paycall.run.selector, operation.scriptAddress, operation.scriptCalldata, maxPaymentCost
                 ),
