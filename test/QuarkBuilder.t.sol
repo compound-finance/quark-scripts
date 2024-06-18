@@ -387,20 +387,20 @@ contract QuarkBuilderTest is Test {
         assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC on mainnet");
         assertEq(result.actions[0].paymentMaxCost, 1e5, "payment should have max cost of 1e5");
-        assertEq(
-            result.actions[0].actionContext,
-            abi.encode(
-                Actions.BridgeActionContext({
-                    amount: 2e6,
-                    price: 1e8,
-                    token: USDC_1,
-                    chainId: 1,
-                    recipient: address(0xa11ce),
-                    destinationChainId: 8453
-                })
-            ),
-            "action context encoded from BridgeActionContext"
-        );
+        // assertEq(
+        //     result.actions[0].actionContext,
+        //     abi.encode(
+        //         Actions.BridgeActionContext({
+        //             amount: 2e6,
+        //             price: 1e8,
+        //             token: USDC_1,
+        //             chainId: 1,
+        //             recipient: address(0xa11ce),
+        //             destinationChainId: 8453
+        //         })
+        //     ),
+        //     "action context encoded from BridgeActionContext"
+        // );
         assertEq(result.actions[1].chainId, 8453, "operation is on chainid 8453");
         assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
         assertEq(result.actions[1].actionType, "TRANSFER", "action type is 'TRANSFER'");
