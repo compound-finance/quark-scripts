@@ -21,6 +21,8 @@ library Actions {
     string constant ACTION_TYPE_BRIDGE = "BRIDGE";
     string constant ACTION_TYPE_TRANSFER = "TRANSFER";
 
+    string constant BRIDGE_TYPE_CCTP = "CCTP";
+
     uint256 constant TRANSFER_EXPIRY_BUFFER = 7 days;
     uint256 constant BRIDGE_EXPIRY_BUFFER = 7 days;
 
@@ -84,6 +86,7 @@ library Actions {
         uint256 chainId;
         address recipient;
         uint256 destinationChainId;
+        string bridgeType;
     }
 
     function bridgeAsset(BridgeAsset memory bridge, PaymentInfo.Payment memory payment)
@@ -143,7 +146,8 @@ library Actions {
             token: srcUSDCPositions.asset,
             chainId: bridge.srcChainId,
             recipient: bridge.recipient,
-            destinationChainId: bridge.destinationChainId
+            destinationChainId: bridge.destinationChainId,
+            bridgeType: BRIDGE_TYPE_CCTP
         });
         Action memory action = Actions.Action({
             chainId: bridge.srcChainId,

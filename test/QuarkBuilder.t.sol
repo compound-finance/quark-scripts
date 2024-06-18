@@ -282,7 +282,8 @@ contract QuarkBuilderTest is Test {
                     token: USDC_1,
                     chainId: 1,
                     recipient: address(0xa11ce),
-                    destinationChainId: 8453
+                    destinationChainId: 8453,
+                    bridgeType: Actions.BRIDGE_TYPE_CCTP
                 })
             ),
             "action context encoded from BridgeActionContext"
