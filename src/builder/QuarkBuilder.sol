@@ -252,7 +252,7 @@ contract QuarkBuilder {
     // Assert that each chain has sufficient funds to cover the max cost for that chain.
     // NOTE: This check strategy is:
     // 1. Accrue available fund on each chain (chain balance - max cost)
-    // 2. If total available fund > transferIntent return true, otherwise false
+    // 2. If total available fund > transferIntent then pass, otherwise MaxCostTooHigh()
     // 3. Make sure the transferIntent chain always has enough fund to cover max cost
     function assertPaymentAffordable(
         TransferIntent memory transferIntent,
