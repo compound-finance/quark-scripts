@@ -74,7 +74,7 @@ contract QuarkBuilder {
         bool transferMax = transferIntent.amount == type(uint256).max;
         // Convert transferIntent to user aggregated balance
         if (transferMax) {
-            transferIntent.amount = aggregateAssetBalance(transferIntent.assetSymbol, chainAccountsList);
+            transferIntent.amount = totalAvailableAsset(transferIntent.assetSymbol, chainAccountsList, payment);
         }
 
         assertSufficientFunds(transferIntent, chainAccountsList);
@@ -283,32 +283,45 @@ contract QuarkBuilder {
         PaymentInfo.Payment memory payment
     ) internal pure {
         if (payment.isToken) {
-            uint256 totalAvailableAsset = 0;
             for (uint256 i = 0; i < payment.maxCosts.length; ++i) {
                 uint256 paymentAssetBalanceOnChain = Accounts.sumBalances(
                     Accounts.findAssetPositions(payment.currency, payment.maxCosts[i].chainId, chainAccountsList)
                 );
-                uint256 paymentAssetNeeded = payment.maxCosts[i].amount;
-                if (paymentAssetBalanceOnChain > paymentAssetNeeded) {
-                    totalAvailableAsset += paymentAssetBalanceOnChain - paymentAssetNeeded;
-                }
-
                 if (payment.maxCosts[i].chainId == transferIntent.chainId) {
-                    if (paymentAssetBalanceOnChain < paymentAssetNeeded) {
+                    if (paymentAssetBalanceOnChain < payment.maxCosts[i].amount) {
                         revert MaxCostTooHigh();
                     }
                 }
             }
 
+            
             // If the payment token is the transfer token
             // we need to account for the transfer amount
             // when checking token balances
             if (Strings.stringEqIgnoreCase(payment.currency, transferIntent.assetSymbol)) {
-                if (totalAvailableAsset < transferIntent.amount) {
+                if (totalAvailableAsset(payment.currency, chainAccountsList, payment) < transferIntent.amount) {
                     revert MaxCostTooHigh();
                 }
             }
         }
+    }
+
+    function totalAvailableAsset(
+        string memory tokenSymbol,
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        PaymentInfo.Payment memory payment
+    ) internal pure returns (uint256) {
+        uint256 total = 0;
+        for (uint256 i = 0; i < payment.maxCosts.length; ++i) {
+            uint256 paymentAssetBalanceOnChain = Accounts.sumBalances(
+                Accounts.findAssetPositions(tokenSymbol, payment.maxCosts[i].chainId, chainAccountsList)
+            );
+            uint256 paymentAssetNeeded = payment.maxCosts[i].amount;
+            if (paymentAssetBalanceOnChain > paymentAssetNeeded) {
+                total += paymentAssetBalanceOnChain - paymentAssetNeeded;
+            }
+        }
+        return total;
     }
 
     function truncate(Actions.Action[] memory actions, uint256 length)

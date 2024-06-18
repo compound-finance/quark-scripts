@@ -12,6 +12,7 @@ import {Accounts} from "../src/builder/Accounts.sol";
 import {CodeJarHelper} from "../src/builder/CodeJarHelper.sol";
 import {QuarkBuilder} from "../src/builder/QuarkBuilder.sol";
 import {Paycall} from "../src/Paycall.sol";
+import {Quotecall} from "../src/Quotecall.sol";
 import {PaycallWrapper} from "../src/builder/PaycallWrapper.sol";
 import {PaymentInfo} from "../src/builder/PaymentInfo.sol";
 
@@ -426,6 +427,79 @@ contract QuarkBuilderTest is Test {
         assertEq(result.quarkOperationDigest, hex"", "empty single digest");
         assertNotEq(result.multiQuarkOperationDigest, hex"", "non-empty multi digest");
     }
+
+    function testSimpleLocalTransferMax() public {
+        QuarkBuilder builder = new QuarkBuilder();
+        PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
+        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 1e5});
+        Accounts.ChainAccounts[] memory chainAccountsList = new Accounts.ChainAccounts[](1);
+        chainAccountsList[0] = Accounts.ChainAccounts({
+            chainId: 1,
+            quarkStates: quarkStates_(address(0xa11ce), 12),
+            assetPositionsList: assetPositionsList_(1, address(0xa11ce), uint256(10e6))
+        });
+
+        QuarkBuilder.BuilderResult memory result = builder.transfer(
+            transferUsdc_(1, type(uint256).max, address(0xceecee), BLOCK_TIMESTAMP), // transfer max
+            chainAccountsList, 
+            paymentUsdc_(maxCosts)
+        );
+
+        address transferActionsAddress = CodeJarHelper.getCodeAddress(type(TransferActions).creationCode);
+        address quoteCallAddress = CodeJarHelper.getCodeAddress(
+            abi.encodePacked(type(Quotecall).creationCode, abi.encode(ETH_USD_PRICE_FEED, USDC_1))
+        );
+
+        assertEq(result.version, "1.0.0", "version 1");
+        assertEq(result.paymentCurrency, "usdc", "usd currency");
+
+        // Check the quark operations
+        assertEq(result.quarkOperations.length, 1, "one operation");
+        assertEq(
+            result.quarkOperations[0].scriptAddress,
+            quoteCallAddress,
+            "script address is correct given the code jar address on mainnet"
+        );
+        assertEq(
+            result.quarkOperations[0].scriptCalldata,
+            abi.encodeWithSelector(
+                Paycall.run.selector,
+                transferActionsAddress,
+                abi.encodeWithSelector(TransferActions.transferERC20Token.selector, usdc_(1), address(0xceecee), 1e6),
+                1e5
+            ),
+            "calldata is Paycall.run(TransferActions.transferERC20Token(USDC_1, address(0xceecee), 1e6), 20e6);"
+        );
+        assertEq(
+            result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
+        );
+        // check the actions
+        assertEq(result.actions.length, 1, "one action");
+        assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
+        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[0].actionType, "TRANSFER", "action type is 'TRANSFER'");
+        assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
+        assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
+        assertEq(result.actions[0].paymentMaxCost, 1e5, "payment max is set to 1e5 in this test case");
+        assertEq(
+            result.actions[0].actionContext,
+            abi.encode(
+                Actions.TransferActionContext({
+                    amount: 1e6,
+                    price: 1e8,
+                    token: USDC_1,
+                    chainId: 1,
+                    recipient: address(0xceecee)
+                })
+            ),
+            "action context encoded from TransferActionContext"
+        );
+
+        assertNotEq(result.quarkOperationDigest, hex"", "non-empty single digest");
+        assertEq(result.multiQuarkOperationDigest, hex"", "empty multi digest");
+    }
+
+    function testSimpleBridgeTransferMax() public {}
 
     /**
      *
