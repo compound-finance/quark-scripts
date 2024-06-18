@@ -37,7 +37,7 @@ contract QuotecallWrapperTest is Test {
         scriptSources[0] = type(TransferActions).creationCode;
         IQuarkWallet.QuarkOperation memory op = IQuarkWallet.QuarkOperation({
             nonce: wallet.stateManager().nextNonce(address(wallet)),
-            scriptAddress: CodeJarHelper.getCodeAddress(1, type(TransferActions).creationCode),
+            scriptAddress: CodeJarHelper.getCodeAddress(type(TransferActions).creationCode),
             scriptCalldata: abi.encodeWithSelector(TransferActions.transferERC20Token.selector, USDC, address(this), 10e6),
             scriptSources: scriptSources,
             expiry: 99999999999
@@ -51,7 +51,7 @@ contract QuotecallWrapperTest is Test {
         assertEq(
             wrappedQuotecallOp.scriptAddress,
             CodeJarHelper.getCodeAddress(
-                1, abi.encodePacked(type(Quotecall).creationCode, abi.encode(ETH_USD_PRICE_FEED, USDC))
+                abi.encodePacked(type(Quotecall).creationCode, abi.encode(ETH_USD_PRICE_FEED, USDC))
             ),
             "script address should be Quotecall"
         );

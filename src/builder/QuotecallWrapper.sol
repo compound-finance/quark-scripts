@@ -26,7 +26,7 @@ library QuotecallWrapper {
 
         return IQuarkWallet.QuarkOperation({
             nonce: operation.nonce,
-            scriptAddress: CodeJarHelper.getCodeAddress(chainId, quotecallSource),
+            scriptAddress: CodeJarHelper.getCodeAddress(quotecallSource),
             scriptCalldata: abi.encodeWithSelector(
                 Quotecall.run.selector, operation.scriptAddress, operation.scriptCalldata, quotedAmount
                 ),
