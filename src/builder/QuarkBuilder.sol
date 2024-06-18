@@ -250,28 +250,38 @@ contract QuarkBuilder {
     }
 
     // Assert that each chain has sufficient funds to cover the max cost for that chain.
-    // NOTE: This check assumes we will not be bridging payment tokens for the user.
+    // NOTE: This check strategy is:
+    // 1. Accrue available fund on each chain (chain balance - max cost)
+    // 2. If total available fund > transferIntent return true, otherwise false
+    // 3. Make sure the transferIntent chain always has enough fund to cover max cost
     function assertPaymentAffordable(
         TransferIntent memory transferIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
     ) internal pure {
         if (payment.isToken) {
+            uint256 totalAvailableAsset = 0;
             for (uint256 i = 0; i < payment.maxCosts.length; ++i) {
                 uint256 paymentAssetBalanceOnChain = Accounts.sumBalances(
                     Accounts.findAssetPositions(payment.currency, payment.maxCosts[i].chainId, chainAccountsList)
                 );
                 uint256 paymentAssetNeeded = payment.maxCosts[i].amount;
-                // If the payment token is the transfer token and this is the
-                // target chain, we need to account for the transfer amount
-                // when checking token balances
-                if (
-                    Strings.stringEqIgnoreCase(payment.currency, transferIntent.assetSymbol)
-                        && transferIntent.chainId == payment.maxCosts[i].chainId
-                ) {
-                    paymentAssetNeeded += transferIntent.amount;
+                if (paymentAssetBalanceOnChain > paymentAssetNeeded) {
+                    totalAvailableAsset += paymentAssetBalanceOnChain - paymentAssetNeeded;
                 }
-                if (paymentAssetBalanceOnChain < paymentAssetNeeded) {
+
+                if (payment.maxCosts[i].chainId == transferIntent.chainId) {
+                    if (paymentAssetBalanceOnChain < paymentAssetNeeded) {
+                        revert MaxCostTooHigh();
+                    }
+                }
+            }
+
+            // If the payment token is the transfer token
+            // we need to account for the transfer amount
+            // when checking token balances
+            if (Strings.stringEqIgnoreCase(payment.currency, transferIntent.assetSymbol)) {
+                if (totalAvailableAsset < transferIntent.amount) {
                     revert MaxCostTooHigh();
                 }
             }

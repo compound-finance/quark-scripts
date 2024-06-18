@@ -17,8 +17,10 @@ import {PaymentInfo} from "../src/builder/PaymentInfo.sol";
 
 contract QuarkBuilderTest is Test {
     uint256 constant BLOCK_TIMESTAMP = 123_456_789;
-    address constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address constant ETH_USD_PRICE_FEED = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+    address constant ETH_USD_PRICE_FEED_BASE = 0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70;
+    address constant USDC_1 = address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+    address constant USDC_8453 = address(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913);
 
     function testInsufficientFunds() public {
         QuarkBuilder builder = new QuarkBuilder();
@@ -131,7 +133,7 @@ contract QuarkBuilderTest is Test {
 
         address transferActionsAddress = CodeJarHelper.getCodeAddress(type(TransferActions).creationCode);
         address paycallAddress = CodeJarHelper.getCodeAddress(
-            abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED, USDC))
+            abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED, USDC_1))
         );
 
         assertEq(result.version, "1.0.0", "version 1");
@@ -163,7 +165,7 @@ contract QuarkBuilderTest is Test {
         assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
         assertEq(result.actions[0].actionType, "TRANSFER", "action type is 'TRANSFER'");
         assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
-        assertEq(result.actions[0].paymentToken, USDC, "payment token is USDC");
+        assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
         assertEq(result.actions[0].paymentMaxCost, 1e5, "payment max is set to 1e5 in this test case");
         assertEq(
             result.actions[0].actionContext,
@@ -309,6 +311,120 @@ contract QuarkBuilderTest is Test {
         assertNotEq(result.multiQuarkOperationDigest, hex"", "non-empty multi digest");
     }
 
+    function testSimpleBridgeTransferWithPaycallSucceeds() public {
+        QuarkBuilder builder = new QuarkBuilder();
+        PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](2);
+        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 1e5});
+        maxCosts[1] = PaymentInfo.PaymentMaxCost({chainId: 8453, amount: 1e5});
+
+        // Note: There are 3e6 USDC on each chain, so the Builder should attempt to bridge 2 USDC to chain 8453
+        QuarkBuilder.BuilderResult memory result = builder.transfer(
+            transferUsdc_(8453, 5e6, address(0xceecee), BLOCK_TIMESTAMP), // transfer 5 USDC on chain 8453 to 0xceecee
+            chainAccountsList_(6e6), // holding 6 USDC in total across chains 1, 8453
+            paymentUsdc_(maxCosts)
+        );
+        address paycallAddress = CodeJarHelper.getCodeAddress(
+            abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED, USDC_1))
+        );
+        address paycallAddressBase = CodeJarHelper.getCodeAddress(
+            abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_BASE, USDC_8453))
+        );
+        address cctpBridgeActionsAddress = CodeJarHelper.getCodeAddress(type(CCTPBridgeActions).creationCode);
+        assertEq(result.version, "1.0.0", "version 1");
+        assertEq(result.paymentCurrency, "usdc", "usd currency");
+
+        // Check the quark operations
+        assertEq(result.quarkOperations.length, 2, "two operations");
+        assertEq(
+            result.quarkOperations[0].scriptAddress,
+            paycallAddress,
+            "script address[0] has been wrapped with paycall address"
+        );
+        assertEq(
+            result.quarkOperations[0].scriptCalldata,
+            abi.encodeWithSelector(
+                Paycall.run.selector,
+                cctpBridgeActionsAddress,
+                abi.encodeWithSelector(
+                    CCTPBridgeActions.bridgeUSDC.selector,
+                    address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155),
+                    2e6,
+                    6,
+                    bytes32(uint256(uint160(0xa11ce))),
+                    usdc_(1)
+                ),
+                1e5
+            ),
+            "calldata is Paycall.run(CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 2e6, 6, bytes32(uint256(uint160(0xa11ce))), usdc_(1))));"
+        );
+        assertEq(
+            result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
+        );
+        assertEq(
+            result.quarkOperations[1].scriptAddress,
+            paycallAddressBase,
+            "script address[1] has been wrapped with paycall address"
+        );
+        assertEq(
+            result.quarkOperations[1].scriptCalldata,
+            abi.encodeWithSelector(
+                Paycall.run.selector,
+                CodeJarHelper.getCodeAddress(type(TransferActions).creationCode),
+                abi.encodeWithSelector(TransferActions.transferERC20Token.selector, usdc_(8453), address(0xceecee), 5e6),
+                1e5
+            ),
+            "calldata is Paycall.run(TransferActions.transferERC20Token(USDC_8453, address(0xceecee), 5e6));"
+        );
+        assertEq(
+            result.quarkOperations[1].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
+        );
+
+        // Check the actions
+        assertEq(result.actions.length, 2, "one action");
+        assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
+        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[0].actionType, "BRIDGE", "action type is 'BRIDGE'");
+        assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
+        assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC on mainnet");
+        assertEq(result.actions[0].paymentMaxCost, 1e5, "payment should have max cost of 1e5");
+        assertEq(
+            result.actions[0].actionContext,
+            abi.encode(
+                Actions.BridgeActionContext({
+                    amount: 2e6,
+                    price: 1e8,
+                    token: USDC_1,
+                    chainId: 1,
+                    recipient: address(0xa11ce),
+                    destinationChainId: 8453
+                })
+            ),
+            "action context encoded from BridgeActionContext"
+        );
+        assertEq(result.actions[1].chainId, 8453, "operation is on chainid 8453");
+        assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[1].actionType, "TRANSFER", "action type is 'TRANSFER'");
+        assertEq(result.actions[1].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
+        assertEq(result.actions[1].paymentToken, USDC_8453, "payment token is USDC on Base");
+        assertEq(result.actions[1].paymentMaxCost, 1e5, "payment should have max cost of 1e5");
+        assertEq(
+            result.actions[1].actionContext,
+            abi.encode(
+                Actions.TransferActionContext({
+                    amount: 5e6,
+                    price: 1e8,
+                    token: USDC_8453,
+                    chainId: 8453,
+                    recipient: address(0xceecee)
+                })
+            ),
+            "action context encoded from TransferActionContext"
+        );
+
+        assertEq(result.quarkOperationDigest, hex"", "empty single digest");
+        assertNotEq(result.multiQuarkOperationDigest, hex"", "non-empty multi digest");
+    }
+
     /**
      *
      * Fixture Functions
@@ -317,9 +433,6 @@ contract QuarkBuilderTest is Test {
      * a function call is used to mock some data, we suffix all of our fixture-generating
      * functions with a single underscore, like so: transferIntent_(...).
      */
-    address constant USDC_1 = address(0xaa);
-    address constant USDC_8453 = address(0xbb);
-
     function transferUsdc_(uint256 chainId, uint256 amount, address recipient, uint256 blockTimestamp)
         internal
         pure
