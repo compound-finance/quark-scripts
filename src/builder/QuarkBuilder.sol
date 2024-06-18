@@ -8,7 +8,6 @@ import {Accounts} from "./Accounts.sol";
 import {BridgeRoutes} from "./BridgeRoutes.sol";
 import {EIP712Helper} from "./EIP712Helper.sol";
 import {Strings} from "./Strings.sol";
-import {PaycallWrapper} from "./PaycallWrapper.sol";
 import {PaymentInfo} from "./PaymentInfo.sol";
 
 contract QuarkBuilder {
@@ -148,7 +147,8 @@ contract QuarkBuilder {
                             recipient: transferIntent.sender,
                             blockTimestamp: transferIntent.blockTimestamp
                         }),
-                        payment
+                        payment,
+                        transferMax
                     );
 
                     actionIndex++;
@@ -165,7 +165,7 @@ contract QuarkBuilder {
         // Will need to allocate some for the payment at the end
         if (transferMax && Strings.stringEqIgnoreCase(payment.currency, transferIntent.assetSymbol)) {
             // Subtract the max cost (quotecall cost) from the transferIntent.amount
-            transferIntent.amount -= findMaxCost(payment, transferIntent.chainId);
+            transferIntent.amount -= PaymentInfo.findMaxCost(payment, transferIntent.chainId);
         }
 
         // Then, transferIntent `amount` of `assetSymbol` to `recipient`
@@ -179,7 +179,8 @@ contract QuarkBuilder {
                 recipient: transferIntent.recipient,
                 blockTimestamp: transferIntent.blockTimestamp
             }),
-            payment
+            payment,
+            transferMax
         );
 
         actionIndex++;
