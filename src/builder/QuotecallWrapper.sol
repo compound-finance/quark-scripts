@@ -4,7 +4,7 @@ pragma solidity ^0.8.23;
 import {CodeJarHelper} from "./CodeJarHelper.sol";
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
 import {Quotecall} from "../Quotecall.sol";
-import {PaymentTokens} from "./PaymentTokens.sol";
+import {PaymentInfo} from "./PaymentInfo.sol";
 
 // Helper library to wrap a QuarkOperation from Actions.sol for a Paycall
 library QuotecallWrapper {
@@ -14,7 +14,7 @@ library QuotecallWrapper {
         string memory paymentTokenSymbol,
         uint256 quotedAmount
     ) internal pure returns (IQuarkWallet.QuarkOperation memory) {
-        PaymentTokens.PaymentToken memory paymentToken = PaymentTokens.knownToken(paymentTokenSymbol, chainId);
+        PaymentInfo.PaymentToken memory paymentToken = PaymentInfo.knownToken(paymentTokenSymbol, chainId);
         bytes memory quotecallSource =
             abi.encodePacked(type(Quotecall).creationCode, abi.encode(paymentToken.priceFeed, paymentToken.token));
         bytes[] memory scriptSources = new bytes[](operation.scriptSources.length + 1);
