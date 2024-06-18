@@ -389,7 +389,7 @@ contract QuarkBuilderTest is Test {
         assertEq(result.actions[0].paymentMaxCost, 1e5, "payment should have max cost of 1e5");
         assertEq(
             result.actions[0].actionContext,
-            abi.encode(Actions.BridgeActionContext(2e6, 1e8, USDC_1, 1, address(0xa11ce), 8453)),
+            abi.encode(Actions.BridgeActionContext(2e6, 1e8, USDC_1, 1, address(0xa11ce), 8453, 0)),
             "action context encoded from BridgeActionContext"
         );
         assertEq(result.actions[1].chainId, 8453, "operation is on chainid 8453");
