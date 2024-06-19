@@ -69,6 +69,27 @@ library Accounts {
         return findAssetPositions(assetSymbol, chainAccounts.assetPositionsList);
     }
 
+    function findAssetPositions(address assetAddress, AssetPositions[] memory assetPositionsList)
+        internal
+        pure
+        returns (AssetPositions memory found)
+    {
+        for (uint256 i = 0; i < assetPositionsList.length; ++i) {
+            if (assetAddress == assetPositionsList[i].asset) {
+                return found = assetPositionsList[i];
+            }
+        }
+    }
+
+    function findAssetPositions(address assetAddress, uint256 chainId, ChainAccounts[] memory chainAccountsList)
+        internal
+        pure
+        returns (AssetPositions memory found)
+    {
+        ChainAccounts memory chainAccounts = findChainAccounts(chainId, chainAccountsList);
+        return findAssetPositions(assetAddress, chainAccounts.assetPositionsList);
+    }
+
     function findQuarkState(address account, Accounts.QuarkState[] memory quarkStates)
         internal
         pure

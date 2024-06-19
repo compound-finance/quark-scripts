@@ -349,14 +349,14 @@ contract QuarkBuilderTest is Test {
                 abi.encodeWithSelector(
                     CCTPBridgeActions.bridgeUSDC.selector,
                     address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155),
-                    2e6,
+                    21e5,
                     6,
                     bytes32(uint256(uint160(0xa11ce))),
                     usdc_(1)
                 ),
                 1e5
             ),
-            "calldata is Paycall.run(CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 2e6, 6, bytes32(uint256(uint160(0xa11ce))), usdc_(1))));"
+            "calldata is Paycall.run(CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 21e5, 6, bytes32(uint256(uint160(0xa11ce))), usdc_(1))));"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
@@ -392,7 +392,7 @@ contract QuarkBuilderTest is Test {
             result.actions[0].actionContext,
             abi.encode(
                 Actions.BridgeActionContext({
-                    amount: 2e6,
+                    amount: 21e5,
                     price: 1e8,
                     token: USDC_1,
                     chainId: 1,

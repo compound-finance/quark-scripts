@@ -28,6 +28,7 @@ contract QuarkBuilder {
     error InvalidInput();
     error MaxCostTooHigh();
     error TooManyBridgeOperations();
+    error InvalidActionType();
 
     /* ===== Input Types ===== */
 
@@ -72,8 +73,7 @@ contract QuarkBuilder {
         PaymentInfo.Payment memory payment
     ) external pure returns (BuilderResult memory) {
         assertSufficientFunds(transferIntent, chainAccountsList);
-        assertFundsAvailable(transferIntent, chainAccountsList);
-        assertPaymentAffordable(transferIntent, chainAccountsList, payment);
+        assertFundsAvailable(transferIntent, chainAccountsList, payment);
 
         /*
          * at most one bridge operation per non-destination chain,
@@ -92,6 +92,10 @@ contract QuarkBuilder {
             uint256 balanceOnDstChain =
                 Accounts.getBalanceOnChain(transferIntent.assetSymbol, transferIntent.chainId, chainAccountsList);
             uint256 amountLeftToBridge = transferIntent.amount - balanceOnDstChain;
+            // If the payment token is the transfer token and user opt for paying with the payment token, need to add max cost back to the amountLeftToBridge for target chain
+            if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, transferIntent.assetSymbol)) {
+                amountLeftToBridge += PaymentInfo.findMaxCost(payment, transferIntent.chainId);
+            }
 
             uint256 bridgeActionCount = 0;
             // TODO: bridge routing logic (which bridge to prioritize, how many bridges?)
@@ -175,6 +179,10 @@ contract QuarkBuilder {
         // We leave `quarkOperationDigest` if there are more than one QuarkOperations
         actions = truncate(actions, actionIndex);
         quarkOperations = truncate(quarkOperations, actionIndex);
+
+        // Validate generated actions for affordability
+        assertActionsAffordable(actions, chainAccountsList);
+
         bytes32 quarkOperationDigest;
         bytes32 multiQuarkOperationDigest;
         if (quarkOperations.length == 1) {
@@ -218,7 +226,8 @@ contract QuarkBuilder {
     // withdraw.)
     function assertFundsAvailable(
         TransferIntent memory transferIntent,
-        Accounts.ChainAccounts[] memory chainAccountsList
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        PaymentInfo.Payment memory payment
     ) internal pure {
         if (needsBridgedFunds(transferIntent, chainAccountsList)) {
             uint256 aggregateTransferAssetAvailableBalance;
@@ -231,7 +240,13 @@ contract QuarkBuilder {
                             chainAccountsList[i].chainId, transferIntent.chainId, transferIntent.assetSymbol
                         )
                 ) {
-                    aggregateTransferAssetAvailableBalance += Accounts.sumBalances(positions);
+                    // If the payment token is the transfer token and user opt for paying with the payment token, reduce the available balance by the maxCost
+                    if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, transferIntent.assetSymbol)) {
+                        uint256 maxCost = PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId);
+                        aggregateTransferAssetAvailableBalance += Accounts.sumBalances(positions) - maxCost;
+                    } else {
+                        aggregateTransferAssetAvailableBalance += Accounts.sumBalances(positions);
+                    }
                 }
             }
             if (aggregateTransferAssetAvailableBalance < transferIntent.amount) {
@@ -250,38 +265,53 @@ contract QuarkBuilder {
     }
 
     // Assert that each chain has sufficient funds to cover the max cost for that chain.
-    // NOTE: This check strategy is:
-    // 1. Accrue available fund on each chain (chain balance - max cost)
-    // 2. If total available fund >= transferIntent then pass, otherwise MaxCostTooHigh()
-    // 3. Make sure the transferIntent chain always has enough fund to cover max cost
-    function assertPaymentAffordable(
-        TransferIntent memory transferIntent,
-        Accounts.ChainAccounts[] memory chainAccountsList,
-        PaymentInfo.Payment memory payment
-    ) internal pure {
-        if (payment.isToken) {
-            uint256 totalAvailableAsset = 0;
-            for (uint256 i = 0; i < payment.maxCosts.length; ++i) {
-                uint256 paymentAssetBalanceOnChain = Accounts.sumBalances(
-                    Accounts.findAssetPositions(payment.currency, payment.maxCosts[i].chainId, chainAccountsList)
-                );
-                uint256 paymentAssetNeeded = payment.maxCosts[i].amount;
-                if (paymentAssetBalanceOnChain > paymentAssetNeeded) {
-                    totalAvailableAsset += paymentAssetBalanceOnChain - paymentAssetNeeded;
-                }
+    // Check user account can cover the cost of each actions
+    function assertActionsAffordable(Actions.Action[] memory actions, Accounts.ChainAccounts[] memory chainAccountsList)
+        internal
+        pure
+    {
+        uint256 plannedBridgeAmount = 0;
+        for (uint256 i = 0; i < actions.length; ++i) {
+            address tokenUsed;
+            uint256 amountUsed;
+            if (Strings.stringEqIgnoreCase(actions[i].actionType, Actions.ACTION_TYPE_TRANSFER)) {
+                Actions.TransferActionContext memory transferActionContext =
+                    abi.decode(actions[i].actionContext, (Actions.TransferActionContext));
+                tokenUsed = transferActionContext.token;
+                amountUsed = transferActionContext.amount;
+            } else if (Strings.stringEqIgnoreCase(actions[i].actionType, Actions.ACTION_TYPE_BRIDGE)) {
+                Actions.BridgeActionContext memory bridgeActionContext =
+                    abi.decode(actions[i].actionContext, (Actions.BridgeActionContext));
+                tokenUsed = bridgeActionContext.token;
+                amountUsed = bridgeActionContext.amount;
+                plannedBridgeAmount += amountUsed;
+            } else {
+                revert InvalidActionType();
+            }
 
-                if (payment.maxCosts[i].chainId == transferIntent.chainId) {
-                    if (paymentAssetBalanceOnChain < paymentAssetNeeded) {
+            if (tokenUsed == actions[i].paymentToken) {
+                // If the payment token is the transfer token and this is the
+                // target chain, we need to account for the transfer amount
+                uint256 paymentAssetBalanceOnChain =
+                    Accounts.sumBalances(Accounts.findAssetPositions(tokenUsed, actions[i].chainId, chainAccountsList));
+
+                // If its transfer step, check if user has enough balance to cover the transfer amount after bridge
+                if (Strings.stringEqIgnoreCase(actions[i].actionType, Actions.ACTION_TYPE_TRANSFER)) {
+                    if (paymentAssetBalanceOnChain + plannedBridgeAmount < actions[i].paymentMaxCost + amountUsed) {
+                        revert MaxCostTooHigh();
+                    }
+                } else {
+                    if (paymentAssetBalanceOnChain < actions[i].paymentMaxCost + amountUsed) {
                         revert MaxCostTooHigh();
                     }
                 }
-            }
+            } else {
+                // Just check payment token can cover the max cost
+                uint256 paymentAssetBalanceOnChain = Accounts.sumBalances(
+                    Accounts.findAssetPositions(actions[i].paymentToken, actions[i].chainId, chainAccountsList)
+                );
 
-            // If the payment token is the transfer token
-            // we need to account for the transfer amount
-            // when checking token balances
-            if (Strings.stringEqIgnoreCase(payment.currency, transferIntent.assetSymbol)) {
-                if (totalAvailableAsset < transferIntent.amount) {
+                if (paymentAssetBalanceOnChain < actions[i].paymentMaxCost) {
                     revert MaxCostTooHigh();
                 }
             }
