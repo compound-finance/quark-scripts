@@ -237,12 +237,11 @@ contract QuarkBuilder {
                             chainAccountsList[i].chainId, transferIntent.chainId, transferIntent.assetSymbol
                         )
                 ) {
+                    aggregateTransferAssetAvailableBalance += Accounts.sumBalances(positions);
                     // If the payment token is the transfer token and user opt for paying with the payment token, reduce the available balance by the maxCost
                     if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, transferIntent.assetSymbol)) {
                         uint256 maxCost = PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId);
-                        aggregateTransferAssetAvailableBalance += Accounts.sumBalances(positions) - maxCost;
-                    } else {
-                        aggregateTransferAssetAvailableBalance += Accounts.sumBalances(positions);
+                        aggregateTransferAssetAvailableBalance -= maxCost;
                     }
                 }
             }
