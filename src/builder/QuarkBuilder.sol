@@ -286,8 +286,7 @@ contract QuarkBuilder {
             }
 
             if (tokenUsed == actions[i].paymentToken) {
-                // If the payment token is the transfer token and this is the
-                // target chain, we need to account for the transfer amount
+                // If the payment token is the transfer token and this is the target chain, we need to account for the transfer amount
                 uint256 paymentAssetBalanceOnChain =
                     Accounts.sumBalances(Accounts.findAssetPositions(tokenUsed, actions[i].chainId, chainAccountsList));
 

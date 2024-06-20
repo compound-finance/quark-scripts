@@ -349,14 +349,14 @@ contract QuarkBuilderTest is Test {
                 abi.encodeWithSelector(
                     CCTPBridgeActions.bridgeUSDC.selector,
                     address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155),
-                    21e5,
+                    2.1e6,
                     6,
                     bytes32(uint256(uint160(0xa11ce))),
                     usdc_(1)
                 ),
-                5e5
+                0.5e6
             ),
-            "calldata is Paycall.run(CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 21e5, 6, bytes32(uint256(uint160(0xa11ce))), usdc_(1))), 5e5);"
+            "calldata is Paycall.run(CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 2.1e6, 6, bytes32(uint256(uint160(0xa11ce))), usdc_(1))), 5e5);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
@@ -372,7 +372,7 @@ contract QuarkBuilderTest is Test {
                 Paycall.run.selector,
                 CodeJarHelper.getCodeAddress(type(TransferActions).creationCode),
                 abi.encodeWithSelector(TransferActions.transferERC20Token.selector, usdc_(8453), address(0xceecee), 5e6),
-                1e5
+                0.1e6
             ),
             "calldata is Paycall.run(TransferActions.transferERC20Token(USDC_8453, address(0xceecee), 5e6), 1e5);"
         );
@@ -387,12 +387,12 @@ contract QuarkBuilderTest is Test {
         assertEq(result.actions[0].actionType, "BRIDGE", "action type is 'BRIDGE'");
         assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC on mainnet");
-        assertEq(result.actions[0].paymentMaxCost, 5e5, "payment should have max cost of 5e5");
+        assertEq(result.actions[0].paymentMaxCost, 0.5e6, "payment should have max cost of 5e5");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
                 Actions.BridgeActionContext({
-                    amount: 21e5,
+                    amount: 2.1e6,
                     price: 1e8,
                     token: USDC_1,
                     chainId: 1,
@@ -408,7 +408,7 @@ contract QuarkBuilderTest is Test {
         assertEq(result.actions[1].actionType, "TRANSFER", "action type is 'TRANSFER'");
         assertEq(result.actions[1].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[1].paymentToken, USDC_8453, "payment token is USDC on Base");
-        assertEq(result.actions[1].paymentMaxCost, 1e5, "payment should have max cost of 1e5");
+        assertEq(result.actions[1].paymentMaxCost, 0.1e6, "payment should have max cost of 1e5");
         assertEq(
             result.actions[1].actionContext,
             abi.encode(
