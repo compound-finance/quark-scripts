@@ -17,8 +17,8 @@ import {PaymentInfo} from "../src/builder/PaymentInfo.sol";
 
 contract QuarkBuilderTest is Test {
     uint256 constant BLOCK_TIMESTAMP = 123_456_789;
-    address constant ETH_USD_PRICE_FEED = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
-    address constant ETH_USD_PRICE_FEED_BASE = 0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70;
+    address constant ETH_USD_PRICE_FEED_1 = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+    address constant ETH_USD_PRICE_FEED_8453 = 0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70;
     address constant USDC_1 = address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
     address constant USDC_8453 = address(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913);
 
@@ -133,7 +133,7 @@ contract QuarkBuilderTest is Test {
 
         address transferActionsAddress = CodeJarHelper.getCodeAddress(type(TransferActions).creationCode);
         address paycallAddress = CodeJarHelper.getCodeAddress(
-            abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED, USDC_1))
+            abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
         );
 
         assertEq(result.version, "1.0.0", "version 1");
@@ -325,10 +325,10 @@ contract QuarkBuilderTest is Test {
             paymentUsdc_(maxCosts)
         );
         address paycallAddress = CodeJarHelper.getCodeAddress(
-            abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED, USDC_1))
+            abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
         );
         address paycallAddressBase = CodeJarHelper.getCodeAddress(
-            abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_BASE, USDC_8453))
+            abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_8453, USDC_8453))
         );
         address cctpBridgeActionsAddress = CodeJarHelper.getCodeAddress(type(CCTPBridgeActions).creationCode);
         assertEq(result.version, "1.0.0", "version 1");
