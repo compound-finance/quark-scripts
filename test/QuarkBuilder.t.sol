@@ -19,8 +19,8 @@ contract QuarkBuilderTest is Test {
     uint256 constant BLOCK_TIMESTAMP = 123_456_789;
     address constant ETH_USD_PRICE_FEED_1 = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address constant ETH_USD_PRICE_FEED_8453 = 0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70;
-    address constant USDC_1 = address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
-    address constant USDC_8453 = address(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913);
+    address constant USDC_1 = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address constant USDC_8453 = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
 
     function testInsufficientFunds() public {
         QuarkBuilder builder = new QuarkBuilder();
