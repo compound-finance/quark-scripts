@@ -15,9 +15,6 @@ library Accounts {
     // the client encoding that much simpler.
     struct QuarkState {
         address account;
-        bool hasCode;
-        bool isQuark;
-        string quarkVersion;
         uint96 quarkNextNonce;
     }
 
