@@ -276,7 +276,7 @@ contract QuarkBuilder {
             Actions.BridgeActionContext memory bridgeActionContext =
                 abi.decode(bridgeActions[i].actionContext, (Actions.BridgeActionContext));
             uint256 paymentAssetBalanceOnChain = Accounts.sumBalances(
-                Accounts.findAssetPositions(bridgeActionContext.token, bridgeActions[i].chainId, chainAccountsList)
+                Accounts.findAssetPositions(bridgeActions[i].paymentToken, bridgeActions[i].chainId, chainAccountsList)
             );
             if (bridgeActionContext.token == bridgeActions[i].paymentToken) {
                 // If the payment token is the transfer token and this is the target chain, we need to account for the transfer amount
