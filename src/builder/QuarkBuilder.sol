@@ -178,7 +178,7 @@ contract QuarkBuilder {
         quarkOperations = Actions.truncate(quarkOperations, actionIndex);
 
         // Validate generated actions for affordability
-        assertActionsAffordable(actions, chainAccountsList);
+        assertActionsAffordable(actions, chainAccountsList, transferIntent);
 
         bytes32 quarkOperationDigest;
         bytes32 multiQuarkOperationDigest;
@@ -262,10 +262,11 @@ contract QuarkBuilder {
 
     // Assert that each chain has sufficient funds to cover the max cost for that chain.
     // Check user account can cover the cost of each actions
-    function assertActionsAffordable(Actions.Action[] memory actions, Accounts.ChainAccounts[] memory chainAccountsList)
-        internal
-        pure
-    {
+    function assertActionsAffordable(
+        Actions.Action[] memory actions,
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        TransferIntent memory transferIntent
+    ) internal pure {
         Actions.Action[] memory bridgeActions = Actions.findActionsOfType(actions, Actions.ACTION_TYPE_BRIDGE);
         Actions.Action[] memory transferActions = Actions.findActionsOfType(actions, Actions.ACTION_TYPE_TRANSFER);
 
@@ -294,30 +295,46 @@ contract QuarkBuilder {
         }
 
         // Verify transfer actions are affordable
-        // NOTE: Assume all transfer actions are on the TransferIntent.chainId
+        // NOTE: Assume all transfer actions are on the TransferIntent.chainId as Bridging logics is currently assuming destination at TransferIntent.chainId
+        // NOTE: To support multi-chain transfers, call below functions to check repeatedly with each chainId and plannedBridgeAmount
+        // for each chain (Likely passed from TransferIntent with a list of chain Id)
+        assertTransferActionsAffordableOnTargetChain(
+            transferActions, chainAccountsList, transferIntent.chainId, plannedBridgeAmount
+        );
+    }
+
+    function assertTransferActionsAffordableOnTargetChain(
+        Actions.Action[] memory transferActions,
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        uint256 targetChainId,
+        uint256 plannedBridgeAmountToTargetChain
+    ) internal pure {
         uint256 accruedCost = 0;
         for (uint256 i = 0; i < transferActions.length; ++i) {
             Actions.TransferActionContext memory transferActionContext =
                 abi.decode(transferActions[i].actionContext, (Actions.TransferActionContext));
-            address transferToken = transferActionContext.token;
-            uint256 transferAmount = transferActionContext.amount;
-            uint256 paymentAssetBalanceOnChain = Accounts.sumBalances(
+            // Filter with the targetChainId and accruedCost will track on one chain at a time
+            if (transferActionContext.chainId == targetChainId) {
+                address transferToken = transferActionContext.token;
+                uint256 transferAmount = transferActionContext.amount;
+                uint256 paymentAssetBalanceOnChain = Accounts.sumBalances(
                     Accounts.findAssetPositions(transferToken, transferActions[i].chainId, chainAccountsList)
                 );
-            accruedCost += transferActions[i].paymentMaxCost;
-            if (transferToken == transferActions[i].paymentToken) {
-                // If the payment token is the transfer token and this is the target chain, we need to account for the transfer amount
-                // If its transfer step, check if user has enough balance to cover the transfer amount after bridge
-                if (paymentAssetBalanceOnChain + plannedBridgeAmount < accruedCost + transferAmount) {
-                    revert MaxCostTooHigh();
-                }
+                accruedCost += transferActions[i].paymentMaxCost;
+                if (transferToken == transferActions[i].paymentToken) {
+                    // If the payment token is the transfer token and this is the target chain, we need to account for the transfer amount
+                    // If its transfer step, check if user has enough balance to cover the transfer amount after bridge
+                    if (paymentAssetBalanceOnChain + plannedBridgeAmountToTargetChain < accruedCost + transferAmount) {
+                        revert MaxCostTooHigh();
+                    }
 
-                // Special handling as the payment token is sent out so it will be part of the cost
-                accruedCost += transferAmount;
-            } else {
-                // Just check payment token can cover the max cost
-                if (paymentAssetBalanceOnChain < accruedCost) {
-                    revert MaxCostTooHigh();
+                    // Special handling as the payment token is sent out so it will be part of the cost
+                    accruedCost += transferAmount;
+                } else {
+                    // Just check payment token can cover the max cost
+                    if (paymentAssetBalanceOnChain < accruedCost) {
+                        revert MaxCostTooHigh();
+                    }
                 }
             }
         }
