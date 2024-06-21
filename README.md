@@ -28,7 +28,9 @@ Callbacks need to be explicitly turned on by Quark scripts. Specifically, this i
 
 ## Quark Builder
 
-[Quark Builder](./src/builder/QuarkBuilder.sol) is a library of functions that simplifies the complexities around building _Quark operations_. The code is written in Solidity, but not meant to be deployed on-chain. Rather, it is designed to run locally in a client to construct _Quark operations_ based on user intents (e.g. "transfer 5 USDC to 0xABC... on chain 10").
+[Quark Builder](./src/builder/QuarkBuilder.sol) is a contract of functions that simplifies the complexities around building _Quark operations_. The code is written in Solidity, but not meant to be deployed on-chain. Rather, it is designed to run locally in a client to construct _Quark operations_ based on user intents (e.g. "transfer 5 USDC to 0xABC... on chain 10").
+
+[Quark Builder Helper](./src/builder/QuarkBuilderHelper.sol) is a contract with functions outside of constructing _Quark operations_ that might still be helpful for those using the QuarkBuilder. For example, there is a helper function to determine the bridgeability of assets on different chains.
 
 ## Fork tests and NODE_PROVIDER_BYPASS_KEY
 

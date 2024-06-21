@@ -17,10 +17,10 @@ import {PaymentInfo} from "../src/builder/PaymentInfo.sol";
 
 contract QuarkBuilderTest is Test {
     uint256 constant BLOCK_TIMESTAMP = 123_456_789;
-    address constant ETH_USD_PRICE_FEED = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
-    address constant ETH_USD_PRICE_FEED_BASE = 0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70;
-    address constant USDC_1 = address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
-    address constant USDC_8453 = address(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913);
+    address constant ETH_USD_PRICE_FEED_1 = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+    address constant ETH_USD_PRICE_FEED_8453 = 0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70;
+    address constant USDC_1 = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address constant USDC_8453 = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
 
     function testInsufficientFunds() public {
         QuarkBuilder builder = new QuarkBuilder();
@@ -133,7 +133,7 @@ contract QuarkBuilderTest is Test {
 
         address transferActionsAddress = CodeJarHelper.getCodeAddress(type(TransferActions).creationCode);
         address paycallAddress = CodeJarHelper.getCodeAddress(
-            abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED, USDC_1))
+            abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
         );
 
         assertEq(result.version, "1.0.0", "version 1");
@@ -315,7 +315,7 @@ contract QuarkBuilderTest is Test {
     function testSimpleBridgeTransferWithPaycallSucceeds() public {
         QuarkBuilder builder = new QuarkBuilder();
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](2);
-        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 1e5});
+        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 5e5});
         maxCosts[1] = PaymentInfo.PaymentMaxCost({chainId: 8453, amount: 1e5});
 
         // Note: There are 3e6 USDC on each chain, so the Builder should attempt to bridge 2 USDC to chain 8453
@@ -325,10 +325,10 @@ contract QuarkBuilderTest is Test {
             paymentUsdc_(maxCosts)
         );
         address paycallAddress = CodeJarHelper.getCodeAddress(
-            abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED, USDC_1))
+            abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
         );
         address paycallAddressBase = CodeJarHelper.getCodeAddress(
-            abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_BASE, USDC_8453))
+            abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_8453, USDC_8453))
         );
         address cctpBridgeActionsAddress = CodeJarHelper.getCodeAddress(type(CCTPBridgeActions).creationCode);
         assertEq(result.version, "1.0.0", "version 1");
@@ -349,14 +349,14 @@ contract QuarkBuilderTest is Test {
                 abi.encodeWithSelector(
                     CCTPBridgeActions.bridgeUSDC.selector,
                     address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155),
-                    2e6,
+                    2.1e6,
                     6,
                     bytes32(uint256(uint160(0xa11ce))),
                     usdc_(1)
                 ),
-                1e5
+                0.5e6
             ),
-            "calldata is Paycall.run(CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 2e6, 6, bytes32(uint256(uint160(0xa11ce))), usdc_(1))));"
+            "calldata is Paycall.run(CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 2.1e6, 6, bytes32(uint256(uint160(0xa11ce))), usdc_(1))), 5e5);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
@@ -372,9 +372,9 @@ contract QuarkBuilderTest is Test {
                 Paycall.run.selector,
                 CodeJarHelper.getCodeAddress(type(TransferActions).creationCode),
                 abi.encodeWithSelector(TransferActions.transferERC20Token.selector, usdc_(8453), address(0xceecee), 5e6),
-                1e5
+                0.1e6
             ),
-            "calldata is Paycall.run(TransferActions.transferERC20Token(USDC_8453, address(0xceecee), 5e6));"
+            "calldata is Paycall.run(TransferActions.transferERC20Token(USDC_8453, address(0xceecee), 5e6), 1e5);"
         );
         assertEq(
             result.quarkOperations[1].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
@@ -387,12 +387,12 @@ contract QuarkBuilderTest is Test {
         assertEq(result.actions[0].actionType, "BRIDGE", "action type is 'BRIDGE'");
         assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC on mainnet");
-        assertEq(result.actions[0].paymentMaxCost, 1e5, "payment should have max cost of 1e5");
+        assertEq(result.actions[0].paymentMaxCost, 0.5e6, "payment should have max cost of 5e5");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
                 Actions.BridgeActionContext({
-                    amount: 2e6,
+                    amount: 2.1e6,
                     price: 1e8,
                     token: USDC_1,
                     chainId: 1,
@@ -408,7 +408,7 @@ contract QuarkBuilderTest is Test {
         assertEq(result.actions[1].actionType, "TRANSFER", "action type is 'TRANSFER'");
         assertEq(result.actions[1].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[1].paymentToken, USDC_8453, "payment token is USDC on Base");
-        assertEq(result.actions[1].paymentMaxCost, 1e5, "payment should have max cost of 1e5");
+        assertEq(result.actions[1].paymentMaxCost, 0.1e6, "payment should have max cost of 1e5");
         assertEq(
             result.actions[1].actionContext,
             abi.encode(
