@@ -309,30 +309,30 @@ contract QuarkBuilder {
         uint256 targetChainId,
         uint256 plannedBridgeAmountToTargetChain
     ) internal pure {
-        uint256 accruedCost = 0;
+        uint256 paymentTokensUsed = 0;
         for (uint256 i = 0; i < transferActions.length; ++i) {
             Actions.TransferActionContext memory transferActionContext =
                 abi.decode(transferActions[i].actionContext, (Actions.TransferActionContext));
-            // Filter with the targetChainId and accruedCost will track on one chain at a time
+            // Filter with the targetChainId and paymentTokensUsed will track on one chain at a time
             if (transferActionContext.chainId == targetChainId) {
                 address transferToken = transferActionContext.token;
                 uint256 transferAmount = transferActionContext.amount;
                 uint256 paymentAssetBalanceOnChain = Accounts.sumBalances(
                     Accounts.findAssetPositions(transferToken, transferActions[i].chainId, chainAccountsList)
                 );
-                accruedCost += transferActions[i].paymentMaxCost;
+                paymentTokensUsed += transferActions[i].paymentMaxCost;
                 if (transferToken == transferActions[i].paymentToken) {
                     // If the payment token is the transfer token and this is the target chain, we need to account for the transfer amount
                     // If its transfer step, check if user has enough balance to cover the transfer amount after bridge
-                    if (paymentAssetBalanceOnChain + plannedBridgeAmountToTargetChain < accruedCost + transferAmount) {
+                    if (paymentAssetBalanceOnChain + plannedBridgeAmountToTargetChain < paymentTokensUsed + transferAmount) {
                         revert MaxCostTooHigh();
                     }
 
                     // Special handling as the payment token is sent out so it will be part of the cost
-                    accruedCost += transferAmount;
+                    paymentTokensUsed += transferAmount;
                 } else {
                     // Just check payment token can cover the max cost
-                    if (paymentAssetBalanceOnChain < accruedCost) {
+                    if (paymentAssetBalanceOnChain < paymentTokensUsed) {
                         revert MaxCostTooHigh();
                     }
                 }
