@@ -46,6 +46,20 @@ library EIP712Helper {
 
     error BadData();
 
+    /* ===== Output Types ===== */
+
+    /// @notice The structure containing EIP-712 data for a QuarkOperation or MultiQuarkOperation
+    struct EIP712Data {
+        // EIP-712 digest to sign for either a MultiQuarkOperation or a single QuarkOperation to fulfill the client intent.
+        // The digest will be for a MultiQuarkOperation if there are more than one QuarkOperations in the BuilderResult.
+        // Otherwise, the digest will be for a single QuarkOperation.
+        bytes32 digest;
+        // A unique identifier created by encoding and hashing domain-specific information for a QuarkOperation or MultiQuarkOperation
+        bytes32 domainSeparator;
+        // The hash of a structured data type and its values, as defined by EIP-712
+        bytes32 hashStruct;
+    }
+
     /**
      * @dev Returns the domain separator for a Quark wallet
      * @param walletAddress The Quark wallet address that the domain separator is scoped to
@@ -65,6 +79,29 @@ library EIP712Helper {
     }
 
     /**
+     * @dev Returns the EIP-712 hashStruct for a QuarkOperation
+     * @param op A QuarkOperation struct
+     * @return EIP-712 hashStruct
+     */
+    function getHashStructForQuarkOperation(IQuarkWallet.QuarkOperation memory op) internal pure returns (bytes32) {
+        bytes memory encodedScriptSources;
+        for (uint256 i = 0; i < op.scriptSources.length; ++i) {
+            encodedScriptSources = abi.encodePacked(encodedScriptSources, keccak256(op.scriptSources[i]));
+        }
+
+        return keccak256(
+            abi.encode(
+                QUARK_OPERATION_TYPEHASH,
+                op.nonce,
+                op.scriptAddress,
+                keccak256(encodedScriptSources),
+                keccak256(op.scriptCalldata),
+                op.expiry
+            )
+        );
+    }
+
+    /**
      * @dev Returns the EIP-712 digest for a QuarkOperation
      * @param op A QuarkOperation struct
      * @param walletAddress The Quark wallet address that the domain separator is scoped to
@@ -76,37 +113,35 @@ library EIP712Helper {
         pure
         returns (bytes32)
     {
-        bytes memory encodedScriptSources;
-        for (uint256 i = 0; i < op.scriptSources.length; ++i) {
-            encodedScriptSources = abi.encodePacked(encodedScriptSources, keccak256(op.scriptSources[i]));
-        }
-
-        bytes32 structHash = keccak256(
-            abi.encode(
-                QUARK_OPERATION_TYPEHASH,
-                op.nonce,
-                op.scriptAddress,
-                keccak256(encodedScriptSources),
-                keccak256(op.scriptCalldata),
-                op.expiry
-            )
-        );
-        return keccak256(abi.encodePacked("\x19\x01", getDomainSeparator(walletAddress, chainId), structHash));
+        bytes32 hashStruct = getHashStructForQuarkOperation(op);
+        return keccak256(abi.encodePacked("\x19\x01", getDomainSeparator(walletAddress, chainId), hashStruct));
     }
 
     /**
-     * @dev Returns the EIP-712 digest for a MultiQuarkOperation
-     * @param opDigests A list of EIP-712 digests for the operations in a MultiQuarkOperation
-     * @return EIP-712 digest
+     * @dev Returns the EIP-712 hashStruct for a MultiQuarkOperation
+     * @param ops A list of QuarkOperations in a MultiQuarkOperation
+     * @param actions A list of Actions containing metadata for each QuarkOperation
+     * @return EIP-712 hashStruct
      */
-    function getDigestForMultiQuarkOperation(bytes32[] memory opDigests) internal pure returns (bytes32) {
+    function getHashStructForMultiQuarkOperation(
+        IQuarkWallet.QuarkOperation[] memory ops,
+        Actions.Action[] memory actions
+    ) internal pure returns (bytes32) {
+        if (ops.length != actions.length) {
+            revert BadData();
+        }
+
+        bytes32[] memory opDigests = new bytes32[](ops.length);
+        for (uint256 i = 0; i < ops.length; ++i) {
+            opDigests[i] = getDigestForQuarkOperation(ops[i], actions[i].quarkAccount, actions[i].chainId);
+        }
+
         bytes memory encodedOpDigests;
         for (uint256 i = 0; i < opDigests.length; ++i) {
             encodedOpDigests = abi.encodePacked(encodedOpDigests, opDigests[i]);
         }
 
-        bytes32 structHash = keccak256(abi.encode(MULTI_QUARK_OPERATION_TYPEHASH, keccak256(encodedOpDigests)));
-        return keccak256(abi.encodePacked("\x19\x01", MULTI_QUARK_OPERATION_DOMAIN_SEPARATOR, structHash));
+        return keccak256(abi.encode(MULTI_QUARK_OPERATION_TYPEHASH, keccak256(encodedOpDigests)));
     }
 
     /**
@@ -120,14 +155,7 @@ library EIP712Helper {
         pure
         returns (bytes32)
     {
-        if (ops.length != actions.length) {
-            revert BadData();
-        }
-
-        bytes32[] memory opDigests = new bytes32[](ops.length);
-        for (uint256 i = 0; i < ops.length; ++i) {
-            opDigests[i] = getDigestForQuarkOperation(ops[i], actions[i].quarkAccount, actions[i].chainId);
-        }
-        return getDigestForMultiQuarkOperation(opDigests);
+        bytes32 hashStruct = getHashStructForMultiQuarkOperation(ops, actions);
+        return keccak256(abi.encodePacked("\x19\x01", MULTI_QUARK_OPERATION_DOMAIN_SEPARATOR, hashStruct));
     }
 }

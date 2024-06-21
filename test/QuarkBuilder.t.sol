@@ -117,8 +117,10 @@ contract QuarkBuilderTest is Test {
             "action context encoded from TransferActionContext"
         );
 
-        // TODO: Check the contents of the digest
-        assertNotEq(result.quarkOperationDigest, hex"", "non-empty digest");
+        // TODO: Check the contents of the EIP712 data
+        assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
+        assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
+        assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
     }
 
     function testSimpleLocalTransferWithPaycallSucceeds() public {
@@ -181,8 +183,10 @@ contract QuarkBuilderTest is Test {
             "action context encoded from TransferActionContext"
         );
 
-        assertNotEq(result.quarkOperationDigest, hex"", "non-empty single digest");
-        assertEq(result.multiQuarkOperationDigest, hex"", "empty multi digest");
+        // TODO: Check the contents of the EIP712 data
+        assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
+        assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
+        assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
     }
 
     function testSimpleBridgeTransferSucceeds() public {
@@ -308,8 +312,10 @@ contract QuarkBuilderTest is Test {
             "action context encoded from TransferActionContext"
         );
 
-        // TODO: Check the contents of the digest
-        assertNotEq(result.quarkOperationDigest, hex"", "non-empty digest");
+        // TODO: Check the contents of the EIP712 data
+        assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
+        assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
+        assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
     }
 
     function testSimpleBridgeTransferWithPaycallSucceeds() public {
@@ -423,8 +429,10 @@ contract QuarkBuilderTest is Test {
             "action context encoded from TransferActionContext"
         );
 
-        assertEq(result.quarkOperationDigest, hex"", "empty single digest");
-        assertNotEq(result.multiQuarkOperationDigest, hex"", "non-empty multi digest");
+        // TODO: Check the contents of the EIP712 data
+        assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
+        assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
+        assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
     }
 
     /**

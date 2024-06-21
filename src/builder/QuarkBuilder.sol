@@ -32,18 +32,16 @@ contract QuarkBuilder {
     /* ===== Output Types ===== */
 
     struct BuilderResult {
-        // version of the builder interface. (Same as VERSION, but attached to the output.)
+        // Version of the builder interface. (Same as VERSION, but attached to the output.)
         string version;
-        // array of quark operations to execute to fulfill the client intent
+        // Array of quark operations to execute to fulfill the client intent
         IQuarkWallet.QuarkOperation[] quarkOperations;
-        // array of action context and other metadata corresponding 1:1 with quarkOperations
+        // Array of action context and other metadata corresponding 1:1 with quarkOperations
         Actions.Action[] actions;
-        // EIP-712 digest to sign for either a MultiQuarkOperation or a single QuarkOperation to fulfill the client intent.
-        // The digest will be for a MultiQuarkOperation if there are more than one QuarkOperations in the BuilderResult.
-        // Otherwise, the digest will be for a single QuarkOperation.
-        bytes32 quarkOperationDigest;
-        // client-provided paymentCurrency string that was used to derive token addresses.
-        // client may re-use this string to construct a request that simulates the transaction.
+        // Struct containing containing EIP-712 data for a QuarkOperation or MultiQuarkOperation
+        EIP712Helper.EIP712Data eip712Data;
+        // Client-provided paymentCurrency string that was used to derive token addresses.
+        // Client may re-use this string to construct a request that simulates the transaction.
         string paymentCurrency;
     }
 
@@ -169,21 +167,30 @@ contract QuarkBuilder {
 
         actionIndex++;
 
-        // Construct EIP712 digests
-        // We leave `multiQuarkOperationDigest` empty if there is only a single QuarkOperation
-        // We leave `quarkOperationDigest` if there are more than one QuarkOperations
+        // Truncate actions and quark operations
         actions = Actions.truncate(actions, actionIndex);
         quarkOperations = Actions.truncate(quarkOperations, actionIndex);
 
         // Validate generated actions for affordability
         assertActionsAffordable(actions, chainAccountsList, transferIntent);
 
+        // Construct EIP712 digests
+        EIP712Helper.EIP712Data memory eip712Data;
         bytes32 quarkOperationDigest;
         if (quarkOperations.length == 1) {
-            quarkOperationDigest =
-                EIP712Helper.getDigestForQuarkOperation(quarkOperations[0], actions[0].quarkAccount, actions[0].chainId);
+            eip712Data = EIP712Helper.EIP712Data({
+                digest: EIP712Helper.getDigestForQuarkOperation(
+                    quarkOperations[0], actions[0].quarkAccount, actions[0].chainId
+                    ),
+                domainSeparator: EIP712Helper.getDomainSeparator(actions[0].quarkAccount, actions[0].chainId),
+                hashStruct: EIP712Helper.getHashStructForQuarkOperation(quarkOperations[0])
+            });
         } else if (quarkOperations.length > 1) {
-            quarkOperationDigest = EIP712Helper.getDigestForMultiQuarkOperation(quarkOperations, actions);
+            eip712Data = EIP712Helper.EIP712Data({
+                digest: EIP712Helper.getDigestForMultiQuarkOperation(quarkOperations, actions),
+                domainSeparator: EIP712Helper.MULTI_QUARK_OPERATION_DOMAIN_SEPARATOR,
+                hashStruct: EIP712Helper.getHashStructForMultiQuarkOperation(quarkOperations, actions)
+            });
         }
 
         return BuilderResult({
@@ -191,7 +198,7 @@ contract QuarkBuilder {
             actions: actions,
             quarkOperations: quarkOperations,
             paymentCurrency: payment.currency,
-            quarkOperationDigest: quarkOperationDigest
+            eip712Data: eip712Data
         });
     }
 
