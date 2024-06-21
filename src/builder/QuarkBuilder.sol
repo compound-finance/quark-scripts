@@ -324,7 +324,10 @@ contract QuarkBuilder {
                 if (transferToken == transferActions[i].paymentToken) {
                     // If the payment token is the transfer token and this is the target chain, we need to account for the transfer amount
                     // If its transfer step, check if user has enough balance to cover the transfer amount after bridge
-                    if (paymentAssetBalanceOnChain + plannedBridgeAmountToTargetChain < paymentTokensUsed + transferAmount) {
+                    if (
+                        paymentAssetBalanceOnChain + plannedBridgeAmountToTargetChain
+                            < paymentTokensUsed + transferAmount
+                    ) {
                         revert MaxCostTooHigh();
                     }
 
