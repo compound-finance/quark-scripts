@@ -294,19 +294,19 @@ contract QuarkBuilder {
         }
 
         // Verify transfer actions are affordable
+        // NOTE: Assume all transfer actions are on the TransferIntent.chainId
         uint256 accruedCost = 0;
         for (uint256 i = 0; i < transferActions.length; ++i) {
             Actions.TransferActionContext memory transferActionContext =
                 abi.decode(transferActions[i].actionContext, (Actions.TransferActionContext));
             address transferToken = transferActionContext.token;
             uint256 transferAmount = transferActionContext.amount;
+            uint256 paymentAssetBalanceOnChain = Accounts.sumBalances(
+                    Accounts.findAssetPositions(transferToken, transferActions[i].chainId, chainAccountsList)
+                );
             accruedCost += transferActions[i].paymentMaxCost;
             if (transferToken == transferActions[i].paymentToken) {
                 // If the payment token is the transfer token and this is the target chain, we need to account for the transfer amount
-                uint256 paymentAssetBalanceOnChain = Accounts.sumBalances(
-                    Accounts.findAssetPositions(transferToken, transferActions[i].chainId, chainAccountsList)
-                );
-
                 // If its transfer step, check if user has enough balance to cover the transfer amount after bridge
                 if (paymentAssetBalanceOnChain + plannedBridgeAmount < accruedCost + transferAmount) {
                     revert MaxCostTooHigh();
@@ -316,12 +316,6 @@ contract QuarkBuilder {
                 accruedCost += transferAmount;
             } else {
                 // Just check payment token can cover the max cost
-                uint256 paymentAssetBalanceOnChain = Accounts.sumBalances(
-                    Accounts.findAssetPositions(
-                        transferActions[i].paymentToken, transferActions[i].chainId, chainAccountsList
-                    )
-                );
-
                 if (paymentAssetBalanceOnChain < accruedCost) {
                     revert MaxCostTooHigh();
                 }
