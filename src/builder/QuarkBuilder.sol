@@ -270,29 +270,21 @@ contract QuarkBuilder {
         Actions.Action[] memory transferActions = Actions.findActionsOfType(actions, Actions.ACTION_TYPE_TRANSFER);
 
         uint256 plannedBridgeAmount = 0;
-        // Verify bridge actions is affordable, and update plannedBridgeAmount for verifying transfer actions
+        // Verify bridge actions are affordable, and update plannedBridgeAmount for verifying transfer actions
         for (uint256 i = 0; i < bridgeActions.length; ++i) {
             Actions.BridgeActionContext memory bridgeActionContext =
                 abi.decode(bridgeActions[i].actionContext, (Actions.BridgeActionContext));
-
+            uint256 paymentAssetBalanceOnChain = Accounts.sumBalances(
+                Accounts.findAssetPositions(bridgeActionContext.token, bridgeActions[i].chainId, chainAccountsList)
+            );
             if (bridgeActionContext.token == bridgeActions[i].paymentToken) {
                 // If the payment token is the transfer token and this is the target chain, we need to account for the transfer amount
-                uint256 paymentAssetBalanceOnChain = Accounts.sumBalances(
-                    Accounts.findAssetPositions(bridgeActionContext.token, bridgeActions[i].chainId, chainAccountsList)
-                );
-
                 // If its bridge step, check if user has enough balance to cover the bridge amount
                 if (paymentAssetBalanceOnChain < bridgeActions[i].paymentMaxCost + bridgeActionContext.amount) {
                     revert MaxCostTooHigh();
                 }
             } else {
                 // Just check payment token can cover the max cost
-                uint256 paymentAssetBalanceOnChain = Accounts.sumBalances(
-                    Accounts.findAssetPositions(
-                        bridgeActions[i].paymentToken, bridgeActions[i].chainId, chainAccountsList
-                    )
-                );
-
                 if (paymentAssetBalanceOnChain < bridgeActions[i].paymentMaxCost) {
                     revert MaxCostTooHigh();
                 }
@@ -301,7 +293,7 @@ contract QuarkBuilder {
             plannedBridgeAmount += bridgeActionContext.amount;
         }
 
-        // Verify transfer actions is affordable
+        // Verify transfer actions are affordable
         uint256 accruedCost = 0;
         for (uint256 i = 0; i < transferActions.length; ++i) {
             Actions.TransferActionContext memory transferActionContext =
