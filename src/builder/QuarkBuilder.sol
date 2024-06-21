@@ -366,4 +366,22 @@ contract QuarkBuilder {
             }
         }
     }
+
+    function totalAvailableAsset(
+        string memory tokenSymbol,
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        PaymentInfo.Payment memory payment
+    ) internal pure returns (uint256) {
+        uint256 total = 0;
+        for (uint256 i = 0; i < payment.maxCosts.length; ++i) {
+            uint256 paymentAssetBalanceOnChain = Accounts.sumBalances(
+                Accounts.findAssetPositions(tokenSymbol, payment.maxCosts[i].chainId, chainAccountsList)
+            );
+            uint256 paymentAssetNeeded = payment.maxCosts[i].amount;
+            if (paymentAssetBalanceOnChain > paymentAssetNeeded) {
+                total += paymentAssetBalanceOnChain - paymentAssetNeeded;
+            }
+        }
+        return total;
+    }
 }
