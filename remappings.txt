@@ -1,4 +1,4 @@
-test=test/
+test/=test/
 @uniswap/=lib/
 ds-test/=lib/forge-std/lib/ds-test/src/
 erc4626-tests/=lib/openzeppelin-contracts/lib/erc4626-tests/
