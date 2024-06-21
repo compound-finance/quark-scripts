@@ -215,24 +215,16 @@ contract QuarkBuilder {
         });
     }
 
-    function aggregateAssetBalance(string memory tokenSymbol, Accounts.ChainAccounts[] memory chainAccountsList)
-        internal
-        pure
-        returns (uint256)
-    {
-        uint256 aggregateTransferAssetBalance;
-        for (uint256 i = 0; i < chainAccountsList.length; ++i) {
-            aggregateTransferAssetBalance +=
-                Accounts.sumBalances(Accounts.findAssetPositions(tokenSymbol, chainAccountsList[i].assetPositionsList));
-        }
-        return aggregateTransferAssetBalance;
-    }
-
     function assertSufficientFunds(
         TransferIntent memory transferIntent,
         Accounts.ChainAccounts[] memory chainAccountsList
     ) internal pure {
-        uint256 aggregateTransferAssetBalance = aggregateAssetBalance(transferIntent.assetSymbol, chainAccountsList);
+        uint256 aggregateTransferAssetBalance;
+        for (uint256 i = 0; i < chainAccountsList.length; ++i) {
+            aggregateTransferAssetBalance += Accounts.sumBalances(
+                Accounts.findAssetPositions(transferIntent.assetSymbol, chainAccountsList[i].assetPositionsList)
+            );
+        }
         // There are not enough aggregate funds on all chains to fulfill the transfer.
         if (aggregateTransferAssetBalance < transferIntent.amount) {
             revert InsufficientFunds();
