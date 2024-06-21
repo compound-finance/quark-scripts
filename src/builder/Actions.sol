@@ -10,8 +10,8 @@ import {TransferActions} from "../DeFiScripts.sol";
 
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
 import {PaycallWrapper} from "./PaycallWrapper.sol";
-import {PaymentInfo} from "./PaymentInfo.sol";
 import {QuotecallWrapper} from "./QuotecallWrapper.sol";
+import {PaymentInfo} from "./PaymentInfo.sol";
 
 library Actions {
     /* ===== Constants ===== */
@@ -170,8 +170,6 @@ library Actions {
         return (quarkOperation, action);
     }
 
-    // TODO: Handle paycall
-
     function transferAsset(TransferAsset memory transfer, PaymentInfo.Payment memory payment, bool useQuoteCall)
         internal
         pure
@@ -242,5 +240,45 @@ library Actions {
         });
 
         return (quarkOperation, action);
+    }
+
+    function findActionsOfType(Actions.Action[] memory actions, string memory actionType)
+        internal
+        pure
+        returns (Actions.Action[] memory)
+    {
+        uint256 count = 0;
+        Actions.Action[] memory result = new Actions.Action[](actions.length);
+        for (uint256 i = 0; i < actions.length; ++i) {
+            if (Strings.stringEqIgnoreCase(actions[i].actionType, actionType)) {
+                result[count++] = actions[i];
+            }
+        }
+
+        return truncate(result, count);
+    }
+
+    function truncate(Actions.Action[] memory actions, uint256 length)
+        internal
+        pure
+        returns (Actions.Action[] memory)
+    {
+        Actions.Action[] memory result = new Actions.Action[](length);
+        for (uint256 i = 0; i < length; ++i) {
+            result[i] = actions[i];
+        }
+        return result;
+    }
+
+    function truncate(IQuarkWallet.QuarkOperation[] memory operations, uint256 length)
+        internal
+        pure
+        returns (IQuarkWallet.QuarkOperation[] memory)
+    {
+        IQuarkWallet.QuarkOperation[] memory result = new IQuarkWallet.QuarkOperation[](length);
+        for (uint256 i = 0; i < length; ++i) {
+            result[i] = operations[i];
+        }
+        return result;
     }
 }

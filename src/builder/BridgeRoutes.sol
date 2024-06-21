@@ -69,7 +69,7 @@ library CCTP {
         }
     }
 
-    function bridgeScriptSource() external pure returns (bytes memory) {
+    function bridgeScriptSource() internal pure returns (bytes memory) {
         return type(CCTPBridgeActions).creationCode;
     }
 
