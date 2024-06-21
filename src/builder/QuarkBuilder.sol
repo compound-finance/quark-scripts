@@ -266,51 +266,91 @@ contract QuarkBuilder {
         internal
         pure
     {
+        Actions.Action[] memory bridgeActions = findActionsOfType(actions, Actions.ACTION_TYPE_BRIDGE);
+        Actions.Action[] memory transferActions = findActionsOfType(actions, Actions.ACTION_TYPE_TRANSFER);
+
         uint256 plannedBridgeAmount = 0;
-        for (uint256 i = 0; i < actions.length; ++i) {
-            address tokenUsed;
-            uint256 amountUsed;
-            if (Strings.stringEqIgnoreCase(actions[i].actionType, Actions.ACTION_TYPE_TRANSFER)) {
-                Actions.TransferActionContext memory transferActionContext =
-                    abi.decode(actions[i].actionContext, (Actions.TransferActionContext));
-                tokenUsed = transferActionContext.token;
-                amountUsed = transferActionContext.amount;
-            } else if (Strings.stringEqIgnoreCase(actions[i].actionType, Actions.ACTION_TYPE_BRIDGE)) {
-                Actions.BridgeActionContext memory bridgeActionContext =
-                    abi.decode(actions[i].actionContext, (Actions.BridgeActionContext));
-                tokenUsed = bridgeActionContext.token;
-                amountUsed = bridgeActionContext.amount;
-                plannedBridgeAmount += amountUsed;
-            } else {
-                revert InvalidActionType();
-            }
+        // Verify bridge actions is affordable, and update plannedBridgeAmount for verifying transfer actions
+        for (uint256 i = 0; i < bridgeActions.length; ++i) {
+            Actions.BridgeActionContext memory bridgeActionContext =
+                abi.decode(bridgeActions[i].actionContext, (Actions.BridgeActionContext));
 
-            if (tokenUsed == actions[i].paymentToken) {
+            if (bridgeActionContext.token == bridgeActions[i].paymentToken) {
                 // If the payment token is the transfer token and this is the target chain, we need to account for the transfer amount
-                uint256 paymentAssetBalanceOnChain =
-                    Accounts.sumBalances(Accounts.findAssetPositions(tokenUsed, actions[i].chainId, chainAccountsList));
+                uint256 paymentAssetBalanceOnChain = Accounts.sumBalances(
+                    Accounts.findAssetPositions(bridgeActionContext.token, bridgeActions[i].chainId, chainAccountsList)
+                );
 
-                // If its transfer step, check if user has enough balance to cover the transfer amount after bridge
-                if (Strings.stringEqIgnoreCase(actions[i].actionType, Actions.ACTION_TYPE_TRANSFER)) {
-                    if (paymentAssetBalanceOnChain + plannedBridgeAmount < actions[i].paymentMaxCost + amountUsed) {
-                        revert MaxCostTooHigh();
-                    }
-                } else {
-                    if (paymentAssetBalanceOnChain < actions[i].paymentMaxCost + amountUsed) {
-                        revert MaxCostTooHigh();
-                    }
+                // If its bridge step, check if user has enough balance to cover the bridge amount
+                if (paymentAssetBalanceOnChain < bridgeActions[i].paymentMaxCost + bridgeActionContext.amount) {
+                    revert MaxCostTooHigh();
                 }
             } else {
                 // Just check payment token can cover the max cost
                 uint256 paymentAssetBalanceOnChain = Accounts.sumBalances(
-                    Accounts.findAssetPositions(actions[i].paymentToken, actions[i].chainId, chainAccountsList)
+                    Accounts.findAssetPositions(
+                        bridgeActions[i].paymentToken, bridgeActions[i].chainId, chainAccountsList
+                    )
                 );
 
-                if (paymentAssetBalanceOnChain < actions[i].paymentMaxCost) {
+                if (paymentAssetBalanceOnChain < bridgeActions[i].paymentMaxCost) {
+                    revert MaxCostTooHigh();
+                }
+            }
+
+            plannedBridgeAmount += bridgeActionContext.amount;
+        }
+
+        // Verify transfer actions is affordable
+        uint256 accruedCost = 0;
+        for (uint256 i = 0; i < transferActions.length; ++i) {
+            Actions.TransferActionContext memory transferActionContext =
+                abi.decode(transferActions[i].actionContext, (Actions.TransferActionContext));
+            address tokenUsed = transferActionContext.token;
+            uint256 amountUsed = transferActionContext.amount;
+            accruedCost += transferActions[i].paymentMaxCost;
+            if (tokenUsed == transferActions[i].paymentToken) {
+                // If the payment token is the transfer token and this is the target chain, we need to account for the transfer amount
+                uint256 paymentAssetBalanceOnChain = Accounts.sumBalances(
+                    Accounts.findAssetPositions(tokenUsed, transferActions[i].chainId, chainAccountsList)
+                );
+
+                // If its transfer step, check if user has enough balance to cover the transfer amount after bridge
+                if (paymentAssetBalanceOnChain + plannedBridgeAmount < accruedCost + amountUsed) {
+                    revert MaxCostTooHigh();
+                }
+
+                // Special handling as the payment token is sent out so it will be part of the cost
+                accruedCost += amountUsed;
+            } else {
+                // Just check payment token can cover the max cost
+                uint256 paymentAssetBalanceOnChain = Accounts.sumBalances(
+                    Accounts.findAssetPositions(
+                        transferActions[i].paymentToken, transferActions[i].chainId, chainAccountsList
+                    )
+                );
+
+                if (paymentAssetBalanceOnChain < accruedCost) {
                     revert MaxCostTooHigh();
                 }
             }
         }
+    }
+
+    function findActionsOfType(Actions.Action[] memory actions, string memory actionType)
+        internal
+        pure
+        returns (Actions.Action[] memory)
+    {
+        uint256 count = 0;
+        Actions.Action[] memory result = new Actions.Action[](actions.length);
+        for (uint256 i = 0; i < actions.length; ++i) {
+            if (Strings.stringEqIgnoreCase(actions[i].actionType, actionType)) {
+                result[count++] = actions[i];
+            }
+        }
+
+        return truncate(result, count);
     }
 
     function truncate(Actions.Action[] memory actions, uint256 length)
