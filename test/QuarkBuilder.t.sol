@@ -620,7 +620,7 @@ contract QuarkBuilderTest is Test {
 
         QuarkBuilder.BuilderResult memory result = builder.transfer(
             transferUsdc_(1, type(uint256).max, address(0xceecee), BLOCK_TIMESTAMP), // transfer max
-            chainAccountsList, 
+            chainAccountsList,
             paymentUsdc_(maxCosts)
         );
 
