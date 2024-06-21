@@ -298,22 +298,22 @@ contract QuarkBuilder {
         for (uint256 i = 0; i < transferActions.length; ++i) {
             Actions.TransferActionContext memory transferActionContext =
                 abi.decode(transferActions[i].actionContext, (Actions.TransferActionContext));
-            address tokenUsed = transferActionContext.token;
-            uint256 amountUsed = transferActionContext.amount;
+            address transferToken = transferActionContext.token;
+            uint256 transferAmount = transferActionContext.amount;
             accruedCost += transferActions[i].paymentMaxCost;
-            if (tokenUsed == transferActions[i].paymentToken) {
+            if (transferToken == transferActions[i].paymentToken) {
                 // If the payment token is the transfer token and this is the target chain, we need to account for the transfer amount
                 uint256 paymentAssetBalanceOnChain = Accounts.sumBalances(
-                    Accounts.findAssetPositions(tokenUsed, transferActions[i].chainId, chainAccountsList)
+                    Accounts.findAssetPositions(transferToken, transferActions[i].chainId, chainAccountsList)
                 );
 
                 // If its transfer step, check if user has enough balance to cover the transfer amount after bridge
-                if (paymentAssetBalanceOnChain + plannedBridgeAmount < accruedCost + amountUsed) {
+                if (paymentAssetBalanceOnChain + plannedBridgeAmount < accruedCost + transferAmount) {
                     revert MaxCostTooHigh();
                 }
 
                 // Special handling as the payment token is sent out so it will be part of the cost
-                accruedCost += amountUsed;
+                accruedCost += transferAmount;
             } else {
                 // Just check payment token can cover the max cost
                 uint256 paymentAssetBalanceOnChain = Accounts.sumBalances(
