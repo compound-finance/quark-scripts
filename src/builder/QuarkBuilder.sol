@@ -38,11 +38,9 @@ contract QuarkBuilder {
         IQuarkWallet.QuarkOperation[] quarkOperations;
         // array of action context and other metadata corresponding 1:1 with quarkOperations
         Actions.Action[] actions;
-        // EIP-712 digest to sign for a MultiQuarkOperation to fulfill the client intent.
-        // Empty when quarkOperations.length == 0.
-        bytes32 multiQuarkOperationDigest;
-        // EIP-712 digest to sign for a single QuarkOperation to fulfill the client intent.
-        // Empty when quarkOperations.length != 1.
+        // EIP-712 digest to sign for either a MultiQuarkOperation or a single QuarkOperation to fulfill the client intent.
+        // The digest will be for a MultiQuarkOperation if there are more than one QuarkOperations in the BuilderResult.
+        // Otherwise, the digest will be for a single QuarkOperation.
         bytes32 quarkOperationDigest;
         // client-provided paymentCurrency string that was used to derive token addresses.
         // client may re-use this string to construct a request that simulates the transaction.
@@ -181,12 +179,11 @@ contract QuarkBuilder {
         assertActionsAffordable(actions, chainAccountsList, transferIntent);
 
         bytes32 quarkOperationDigest;
-        bytes32 multiQuarkOperationDigest;
         if (quarkOperations.length == 1) {
             quarkOperationDigest =
                 EIP712Helper.getDigestForQuarkOperation(quarkOperations[0], actions[0].quarkAccount, actions[0].chainId);
         } else if (quarkOperations.length > 1) {
-            multiQuarkOperationDigest = EIP712Helper.getDigestForMultiQuarkOperation(quarkOperations, actions);
+            quarkOperationDigest = EIP712Helper.getDigestForMultiQuarkOperation(quarkOperations, actions);
         }
 
         return BuilderResult({
@@ -194,7 +191,6 @@ contract QuarkBuilder {
             actions: actions,
             quarkOperations: quarkOperations,
             paymentCurrency: payment.currency,
-            multiQuarkOperationDigest: multiQuarkOperationDigest,
             quarkOperationDigest: quarkOperationDigest
         });
     }

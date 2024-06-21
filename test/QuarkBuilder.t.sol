@@ -117,8 +117,8 @@ contract QuarkBuilderTest is Test {
             "action context encoded from TransferActionContext"
         );
 
-        assertNotEq(result.quarkOperationDigest, hex"", "non-empty single digest");
-        assertEq(result.multiQuarkOperationDigest, hex"", "empty multi digest");
+        // TODO: Check the contents of the digest
+        assertNotEq(result.quarkOperationDigest, hex"", "non-empty digest");
     }
 
     function testSimpleLocalTransferWithPaycallSucceeds() public {
@@ -308,8 +308,8 @@ contract QuarkBuilderTest is Test {
             "action context encoded from TransferActionContext"
         );
 
-        assertEq(result.quarkOperationDigest, hex"", "empty single digest");
-        assertNotEq(result.multiQuarkOperationDigest, hex"", "non-empty multi digest");
+        // TODO: Check the contents of the digest
+        assertNotEq(result.quarkOperationDigest, hex"", "non-empty digest");
     }
 
     function testSimpleBridgeTransferWithPaycallSucceeds() public {
@@ -544,12 +544,6 @@ contract QuarkBuilderTest is Test {
     }
 
     function quarkState_(address account, uint96 nextNonce) internal pure returns (Accounts.QuarkState memory) {
-        return Accounts.QuarkState({
-            account: account,
-            hasCode: true,
-            isQuark: true,
-            quarkVersion: "1",
-            quarkNextNonce: nextNonce
-        });
+        return Accounts.QuarkState({account: account, quarkNextNonce: nextNonce});
     }
 }
