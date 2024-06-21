@@ -8,6 +8,8 @@ import {Accounts} from "./Accounts.sol";
 import {BridgeRoutes} from "./BridgeRoutes.sol";
 import {EIP712Helper} from "./EIP712Helper.sol";
 import {Strings} from "./Strings.sol";
+import {PaycallWrapper} from "./PaycallWrapper.sol";
+import {PaymentInfo} from "./PaymentInfo.sol";
 
 contract QuarkBuilder {
     /* ===== Constants ===== */
@@ -23,20 +25,9 @@ contract QuarkBuilder {
     error InvalidInput();
     error MaxCostTooHigh();
     error TooManyBridgeOperations();
+    error InvalidActionType();
 
     /* ===== Input Types ===== */
-
-    struct Payment {
-        bool isToken;
-        // Note: Payment `currency` should be the same across chains
-        string currency;
-        PaymentMaxCost[] maxCosts;
-    }
-
-    struct PaymentMaxCost {
-        uint256 chainId;
-        uint256 amount;
-    }
 
     /* ===== Output Types ===== */
 
@@ -76,11 +67,10 @@ contract QuarkBuilder {
     function transfer(
         TransferIntent memory transferIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
-        Payment memory payment
+        PaymentInfo.Payment memory payment
     ) external pure returns (BuilderResult memory) {
         assertSufficientFunds(transferIntent, chainAccountsList);
-        assertFundsAvailable(transferIntent, chainAccountsList);
-        assertPaymentAffordable(transferIntent, chainAccountsList, payment);
+        assertFundsAvailable(transferIntent, chainAccountsList, payment);
 
         /*
          * at most one bridge operation per non-destination chain,
@@ -99,6 +89,10 @@ contract QuarkBuilder {
             uint256 balanceOnDstChain =
                 Accounts.getBalanceOnChain(transferIntent.assetSymbol, transferIntent.chainId, chainAccountsList);
             uint256 amountLeftToBridge = transferIntent.amount - balanceOnDstChain;
+            // If the payment token is the transfer token and user opt for paying with the payment token, need to add max cost back to the amountLeftToBridge for target chain
+            if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, transferIntent.assetSymbol)) {
+                amountLeftToBridge += PaymentInfo.findMaxCost(payment, transferIntent.chainId);
+            }
 
             uint256 bridgeActionCount = 0;
             // TODO: bridge routing logic (which bridge to prioritize, how many bridges?)
@@ -135,26 +129,24 @@ contract QuarkBuilder {
                         : srcAccountBalances[j].balance;
                     amountLeftToBridge -= amountToBridge;
 
-                    if (payment.isToken) {
-                        // TODO: wrap around paycall
-                    } else {
-                        (quarkOperations[actionIndex], actions[actionIndex]) = Actions.bridgeAsset(
-                            Actions.BridgeAsset({
-                                chainAccountsList: chainAccountsList,
-                                assetSymbol: transferIntent.assetSymbol,
-                                amount: amountToBridge,
-                                // where it comes from
-                                srcChainId: srcChainAccounts.chainId,
-                                sender: srcAccountBalances[j].account,
-                                // where it goes
-                                destinationChainId: transferIntent.chainId,
-                                recipient: transferIntent.sender,
-                                blockTimestamp: transferIntent.blockTimestamp
-                            })
-                        );
-                        actionIndex++;
-                        bridgeActionCount++;
-                    }
+                    (quarkOperations[actionIndex], actions[actionIndex]) = Actions.bridgeAsset(
+                        Actions.BridgeAsset({
+                            chainAccountsList: chainAccountsList,
+                            assetSymbol: transferIntent.assetSymbol,
+                            amount: amountToBridge,
+                            // where it comes from
+                            srcChainId: srcChainAccounts.chainId,
+                            sender: srcAccountBalances[j].account,
+                            // where it goes
+                            destinationChainId: transferIntent.chainId,
+                            recipient: transferIntent.sender,
+                            blockTimestamp: transferIntent.blockTimestamp
+                        }),
+                        payment
+                    );
+
+                    actionIndex++;
+                    bridgeActionCount++;
                 }
             }
 
@@ -164,28 +156,30 @@ contract QuarkBuilder {
         }
 
         // Then, transferIntent `amount` of `assetSymbol` to `recipient`
-        if (payment.isToken) {
-            // wrap around paycall
-        } else {
-            (quarkOperations[actionIndex], actions[actionIndex]) = Actions.transferAsset(
-                Actions.TransferAsset({
-                    chainAccountsList: chainAccountsList,
-                    assetSymbol: transferIntent.assetSymbol,
-                    amount: transferIntent.amount,
-                    chainId: transferIntent.chainId,
-                    sender: transferIntent.sender,
-                    recipient: transferIntent.recipient,
-                    blockTimestamp: transferIntent.blockTimestamp
-                })
-            );
-            actionIndex++;
-        }
+        (quarkOperations[actionIndex], actions[actionIndex]) = Actions.transferAsset(
+            Actions.TransferAsset({
+                chainAccountsList: chainAccountsList,
+                assetSymbol: transferIntent.assetSymbol,
+                amount: transferIntent.amount,
+                chainId: transferIntent.chainId,
+                sender: transferIntent.sender,
+                recipient: transferIntent.recipient,
+                blockTimestamp: transferIntent.blockTimestamp
+            }),
+            payment
+        );
+
+        actionIndex++;
 
         // Construct EIP712 digests
         // We leave `multiQuarkOperationDigest` empty if there is only a single QuarkOperation
         // We leave `quarkOperationDigest` if there are more than one QuarkOperations
-        actions = truncate(actions, actionIndex);
-        quarkOperations = truncate(quarkOperations, actionIndex);
+        actions = Actions.truncate(actions, actionIndex);
+        quarkOperations = Actions.truncate(quarkOperations, actionIndex);
+
+        // Validate generated actions for affordability
+        assertActionsAffordable(actions, chainAccountsList, transferIntent);
+
         bytes32 quarkOperationDigest;
         bytes32 multiQuarkOperationDigest;
         if (quarkOperations.length == 1) {
@@ -229,7 +223,8 @@ contract QuarkBuilder {
     // withdraw.)
     function assertFundsAvailable(
         TransferIntent memory transferIntent,
-        Accounts.ChainAccounts[] memory chainAccountsList
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        PaymentInfo.Payment memory payment
     ) internal pure {
         if (needsBridgedFunds(transferIntent, chainAccountsList)) {
             uint256 aggregateTransferAssetAvailableBalance;
@@ -243,6 +238,11 @@ contract QuarkBuilder {
                         )
                 ) {
                     aggregateTransferAssetAvailableBalance += Accounts.sumBalances(positions);
+                    // If the payment token is the transfer token and user opt for paying with the payment token, reduce the available balance by the maxCost
+                    if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, transferIntent.assetSymbol)) {
+                        uint256 maxCost = PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId);
+                        aggregateTransferAssetAvailableBalance -= maxCost;
+                    }
                 }
             }
             if (aggregateTransferAssetAvailableBalance < transferIntent.amount) {
@@ -261,55 +261,85 @@ contract QuarkBuilder {
     }
 
     // Assert that each chain has sufficient funds to cover the max cost for that chain.
-    // NOTE: This check assumes we will not be bridging payment tokens for the user.
-    function assertPaymentAffordable(
-        TransferIntent memory transferIntent,
+    // Check user account can cover the cost of each actions
+    function assertActionsAffordable(
+        Actions.Action[] memory actions,
         Accounts.ChainAccounts[] memory chainAccountsList,
-        Payment memory payment
+        TransferIntent memory transferIntent
     ) internal pure {
-        if (payment.isToken) {
-            for (uint256 i = 0; i < payment.maxCosts.length; ++i) {
-                uint256 paymentAssetBalanceOnChain = Accounts.sumBalances(
-                    Accounts.findAssetPositions(payment.currency, payment.maxCosts[i].chainId, chainAccountsList)
-                );
-                uint256 paymentAssetNeeded = payment.maxCosts[i].amount;
-                // If the payment token is the transfer token and this is the
-                // target chain, we need to account for the transfer amount
-                // when checking token balances
-                if (
-                    Strings.stringEqIgnoreCase(payment.currency, transferIntent.assetSymbol)
-                        && transferIntent.chainId == payment.maxCosts[i].chainId
-                ) {
-                    paymentAssetNeeded += transferIntent.amount;
+        Actions.Action[] memory bridgeActions = Actions.findActionsOfType(actions, Actions.ACTION_TYPE_BRIDGE);
+        Actions.Action[] memory transferActions = Actions.findActionsOfType(actions, Actions.ACTION_TYPE_TRANSFER);
+
+        uint256 plannedBridgeAmount = 0;
+        // Verify bridge actions are affordable, and update plannedBridgeAmount for verifying transfer actions
+        for (uint256 i = 0; i < bridgeActions.length; ++i) {
+            Actions.BridgeActionContext memory bridgeActionContext =
+                abi.decode(bridgeActions[i].actionContext, (Actions.BridgeActionContext));
+            uint256 paymentAssetBalanceOnChain = Accounts.sumBalances(
+                Accounts.findAssetPositions(bridgeActions[i].paymentToken, bridgeActions[i].chainId, chainAccountsList)
+            );
+            if (bridgeActionContext.token == bridgeActions[i].paymentToken) {
+                // If the payment token is the transfer token and this is the target chain, we need to account for the transfer amount
+                // If its bridge step, check if user has enough balance to cover the bridge amount
+                if (paymentAssetBalanceOnChain < bridgeActions[i].paymentMaxCost + bridgeActionContext.amount) {
+                    revert MaxCostTooHigh();
                 }
-                if (paymentAssetBalanceOnChain < paymentAssetNeeded) {
+            } else {
+                // Just check payment token can cover the max cost
+                if (paymentAssetBalanceOnChain < bridgeActions[i].paymentMaxCost) {
                     revert MaxCostTooHigh();
                 }
             }
+
+            plannedBridgeAmount += bridgeActionContext.amount;
         }
+
+        // Verify transfer actions are affordable
+        // NOTE: Assume all transfer actions are on the TransferIntent.chainId as Bridging logics is currently assuming destination at TransferIntent.chainId
+        // NOTE: To support multi-chain transfers, call below functions to check repeatedly with each chainId and plannedBridgeAmount
+        // for each chain (Likely passed from TransferIntent with a list of chain Id)
+        assertTransferActionsAffordableOnTargetChain(
+            transferActions, chainAccountsList, transferIntent.chainId, plannedBridgeAmount
+        );
     }
 
-    function truncate(Actions.Action[] memory actions, uint256 length)
-        internal
-        pure
-        returns (Actions.Action[] memory)
-    {
-        Actions.Action[] memory result = new Actions.Action[](length);
-        for (uint256 i = 0; i < length; ++i) {
-            result[i] = actions[i];
-        }
-        return result;
-    }
+    function assertTransferActionsAffordableOnTargetChain(
+        Actions.Action[] memory transferActions,
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        uint256 targetChainId,
+        uint256 plannedBridgeAmountToTargetChain
+    ) internal pure {
+        uint256 paymentTokensUsed = 0;
+        for (uint256 i = 0; i < transferActions.length; ++i) {
+            Actions.TransferActionContext memory transferActionContext =
+                abi.decode(transferActions[i].actionContext, (Actions.TransferActionContext));
+            // Filter with the targetChainId and paymentTokensUsed will track on one chain at a time
+            if (transferActionContext.chainId == targetChainId) {
+                address transferToken = transferActionContext.token;
+                uint256 transferAmount = transferActionContext.amount;
+                uint256 paymentAssetBalanceOnChain = Accounts.sumBalances(
+                    Accounts.findAssetPositions(transferToken, transferActions[i].chainId, chainAccountsList)
+                );
+                paymentTokensUsed += transferActions[i].paymentMaxCost;
+                if (transferToken == transferActions[i].paymentToken) {
+                    // If the payment token is the transfer token and this is the target chain, we need to account for the transfer amount
+                    // If its transfer step, check if user has enough balance to cover the transfer amount after bridge
+                    if (
+                        paymentAssetBalanceOnChain + plannedBridgeAmountToTargetChain
+                            < paymentTokensUsed + transferAmount
+                    ) {
+                        revert MaxCostTooHigh();
+                    }
 
-    function truncate(IQuarkWallet.QuarkOperation[] memory operations, uint256 length)
-        internal
-        pure
-        returns (IQuarkWallet.QuarkOperation[] memory)
-    {
-        IQuarkWallet.QuarkOperation[] memory result = new IQuarkWallet.QuarkOperation[](length);
-        for (uint256 i = 0; i < length; ++i) {
-            result[i] = operations[i];
+                    // Special handling as the payment token is sent out so it will be part of the cost
+                    paymentTokensUsed += transferAmount;
+                } else {
+                    // Just check payment token can cover the max cost
+                    if (paymentAssetBalanceOnChain < paymentTokensUsed) {
+                        revert MaxCostTooHigh();
+                    }
+                }
+            }
         }
-        return result;
     }
 }

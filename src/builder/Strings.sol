@@ -7,7 +7,10 @@ library Strings {
     }
 
     function stringEqIgnoreCase(string memory a, string memory b) internal pure returns (bool) {
-        return keccak256(abi.encodePacked(toLowerCase(a))) == keccak256(abi.encodePacked(toLowerCase(b)));
+        // Need to copy bytes here to prevent unintentional memory changes side effect in strings that are passed in
+        string memory copyA = string(abi.encodePacked(a));
+        string memory copyB = string(abi.encodePacked(b));
+        return keccak256(abi.encodePacked(toLowerCase(copyA))) == keccak256(abi.encodePacked(toLowerCase(copyB)));
     }
 
     function toLowerCase(string memory str) internal pure returns (string memory) {

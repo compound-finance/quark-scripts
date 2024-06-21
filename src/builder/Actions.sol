@@ -9,6 +9,8 @@ import {CodeJarHelper} from "./CodeJarHelper.sol";
 import {TransferActions} from "../DeFiScripts.sol";
 
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
+import {PaycallWrapper} from "./PaycallWrapper.sol";
+import {PaymentInfo} from "./PaymentInfo.sol";
 
 library Actions {
     /* ===== Constants ===== */
@@ -87,19 +89,19 @@ library Actions {
         string bridgeType;
     }
 
-    function bridgeAsset(BridgeAsset memory bridge)
+    function bridgeAsset(BridgeAsset memory bridge, PaymentInfo.Payment memory payment)
         internal
         pure
         returns (IQuarkWallet.QuarkOperation memory, Action memory)
     {
         if (Strings.stringEqIgnoreCase(bridge.assetSymbol, "USDC")) {
-            return bridgeUSDC(bridge);
+            return bridgeUSDC(bridge, payment);
         } else {
             revert BridgingUnsupportedForAsset();
         }
     }
 
-    function bridgeUSDC(BridgeAsset memory bridge)
+    function bridgeUSDC(BridgeAsset memory bridge, PaymentInfo.Payment memory payment)
         internal
         pure
         returns (IQuarkWallet.QuarkOperation memory, Action memory)
@@ -130,6 +132,13 @@ library Actions {
             expiry: bridge.blockTimestamp + BRIDGE_EXPIRY_BUFFER
         });
 
+        if (payment.isToken) {
+            // Wrap operation with paycall
+            quarkOperation = PaycallWrapper.wrap(
+                quarkOperation, bridge.srcChainId, payment.currency, PaymentInfo.findMaxCost(payment, bridge.srcChainId)
+            );
+        }
+
         // Construct Action
         BridgeActionContext memory bridgeActionContext = BridgeActionContext({
             amount: bridge.amount,
@@ -145,18 +154,16 @@ library Actions {
             quarkAccount: bridge.sender,
             actionType: ACTION_TYPE_BRIDGE,
             actionContext: abi.encode(bridgeActionContext),
-            paymentMethod: PAYMENT_METHOD_OFFCHAIN,
+            paymentMethod: payment.isToken ? PAYMENT_METHOD_PAYCALL : PAYMENT_METHOD_OFFCHAIN,
             // Null address for OFFCHAIN payment.
-            paymentToken: address(0),
-            paymentMaxCost: 0
+            paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, bridge.srcChainId).token : address(0),
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, bridge.srcChainId) : 0
         });
 
         return (quarkOperation, action);
     }
 
-    // TODO: Handle paycall
-
-    function transferAsset(TransferAsset memory transfer)
+    function transferAsset(TransferAsset memory transfer, PaymentInfo.Payment memory payment)
         internal
         pure
         returns (IQuarkWallet.QuarkOperation memory, Action memory)
@@ -193,6 +200,13 @@ library Actions {
             expiry: transfer.blockTimestamp + TRANSFER_EXPIRY_BUFFER
         });
 
+        if (payment.isToken) {
+            // Wrap operation with paycall
+            quarkOperation = PaycallWrapper.wrap(
+                quarkOperation, transfer.chainId, payment.currency, PaymentInfo.findMaxCost(payment, transfer.chainId)
+            );
+        }
+
         // Construct Action
         TransferActionContext memory transferActionContext = TransferActionContext({
             amount: transfer.amount,
@@ -206,12 +220,52 @@ library Actions {
             quarkAccount: transfer.sender,
             actionType: ACTION_TYPE_TRANSFER,
             actionContext: abi.encode(transferActionContext),
-            paymentMethod: PAYMENT_METHOD_OFFCHAIN,
+            paymentMethod: payment.isToken ? PAYMENT_METHOD_PAYCALL : PAYMENT_METHOD_OFFCHAIN,
             // Null address for OFFCHAIN payment.
-            paymentToken: address(0),
-            paymentMaxCost: 0
+            paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, transfer.chainId).token : address(0),
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, transfer.chainId) : 0
         });
 
         return (quarkOperation, action);
+    }
+
+    function findActionsOfType(Actions.Action[] memory actions, string memory actionType)
+        internal
+        pure
+        returns (Actions.Action[] memory)
+    {
+        uint256 count = 0;
+        Actions.Action[] memory result = new Actions.Action[](actions.length);
+        for (uint256 i = 0; i < actions.length; ++i) {
+            if (Strings.stringEqIgnoreCase(actions[i].actionType, actionType)) {
+                result[count++] = actions[i];
+            }
+        }
+
+        return truncate(result, count);
+    }
+
+    function truncate(Actions.Action[] memory actions, uint256 length)
+        internal
+        pure
+        returns (Actions.Action[] memory)
+    {
+        Actions.Action[] memory result = new Actions.Action[](length);
+        for (uint256 i = 0; i < length; ++i) {
+            result[i] = actions[i];
+        }
+        return result;
+    }
+
+    function truncate(IQuarkWallet.QuarkOperation[] memory operations, uint256 length)
+        internal
+        pure
+        returns (IQuarkWallet.QuarkOperation[] memory)
+    {
+        IQuarkWallet.QuarkOperation[] memory result = new IQuarkWallet.QuarkOperation[](length);
+        for (uint256 i = 0; i < length; ++i) {
+            result[i] = operations[i];
+        }
+        return result;
     }
 }

@@ -3,8 +3,21 @@ pragma solidity ^0.8.23;
 
 import {Strings} from "./Strings.sol";
 
-library PaymentTokens {
+library PaymentInfo {
     error NoKnownPaymentToken(uint256 chainId);
+    error MaxCostMissingForChain(uint256 chainId);
+
+    struct Payment {
+        bool isToken;
+        // Note: Payment `currency` should be the same across chains
+        string currency;
+        PaymentMaxCost[] maxCosts;
+    }
+
+    struct PaymentMaxCost {
+        uint256 chainId;
+        uint256 amount;
+    }
 
     struct PaymentToken {
         uint256 chainId;
@@ -43,5 +56,14 @@ library PaymentTokens {
             }
         }
         revert NoKnownPaymentToken(chainId);
+    }
+
+    function findMaxCost(Payment memory payment, uint256 chainId) internal pure returns (uint256) {
+        for (uint256 i = 0; i < payment.maxCosts.length; ++i) {
+            if (payment.maxCosts[i].chainId == chainId) {
+                return payment.maxCosts[i].amount;
+            }
+        }
+        revert MaxCostMissingForChain(chainId);
     }
 }
