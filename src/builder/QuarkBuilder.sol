@@ -133,9 +133,28 @@ contract QuarkBuilder {
                         revert TooManyBridgeOperations();
                     }
 
-                    uint256 amountToBridge = srcAccountBalances[j].balance >= amountLeftToBridge
-                        ? amountLeftToBridge
-                        : srcAccountBalances[j].balance;
+                    uint256 amountToBridge;
+                    // Handle differently if the transfer intent token is the payment token
+                    if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, transferIntent.assetSymbol)) {
+                        // Apply payment token logics to figure out the amount to bridge
+                        if (
+                            srcAccountBalances[j].balance
+                                >= amountLeftToBridge + PaymentInfo.findMaxCost(payment, srcChainAccounts.chainId)
+                        ) {
+                            amountToBridge = amountLeftToBridge;
+                        } else {
+                            amountToBridge = srcAccountBalances[j].balance
+                                - PaymentInfo.findMaxCost(payment, srcChainAccounts.chainId);
+                        }
+                    } else {
+                        // Apply straighforward logics to bridge the token right away
+                        if (srcAccountBalances[j].balance >= amountLeftToBridge) {
+                            amountToBridge = amountLeftToBridge;
+                        } else {
+                            amountToBridge = srcAccountBalances[j].balance;
+                        }
+                    }
+
                     amountLeftToBridge -= amountToBridge;
 
                     (quarkOperations[actionIndex], actions[actionIndex]) = Actions.bridgeAsset(
@@ -163,13 +182,6 @@ contract QuarkBuilder {
             if (amountLeftToBridge > 0) {
                 revert FundsUnavailable();
             }
-        }
-
-        // Need to re-adjust the transferIntent.amount before operation struct is created when transferMax is true and transfer token is payment token at the same time
-        // Will need to allocate some for the payment at the end
-        if (transferMax && Strings.stringEqIgnoreCase(payment.currency, transferIntent.assetSymbol)) {
-            // Subtract the max cost (quotecall cost) from the transferIntent.amount
-            transferIntent.amount -= PaymentInfo.findMaxCost(payment, transferIntent.chainId);
         }
 
         // Then, transferIntent `amount` of `assetSymbol` to `recipient`
@@ -365,13 +377,16 @@ contract QuarkBuilder {
         PaymentInfo.Payment memory payment
     ) internal pure returns (uint256) {
         uint256 total = 0;
-        for (uint256 i = 0; i < payment.maxCosts.length; ++i) {
-            uint256 paymentAssetBalanceOnChain = Accounts.sumBalances(
-                Accounts.findAssetPositions(tokenSymbol, payment.maxCosts[i].chainId, chainAccountsList)
+
+        for (uint256 i = 0; i < chainAccountsList.length; ++i) {
+            total += Accounts.sumBalances(
+                Accounts.findAssetPositions(tokenSymbol, chainAccountsList[i].chainId, chainAccountsList)
             );
-            uint256 paymentAssetNeeded = payment.maxCosts[i].amount;
-            if (paymentAssetBalanceOnChain > paymentAssetNeeded) {
-                total += paymentAssetBalanceOnChain - paymentAssetNeeded;
+
+            // Account for max cost if the payment token is the transfer token
+            // Simply offset the max cost from the available asset batch
+            if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, tokenSymbol)) {
+                total -= PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId);
             }
         }
         return total;

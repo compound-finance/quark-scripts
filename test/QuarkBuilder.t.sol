@@ -423,7 +423,7 @@ contract QuarkBuilderTest is Test {
             "action context encoded from TransferActionContext"
         );
 
-        assertEq(result.quarkOperationDigest, hex"", "empty single digest");
+        assertNotEq(result.quarkOperationDigest, hex"", "non-empty digest");
     }
 
     function testSimpleLocalTransferMax() public {
