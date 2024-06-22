@@ -6,7 +6,7 @@ import {Strings} from "./Strings.sol";
 import {Accounts} from "./Accounts.sol";
 import {CodeJarHelper} from "./CodeJarHelper.sol";
 
-import {TransferActions} from "../DeFiScripts.sol";
+import {CometSupplyActions, TransferActions} from "../DeFiScripts.sol";
 
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
 import {PaycallWrapper} from "./PaycallWrapper.sol";
@@ -33,8 +33,11 @@ library Actions {
 
     string constant BRIDGE_TYPE_CCTP = "CCTP";
 
-    uint256 constant TRANSFER_EXPIRY_BUFFER = 7 days;
+    /* expiry buffers */
+    uint256 constant STANDARD_EXPIRY_BUFFER = 7 days;
+
     uint256 constant BRIDGE_EXPIRY_BUFFER = 7 days;
+    uint256 constant TRANSFER_EXPIRY_BUFFER = 7 days;
 
     /* ===== Custom Errors ===== */
 
@@ -42,6 +45,16 @@ library Actions {
     error InvalidAssetForBridge();
 
     /* ===== Input Types ===== */
+
+    struct CometSupply {
+        Accounts.ChainAccounts[] chainAccountsList;
+        uint256 amount;
+        string assetSymbol;
+        uint256 blockTimestamp;
+        uint256 chainId;
+        address comet;
+        address sender;
+    }
 
     struct TransferAsset {
         Accounts.ChainAccounts[] chainAccountsList;
@@ -260,6 +273,71 @@ library Actions {
         return (quarkOperation, action);
     }
 
+    function cometSupplyAsset(CometSupply memory cometSupply, PaymentInfo.Payment memory payment)
+        internal
+        pure
+        returns (IQuarkWallet.QuarkOperation memory, Action memory)
+    {
+        bytes[] memory scriptSources = new bytes[](1);
+        scriptSources[0] = type(CometSupplyActions).creationCode;
+
+        Accounts.ChainAccounts memory accounts =
+            Accounts.findChainAccounts(cometSupply.chainId, cometSupply.chainAccountsList);
+
+        Accounts.AssetPositions memory assetPositions =
+            Accounts.findAssetPositions(cometSupply.assetSymbol, accounts.assetPositionsList);
+
+        Accounts.QuarkState memory accountState = Accounts.findQuarkState(cometSupply.sender, accounts.quarkStates);
+
+        bytes memory scriptCalldata;
+        if (Strings.stringEqIgnoreCase(cometSupply.assetSymbol, "ETH")) {
+            // XXX handle wrapping ETH
+        } else {
+            scriptCalldata = abi.encodeWithSelector(
+                CometSupplyActions.supply.selector, cometSupply.comet, assetPositions.asset, cometSupply.amount
+            );
+        }
+        // Construct QuarkOperation
+        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
+            nonce: accountState.quarkNextNonce,
+            scriptAddress: CodeJarHelper.getCodeAddress(type(CometSupplyActions).creationCode),
+            scriptCalldata: scriptCalldata,
+            scriptSources: scriptSources,
+            expiry: cometSupply.blockTimestamp + STANDARD_EXPIRY_BUFFER
+        });
+
+        if (payment.isToken) {
+            // Wrap operation with paycall
+            quarkOperation = PaycallWrapper.wrap(
+                quarkOperation,
+                cometSupply.chainId,
+                payment.currency,
+                PaymentInfo.findMaxCost(payment, cometSupply.chainId)
+            );
+        }
+
+        // Construct Action
+        CometSupplyActionContext memory cometSupplyActionContext = CometSupplyActionContext({
+            amount: cometSupply.amount,
+            chainId: cometSupply.chainId,
+            comet: cometSupply.comet,
+            price: assetPositions.usdPrice,
+            token: assetPositions.asset
+        });
+        Action memory action = Actions.Action({
+            chainId: cometSupply.chainId,
+            quarkAccount: cometSupply.sender,
+            actionType: ACTION_TYPE_COMET_SUPPLY,
+            actionContext: abi.encode(cometSupplyActionContext),
+            paymentMethod: payment.isToken ? PAYMENT_METHOD_PAYCALL : PAYMENT_METHOD_OFFCHAIN,
+            // Null address for OFFCHAIN payment.
+            paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, cometSupply.chainId).token : address(0),
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, cometSupply.chainId) : 0
+        });
+
+        return (quarkOperation, action);
+    }
+
     function transferAsset(TransferAsset memory transfer, PaymentInfo.Payment memory payment, bool useQuoteCall)
         internal
         pure
@@ -347,6 +425,22 @@ library Actions {
         Actions.Action[] memory result = new Actions.Action[](actions.length);
         for (uint256 i = 0; i < actions.length; ++i) {
             if (Strings.stringEqIgnoreCase(actions[i].actionType, actionType)) {
+                result[count++] = actions[i];
+            }
+        }
+
+        return truncate(result, count);
+    }
+
+    function findActionsNotOfType(Actions.Action[] memory actions, string memory actionType)
+        internal
+        pure
+        returns (Actions.Action[] memory)
+    {
+        uint256 count = 0;
+        Actions.Action[] memory result = new Actions.Action[](actions.length);
+        for (uint256 i = 0; i < actions.length; ++i) {
+            if (!Strings.stringEqIgnoreCase(actions[i].actionType, actionType)) {
                 result[count++] = actions[i];
             }
         }
