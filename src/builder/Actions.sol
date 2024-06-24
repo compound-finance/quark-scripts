@@ -154,14 +154,21 @@ library Actions {
             destinationChainId: bridge.destinationChainId,
             bridgeType: BRIDGE_TYPE_CCTP
         });
+
+        string memory paymentMethod;
+        if (payment.isToken) {
+            // To pay with token, it has to be a paycall or quotecall.
+            paymentMethod = useQuoteCall ? PAYMENT_METHOD_QUOTECALL : PAYMENT_METHOD_PAYCALL;
+        } else {
+            paymentMethod = PAYMENT_METHOD_OFFCHAIN;
+        }
+
         Action memory action = Actions.Action({
             chainId: bridge.srcChainId,
             quarkAccount: bridge.sender,
             actionType: ACTION_TYPE_BRIDGE,
             actionContext: abi.encode(bridgeActionContext),
-            paymentMethod: payment.isToken
-                ? useQuoteCall ? PAYMENT_METHOD_QUOTECALL : PAYMENT_METHOD_PAYCALL
-                : PAYMENT_METHOD_OFFCHAIN,
+            paymentMethod: paymentMethod,
             // Null address for OFFCHAIN payment.
             paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, bridge.srcChainId).token : address(0),
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, bridge.srcChainId) : 0
@@ -226,14 +233,20 @@ library Actions {
             chainId: transfer.chainId,
             recipient: transfer.recipient
         });
+        string memory paymentMethod;
+        if (payment.isToken) {
+            // To pay with token, it has to be a paycall or quotecall.
+            paymentMethod = useQuoteCall ? PAYMENT_METHOD_QUOTECALL : PAYMENT_METHOD_PAYCALL;
+        } else {
+            paymentMethod = PAYMENT_METHOD_OFFCHAIN;
+        }
+
         Action memory action = Actions.Action({
             chainId: transfer.chainId,
             quarkAccount: transfer.sender,
             actionType: ACTION_TYPE_TRANSFER,
             actionContext: abi.encode(transferActionContext),
-            paymentMethod: payment.isToken
-                ? useQuoteCall ? PAYMENT_METHOD_QUOTECALL : PAYMENT_METHOD_PAYCALL
-                : PAYMENT_METHOD_OFFCHAIN,
+            paymentMethod: paymentMethod,
             // Null address for OFFCHAIN payment.
             paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, transfer.chainId).token : address(0),
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, transfer.chainId) : 0
