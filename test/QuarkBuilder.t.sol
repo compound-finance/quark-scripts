@@ -471,12 +471,13 @@ contract QuarkBuilderTest is Test {
         assertEq(
             result.quarkOperations[0].scriptCalldata,
             abi.encodeWithSelector(
-                Paycall.run.selector,
+                Quotecall.run.selector,
                 transferActionsAddress,
-                abi.encodeWithSelector(TransferActions.transferERC20Token.selector, usdc_(1), address(0xceecee), 1e6),
+                // Transfermax should be able to adjust to the right maxz amount to transfer all funds: 10e6 (holding) - 1e5 (max cost) = 9.9e6
+                abi.encodeWithSelector(TransferActions.transferERC20Token.selector, usdc_(1), address(0xceecee), 9.9e6),
                 1e5
             ),
-            "calldata is Paycall.run(TransferActions.transferERC20Token(USDC_1, address(0xceecee), 1e6), 20e6);"
+            "calldata is Quotecall.run(TransferActions.transferERC20Token(USDC_1, address(0xceecee), 9.9e6), 1e5);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
@@ -486,14 +487,14 @@ contract QuarkBuilderTest is Test {
         assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
         assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
         assertEq(result.actions[0].actionType, "TRANSFER", "action type is 'TRANSFER'");
-        assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
+        assertEq(result.actions[0].paymentMethod, "QUOTE_CALL", "payment method is 'QUOTE_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
         assertEq(result.actions[0].paymentMaxCost, 1e5, "payment max is set to 1e5 in this test case");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
                 Actions.TransferActionContext({
-                    amount: 1e6,
+                    amount: 9.9e6,
                     price: 1e8,
                     token: USDC_1,
                     chainId: 1,
