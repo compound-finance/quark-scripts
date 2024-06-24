@@ -579,7 +579,7 @@ contract QuarkBuilderTest is Test {
             abi.encodeWithSelector(
                 Quotecall.run.selector,
                 CodeJarHelper.getCodeAddress(type(TransferActions).creationCode),
-                // Transfermax should be able to adjust to the right maxz amount to transfer all funds: 4e6 (holdings on base) - 0.1e6 (max cost on base) + 7.5e6 (brdiged from mainnet)= 3.9e6 + 7.5e6 = 11.4e6
+                // Transfermax should be able to adjust to the right max amount to transfer all funds: 4e6 (holdings on base) - 0.1e6 (max cost on base) + 7.5e6 (brdiged from mainnet)= 3.9e6 + 7.5e6 = 11.4e6
                 abi.encodeWithSelector(
                     TransferActions.transferERC20Token.selector, usdc_(8453), address(0xceecee), 11.4e6
                 ),
