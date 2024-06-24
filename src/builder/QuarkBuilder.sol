@@ -67,9 +67,9 @@ contract QuarkBuilder {
         PaymentInfo.Payment memory payment
     ) external pure returns (BuilderResult memory) {
         // TransferMax flag
-        bool transferMax = transferIntent.amount == type(uint256).max;
+        bool isMaxTransfer = transferIntent.amount == type(uint256).max;
         // Convert transferIntent to user aggregated balance
-        if (transferMax) {
+        if (isMaxTransfer) {
             transferIntent.amount = totalAvailableAsset(transferIntent.assetSymbol, chainAccountsList, payment);
         }
 
@@ -83,6 +83,9 @@ contract QuarkBuilder {
          * therefore the upper bound is chainAccountsList.length.
          */
         uint256 actionIndex = 0;
+
+        // TransferMax will always use quotecall to avoid leaving dust in wallet
+        bool useQuotecall = isMaxTransfer;
         // TODO: actually allocate quark actions
         Actions.Action[] memory actions = new Actions.Action[](chainAccountsList.length);
         IQuarkWallet.QuarkOperation[] memory quarkOperations =
@@ -166,7 +169,7 @@ contract QuarkBuilder {
                             blockTimestamp: transferIntent.blockTimestamp
                         }),
                         payment,
-                        transferMax
+                        useQuotecall
                     );
 
                     actionIndex++;
@@ -191,7 +194,7 @@ contract QuarkBuilder {
                 blockTimestamp: transferIntent.blockTimestamp
             }),
             payment,
-            transferMax
+            useQuotecall
         );
 
         actionIndex++;
