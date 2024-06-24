@@ -268,4 +268,17 @@ library Actions {
         }
         return result;
     }
-}
+
+    // These structs are mostly used internally and returned in serialzed format as bytes: actionContext
+    // The caller can then decode them back into their struct form.
+    // These empty husk functions exist so that the structs make it into the abi so the clients can know how to decode them.
+    function emptyTransferActionContext() external pure returns (TransferActionContext memory) {
+      TransferActionContext[] memory ts = new TransferActionContext[](1);
+      return ts[0];
+    }
+
+    function emptyBridgeActionContext() external pure returns (BridgeActionContext memory) {
+      BridgeActionContext[] memory bs = new BridgeActionContext[](1);
+      return bs[0];
+    }
+ }
