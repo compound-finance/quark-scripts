@@ -18,9 +18,6 @@ contract QuarkBuilder {
     string constant VERSION = "1.0.0";
     uint256 constant MAX_BRIDGE_ACTION = 1;
 
-    // Note: This is a default max cost for passing into paycall if PaymentMaxCost is missing for particular chainId
-    uint256 constant DEFAULT_MAX_PAYCALL_COST = 40e6;
-
     /* ===== Custom Errors ===== */
 
     error AssetPositionNotFound();
