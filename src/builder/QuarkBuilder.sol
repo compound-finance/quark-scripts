@@ -299,7 +299,7 @@ contract QuarkBuilder {
                 }
             }
         }
-        
+
         if (aggregateTransferAssetAvailableBalance < transferIntent.amount) {
             revert FundsUnavailable(
                 transferIntent.amount,

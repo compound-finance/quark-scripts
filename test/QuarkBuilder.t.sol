@@ -640,7 +640,7 @@ contract QuarkBuilderTest is Test {
         assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
     }
-    
+
     function testIgnoresChainIfMaxCostIsNotSpecified() public {
         QuarkBuilder builder = new QuarkBuilder();
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](2);

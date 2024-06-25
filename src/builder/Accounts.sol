@@ -162,7 +162,7 @@ library Accounts {
         }
         return total;
     }
-    
+
     function truncate(ChainAccounts[] memory chainAccountsList, uint256 length)
         internal
         pure
