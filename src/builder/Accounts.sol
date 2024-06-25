@@ -117,6 +117,14 @@ library Accounts {
         return sumBalances(positions);
     }
 
+    /*
+    * @notice Get the total available asset balance for a given token symbol across chains
+    * Substraction of max cost is done if the payment token is the transfer token to readjust the available balance
+    * @param tokenSymbol The token symbol to check
+    * @param chainAccountsList The list of chain accounts to check
+    * @param payment The payment info to check
+    * @return The total available asset balance
+    */
     function totalAvailableAsset(
         string memory tokenSymbol,
         Accounts.ChainAccounts[] memory chainAccountsList,
