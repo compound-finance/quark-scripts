@@ -91,6 +91,7 @@ library Actions {
         // Address of payment token on chainId.
         // Null address if the payment method was OFFCHAIN.
         address paymentToken;
+        string paymentTokenSymbol;
         uint256 paymentMaxCost;
     }
 
@@ -107,6 +108,7 @@ library Actions {
 
     struct BridgeActionContext {
         uint256 amount;
+        string assetSymbol;
         string bridgeType;
         uint256 chainId;
         uint256 destinationChainId;
@@ -153,6 +155,7 @@ library Actions {
 
     struct SupplyActionContext {
         uint256 amount;
+        string assetSymbol;
         uint256 chainId;
         address comet;
         uint256 price;
@@ -161,6 +164,7 @@ library Actions {
 
     struct TransferActionContext {
         uint256 amount;
+        string assetSymbol;
         uint256 chainId;
         uint256 price;
         address recipient;
@@ -245,6 +249,7 @@ library Actions {
             amount: bridge.amount,
             price: srcUSDCPositions.usdPrice,
             token: srcUSDCPositions.asset,
+            assetSymbol: srcUSDCPositions.symbol,
             chainId: bridge.srcChainId,
             recipient: bridge.recipient,
             destinationChainId: bridge.destinationChainId,
@@ -267,6 +272,7 @@ library Actions {
             paymentMethod: paymentMethod,
             // Null address for OFFCHAIN payment.
             paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, bridge.srcChainId).token : address(0),
+            paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, bridge.srcChainId) : 0
         });
 
@@ -322,7 +328,8 @@ library Actions {
             chainId: cometSupply.chainId,
             comet: cometSupply.comet,
             price: assetPositions.usdPrice,
-            token: assetPositions.asset
+            token: assetPositions.asset,
+            assetSymbol: assetPositions.symbol
         });
         Action memory action = Actions.Action({
             chainId: cometSupply.chainId,
@@ -332,6 +339,7 @@ library Actions {
             paymentMethod: payment.isToken ? PAYMENT_METHOD_PAYCALL : PAYMENT_METHOD_OFFCHAIN,
             // Null address for OFFCHAIN payment.
             paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, cometSupply.chainId).token : address(0),
+            paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, cometSupply.chainId) : 0
         });
 
@@ -391,6 +399,7 @@ library Actions {
             amount: transfer.amount,
             price: assetPositions.usdPrice,
             token: assetPositions.asset,
+            assetSymbol: assetPositions.symbol,
             chainId: transfer.chainId,
             recipient: transfer.recipient
         });
@@ -410,6 +419,7 @@ library Actions {
             paymentMethod: paymentMethod,
             // Null address for OFFCHAIN payment.
             paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, transfer.chainId).token : address(0),
+            paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, transfer.chainId) : 0
         });
 

@@ -59,7 +59,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
     function testFundsUnavailable() public {
         QuarkBuilder builder = new QuarkBuilder();
         // FundsUnavailable(2e6, 0e6, 2e6): Requested 2e6, Available 0e6, Still missing 2e6
-        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, 2e6, 0e6, 2e6));
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "USDC", 2e6, 0e6, 2e6));
         builder.transfer(
             // there is no bridge to chain 7777, so we cannot get to our funds
             transferUsdc_(7777, 2e6, address(0xfe11a), BLOCK_TIMESTAMP), // transfer 2USDC on chain 7777 to 0xfe11a
@@ -125,6 +125,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
                     amount: 1e6,
                     price: 1e8,
                     token: USDC_1,
+                    assetSymbol: "USDC",
                     chainId: 1,
                     recipient: address(0xceecee)
                 })
@@ -191,6 +192,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
                     amount: 1e6,
                     price: 1e8,
                     token: USDC_1,
+                    assetSymbol: "USDC",
                     chainId: 1,
                     recipient: address(0xceecee)
                 })
@@ -299,6 +301,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
                     amount: 2e6,
                     price: 1e8,
                     token: USDC_1,
+                    assetSymbol: "USDC",
                     chainId: 1,
                     recipient: address(0xa11ce),
                     destinationChainId: 8453,
@@ -320,6 +323,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
                     amount: 5e6,
                     price: 1e8,
                     token: USDC_8453,
+                    assetSymbol: "USDC",
                     chainId: 8453,
                     recipient: address(0xceecee)
                 })
@@ -416,6 +420,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
                     amount: 2.1e6,
                     price: 1e8,
                     token: USDC_1,
+                    assetSymbol: "USDC",
                     chainId: 1,
                     recipient: address(0xa11ce),
                     destinationChainId: 8453,
@@ -437,6 +442,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
                     amount: 5e6,
                     price: 1e8,
                     token: USDC_8453,
+                    assetSymbol: "USDC",
                     chainId: 8453,
                     recipient: address(0xceecee)
                 })
@@ -511,6 +517,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
                     amount: 9.9e6,
                     price: 1e8,
                     token: USDC_1,
+                    assetSymbol: "USDC",
                     chainId: 1,
                     recipient: address(0xceecee)
                 })
@@ -620,6 +627,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
                     amount: 7.5e6,
                     price: 1e8,
                     token: USDC_1,
+                    assetSymbol: "USDC",
                     chainId: 1,
                     recipient: address(0xa11ce),
                     destinationChainId: 8453,
@@ -641,6 +649,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
                     amount: 11.4e6,
                     price: 1e8,
                     token: USDC_8453,
+                    assetSymbol: "USDC",
                     chainId: 8453,
                     recipient: address(0xceecee)
                 })
@@ -682,7 +691,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         // Request amount = 17 USDC - 0.5 USDC (max cost on main) - 0.1 USDC (max cost on Base) - 0.1 USDC (max cost on RandomL2) = 16.3 USDC
         // Actual amount = 8 USDC (available on main) + 4 USDC (available on Base) - 0.5 USDC - 0.1 USDC = 11.4 USDC
         // Missing amount = 5 USDC - 0.1 USDC = 4.9 USDC
-        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, 16.3e6, 11.4e6, 4.9e6));
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "USDC", 16.3e6, 11.4e6, 4.9e6));
         builder.transfer(
             transferUsdc_(8453, type(uint256).max, address(0xceecee), BLOCK_TIMESTAMP), // transfer max USDC on chain 8453 to 0xceecee
             chainAccountsList, // holding 8 USDC on chains 1, 4 USDC on 8453, 5 USDC on 7777

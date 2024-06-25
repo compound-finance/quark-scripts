@@ -53,7 +53,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
 
     function testFundsUnavailable() public {
         QuarkBuilder builder = new QuarkBuilder();
-        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, 2e6, 0, 2e6));
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "USDC", 2e6, 0, 2e6));
         builder.cometSupply(
             // there is no bridge to chain 7777, so we cannot get to our funds
             cometSupply_(7777, 2e6), // transfer 2 USDC on chain 7777 to 0xfe11a
@@ -114,7 +114,16 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
         assertEq(
             result.actions[0].actionContext,
-            abi.encode(Actions.SupplyActionContext({amount: 1e6, chainId: 1, comet: COMET, price: 1e8, token: USDC_1})),
+            abi.encode(
+                Actions.SupplyActionContext({
+                    amount: 1e6,
+                    assetSymbol: "USDC",
+                    chainId: 1,
+                    comet: COMET,
+                    price: 1e8,
+                    token: USDC_1
+                })
+            ),
             "action context encoded from SupplyActionContext"
         );
 
@@ -173,7 +182,16 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMaxCost, 0.1e6, "payment max is set to .1e6 in this test case");
         assertEq(
             result.actions[0].actionContext,
-            abi.encode(Actions.SupplyActionContext({amount: 1e6, chainId: 1, comet: COMET, price: 1e8, token: USDC_1})),
+            abi.encode(
+                Actions.SupplyActionContext({
+                    amount: 1e6,
+                    assetSymbol: "USDC",
+                    chainId: 1,
+                    comet: COMET,
+                    price: 1e8,
+                    token: USDC_1
+                })
+            ),
             "action context encoded from SupplyActionContext"
         );
 
@@ -281,6 +299,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     amount: 2e6,
                     price: 1e8,
                     token: USDC_1,
+                    assetSymbol: "USDC",
                     chainId: 1,
                     recipient: address(0xa11ce),
                     destinationChainId: 8453,
@@ -300,7 +319,14 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertEq(
             result.actions[1].actionContext,
             abi.encode(
-                Actions.SupplyActionContext({amount: 5e6, chainId: 8453, comet: COMET, price: 1e8, token: USDC_8453})
+                Actions.SupplyActionContext({
+                    amount: 5e6,
+                    assetSymbol: "USDC",
+                    chainId: 8453,
+                    comet: COMET,
+                    price: 1e8,
+                    token: USDC_8453
+                })
             ),
             "action context encoded from SupplyActionContext"
         );
@@ -400,6 +426,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     amount: 2.1e6,
                     price: 1e8,
                     token: USDC_1,
+                    assetSymbol: "USDC",
                     chainId: 1,
                     recipient: address(0xa11ce),
                     destinationChainId: 8453,
@@ -418,7 +445,14 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertEq(
             result.actions[1].actionContext,
             abi.encode(
-                Actions.SupplyActionContext({amount: 5e6, chainId: 8453, comet: COMET, price: 1e8, token: USDC_8453})
+                Actions.SupplyActionContext({
+                    amount: 5e6,
+                    assetSymbol: "USDC",
+                    chainId: 8453,
+                    comet: COMET,
+                    price: 1e8,
+                    token: USDC_8453
+                })
             ),
             "action context encoded from SupplyActionContext"
         );
