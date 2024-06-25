@@ -26,12 +26,22 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         pure
         returns (QuarkBuilder.TransferIntent memory)
     {
+        return transferToken_("USDC", chainId, amount, recipient, blockTimestamp);
+    }
+
+    function transferToken_(
+        string memory assetSymbol,
+        uint256 chainId,
+        uint256 amount,
+        address recipient,
+        uint256 blockTimestamp
+    ) internal pure returns (QuarkBuilder.TransferIntent memory) {
         return QuarkBuilder.TransferIntent({
             chainId: chainId,
             sender: address(0xa11ce),
             recipient: recipient,
             amount: amount,
-            assetSymbol: "USDC",
+            assetSymbol: assetSymbol,
             blockTimestamp: blockTimestamp
         });
     }
@@ -357,7 +367,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         );
         address cctpBridgeActionsAddress = CodeJarHelper.getCodeAddress(type(CCTPBridgeActions).creationCode);
         assertEq(result.version, "1.0.0", "version 1");
-        assertEq(result.paymentCurrency, "usdc", "usd currency");
+        assertEq(result.paymentCurrency, "usdc", "usdc currency");
 
         // Check the quark operations
         assertEq(result.quarkOperations.length, 2, "two operations");
@@ -456,6 +466,124 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
     }
 
+    function testBridgeTransferBridgesPaymentToken() public {
+        QuarkBuilder builder = new QuarkBuilder();
+        PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](2);
+        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 0.5e6});
+        maxCosts[1] = PaymentInfo.PaymentMaxCost({chainId: 8453, amount: 4.5e6});
+
+        // Note: There are 3e6 USDC on each chain, so the Builder should attempt to bridge 1.5 USDC to chain 8453 to pay for the txn
+        QuarkBuilder.BuilderResult memory result = builder.transfer(
+            transferToken_("USDT", 8453, 3e6, address(0xceecee), BLOCK_TIMESTAMP), // transfer 3 USDT on chain 8453 to 0xceecee
+            chainAccountsList_(6e6), // holding 6 USDC and USDT in total across chains 1, 8453
+            paymentUsdc_(maxCosts)
+        );
+        address paycallAddress = CodeJarHelper.getCodeAddress(
+            abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
+        );
+        address paycallAddressBase = CodeJarHelper.getCodeAddress(
+            abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_8453, USDC_8453))
+        );
+        address cctpBridgeActionsAddress = CodeJarHelper.getCodeAddress(type(CCTPBridgeActions).creationCode);
+        assertEq(result.version, "1.0.0", "version 1");
+        assertEq(result.paymentCurrency, "usdc", "usdc currency");
+
+        // Check the quark operations
+        assertEq(result.quarkOperations.length, 2, "two operations");
+        assertEq(
+            result.quarkOperations[0].scriptAddress,
+            paycallAddress,
+            "script address[0] has been wrapped with paycall address"
+        );
+        assertEq(
+            result.quarkOperations[0].scriptCalldata,
+            abi.encodeWithSelector(
+                Paycall.run.selector,
+                cctpBridgeActionsAddress,
+                abi.encodeWithSelector(
+                    CCTPBridgeActions.bridgeUSDC.selector,
+                    address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155),
+                    1.5e6,
+                    6,
+                    bytes32(uint256(uint160(0xa11ce))),
+                    usdc_(1)
+                ),
+                0.5e6
+            ),
+            "calldata is Paycall.run(CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 1.5e6, 6, bytes32(uint256(uint160(0xa11ce))), usdc_(1))), 0.5e6);"
+        );
+        assertEq(
+            result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
+        );
+        assertEq(
+            result.quarkOperations[1].scriptAddress,
+            paycallAddressBase,
+            "script address[1] has been wrapped with paycall address"
+        );
+        assertEq(
+            result.quarkOperations[1].scriptCalldata,
+            abi.encodeWithSelector(
+                Paycall.run.selector,
+                CodeJarHelper.getCodeAddress(type(TransferActions).creationCode),
+                abi.encodeWithSelector(TransferActions.transferERC20Token.selector, usdt_(8453), address(0xceecee), 3e6),
+                4.5e6
+            ),
+            "calldata is Paycall.run(TransferActions.transferERC20Token(USDT_8453, address(0xceecee), 3e6), 4.5e6);"
+        );
+        assertEq(
+            result.quarkOperations[1].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
+        );
+
+        // Check the actions
+        assertEq(result.actions.length, 2, "one action");
+        assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
+        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[0].actionType, "BRIDGE", "action type is 'BRIDGE'");
+        assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
+        assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC on mainnet");
+        assertEq(result.actions[0].paymentMaxCost, 0.5e6, "payment should have max cost of 0.5e6");
+        assertEq(
+            result.actions[0].actionContext,
+            abi.encode(
+                Actions.BridgeActionContext({
+                    amount: 1.5e6,
+                    price: 1e8,
+                    token: USDC_1,
+                    assetSymbol: "USDC",
+                    chainId: 1,
+                    recipient: address(0xa11ce),
+                    destinationChainId: 8453,
+                    bridgeType: Actions.BRIDGE_TYPE_CCTP
+                })
+            ),
+            "action context encoded from BridgeActionContext"
+        );
+        assertEq(result.actions[1].chainId, 8453, "operation is on chainid 8453");
+        assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[1].actionType, "TRANSFER", "action type is 'TRANSFER'");
+        assertEq(result.actions[1].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
+        assertEq(result.actions[1].paymentToken, USDC_8453, "payment token is USDC on Base");
+        assertEq(result.actions[1].paymentMaxCost, 4.5e6, "payment should have max cost of 4.5e6");
+        assertEq(
+            result.actions[1].actionContext,
+            abi.encode(
+                Actions.TransferActionContext({
+                    amount: 3e6,
+                    price: 1e8,
+                    token: USDT_8453,
+                    assetSymbol: "USDT",
+                    chainId: 8453,
+                    recipient: address(0xceecee)
+                })
+            ),
+            "action context encoded from TransferActionContext"
+        );
+        // TODO: Check the contents of the EIP712 data
+        assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
+        assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
+        assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
+    }
+
     function testSimpleLocalTransferMax() public {
         QuarkBuilder builder = new QuarkBuilder();
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
@@ -479,7 +607,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         );
 
         assertEq(result.version, "1.0.0", "version 1");
-        assertEq(result.paymentCurrency, "usdc", "usd currency");
+        assertEq(result.paymentCurrency, "usdc", "usdc currency");
 
         // Check the quark operations
         assertEq(result.quarkOperations.length, 1, "one operation");
@@ -561,7 +689,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         );
         address cctpBridgeActionsAddress = CodeJarHelper.getCodeAddress(type(CCTPBridgeActions).creationCode);
         assertEq(result.version, "1.0.0", "version 1");
-        assertEq(result.paymentCurrency, "usdc", "usd currency");
+        assertEq(result.paymentCurrency, "usdc", "usdc currency");
 
         // Check the quark operations
         assertEq(result.quarkOperations.length, 2, "two operations");
@@ -701,8 +829,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
 
     function testIgnoresChainIfMaxCostIsNotSpecified() public {
         QuarkBuilder builder = new QuarkBuilder();
-        PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](2);
-        maxCosts[1] = PaymentInfo.PaymentMaxCost({chainId: 8453, amount: 1e5});
+        PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
+        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 8453, amount: 1e5});
 
         // Note: There are 3e6 USDC on each chain, so the Builder should attempt to bridge 2 USDC to chain 8453.
         // However, max cost is not specified for chain 1, so the Builder will ignore the chain and revert because
@@ -711,6 +839,23 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         builder.transfer(
             transferUsdc_(8453, 5e6, address(0xceecee), BLOCK_TIMESTAMP), // transfer 5 USDC on chain 8453 to 0xceecee
             chainAccountsList_(6e6), // holding 6 USDC in total across chains 1, 8453
+            paymentUsdc_(maxCosts)
+        );
+    }
+
+    function testRevertsIfNotEnoughFundsToBridge() public {
+        QuarkBuilder builder = new QuarkBuilder();
+        PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](2);
+        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 0.5e6});
+        maxCosts[1] = PaymentInfo.PaymentMaxCost({chainId: 8453, amount: 6.5e6});
+
+        // There is 3e6 USDC on each chain, so the Builder should attempt to bridge 3.5 USDC to chain 8453 to pay for the txn.
+        // However, we can only bridge 2.5 USDC because there is only 3 USDC on chain 1, and 0.5 USDC is reserved for the payment
+        // max cost there. Therefore, we are short 1e6 USDC.
+        vm.expectRevert(abi.encodeWithSelector(Actions.NotEnoughFundsToBridge.selector, "usdc", 3.5e6, 1e6));
+        builder.transfer(
+            transferToken_("USDT", 8453, 3e6, address(0xceecee), BLOCK_TIMESTAMP), // transfer 3 USDT on chain 8453 to 0xceecee
+            chainAccountsList_(6e6), // holding 6 USDC and USDT in total across chains 1, 8453
             paymentUsdc_(maxCosts)
         );
     }

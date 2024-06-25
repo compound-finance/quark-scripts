@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.23;
 
-import {CCTP} from "./BridgeRoutes.sol";
+import {BridgeRoutes, CCTP} from "./BridgeRoutes.sol";
 import {Strings} from "./Strings.sol";
 import {Accounts} from "./Accounts.sol";
 import {CodeJarHelper} from "./CodeJarHelper.sol";
@@ -43,6 +43,7 @@ library Actions {
 
     error BridgingUnsupportedForAsset();
     error InvalidAssetForBridge();
+    error NotEnoughFundsToBridge(string assetSymbol, uint256 requiredAmount, uint256 amountLeftToBridge);
 
     /* ===== Input Types ===== */
 
@@ -75,6 +76,16 @@ library Actions {
         uint256 destinationChainId;
         address recipient;
         uint256 blockTimestamp;
+    }
+
+    // Note: Mainly to avoid stack too deep errors
+    struct BridgeOperationInfo {
+        string assetSymbol;
+        uint256 amountNeededOnDst;
+        uint256 dstChainId;
+        address recipient;
+        uint256 blockTimestamp;
+        bool useQuotecall;
     }
 
     /* ===== Output Types ===== */
@@ -190,19 +201,123 @@ library Actions {
         uint256 withdrawAmount;
     }
 
-    function bridgeAsset(BridgeAsset memory bridge, PaymentInfo.Payment memory payment, bool useQuoteCall)
+    function constructBridgeOperations(
+        BridgeOperationInfo memory bridgeInfo,
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        PaymentInfo.Payment memory payment
+    ) internal pure returns (IQuarkWallet.QuarkOperation[] memory, Action[] memory) {
+        /*
+         * at most one bridge operation per non-destination chain,
+         * and at most one transferIntent operation on the destination chain.
+         *
+         * therefore the upper bound is chainAccountsList.length.
+         */
+        uint256 actionIndex = 0;
+        Action[] memory actions = new Action[](chainAccountsList.length);
+        IQuarkWallet.QuarkOperation[] memory quarkOperations =
+            new IQuarkWallet.QuarkOperation[](chainAccountsList.length);
+
+        // Note: Assumes that the asset uses the same # of decimals on each chain
+        uint256 balanceOnDstChain =
+            Accounts.getBalanceOnChain(bridgeInfo.assetSymbol, bridgeInfo.dstChainId, chainAccountsList);
+        uint256 amountLeftToBridge = bridgeInfo.amountNeededOnDst - balanceOnDstChain;
+        uint256 bridgeActionCount = 0;
+        // TODO: bridge routing logic (which bridge to prioritize, how many bridges?)
+        // Iterate chainAccountList and find up to 2 chains that can provide enough fund
+        // Backend can provide optimal routes by adjust the order in chainAccountList.
+        for (uint256 i = 0; i < chainAccountsList.length; ++i) {
+            // End loop if enough tokens have been bridged
+            if (amountLeftToBridge == 0) {
+                break;
+            }
+
+            Accounts.ChainAccounts memory srcChainAccounts = chainAccountsList[i];
+            // Skip if the current chain is the target chain, since bridging is not possible
+            if (srcChainAccounts.chainId == bridgeInfo.dstChainId) {
+                continue;
+            }
+
+            // Skip if there is no bridge route for the current chain to the target chain
+            if (!BridgeRoutes.canBridge(srcChainAccounts.chainId, bridgeInfo.dstChainId, bridgeInfo.assetSymbol)) {
+                continue;
+            }
+
+            Accounts.AssetPositions memory srcAssetPositions =
+                Accounts.findAssetPositions(bridgeInfo.assetSymbol, srcChainAccounts.assetPositionsList);
+            Accounts.AccountBalance[] memory srcAccountBalances = srcAssetPositions.accountBalances;
+            // TODO: Make logic smarter. Currently, this uses a greedy algorithm.
+            // e.g. Optimize by trying to bridge with the least amount of bridge operations
+            for (uint256 j = 0; j < srcAccountBalances.length; ++j) {
+                uint256 amountToBridge;
+                // If the intent token is the payment token, we need to leave enough payment token on the source chain to cover the payment max cost
+                if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, bridgeInfo.assetSymbol)) {
+                    if (
+                        srcAccountBalances[j].balance
+                            >= amountLeftToBridge + PaymentInfo.findMaxCost(payment, srcChainAccounts.chainId)
+                    ) {
+                        amountToBridge = amountLeftToBridge;
+                    } else {
+                        // NOTE: This logic only works when the user has only a single account on each chain. If there are multiple,
+                        // then we need to re-adjust this.
+                        amountToBridge =
+                            srcAccountBalances[j].balance - PaymentInfo.findMaxCost(payment, srcChainAccounts.chainId);
+                    }
+                } else {
+                    if (srcAccountBalances[j].balance >= amountLeftToBridge) {
+                        amountToBridge = amountLeftToBridge;
+                    } else {
+                        amountToBridge = srcAccountBalances[j].balance;
+                    }
+                }
+                amountLeftToBridge -= amountToBridge;
+
+                (quarkOperations[actionIndex], actions[actionIndex]) = bridgeAsset(
+                    BridgeAsset({
+                        chainAccountsList: chainAccountsList,
+                        assetSymbol: bridgeInfo.assetSymbol,
+                        amount: amountToBridge,
+                        // where it comes from
+                        srcChainId: srcChainAccounts.chainId,
+                        sender: srcAccountBalances[j].account,
+                        // where it goes
+                        destinationChainId: bridgeInfo.dstChainId,
+                        recipient: bridgeInfo.recipient,
+                        blockTimestamp: bridgeInfo.blockTimestamp
+                    }),
+                    payment,
+                    bridgeInfo.useQuotecall
+                );
+
+                actionIndex++;
+                bridgeActionCount++;
+            }
+        }
+
+        if (amountLeftToBridge > 0) {
+            revert NotEnoughFundsToBridge(
+                bridgeInfo.assetSymbol, bridgeInfo.amountNeededOnDst - balanceOnDstChain, amountLeftToBridge
+            );
+        }
+
+        // Truncate actions and quark operations
+        actions = truncate(actions, actionIndex);
+        quarkOperations = truncate(quarkOperations, actionIndex);
+        return (quarkOperations, actions);
+    }
+
+    function bridgeAsset(BridgeAsset memory bridge, PaymentInfo.Payment memory payment, bool useQuotecall)
         internal
         pure
         returns (IQuarkWallet.QuarkOperation memory, Action memory)
     {
         if (Strings.stringEqIgnoreCase(bridge.assetSymbol, "USDC")) {
-            return bridgeUSDC(bridge, payment, useQuoteCall);
+            return bridgeUSDC(bridge, payment, useQuotecall);
         } else {
             revert BridgingUnsupportedForAsset();
         }
     }
 
-    function bridgeUSDC(BridgeAsset memory bridge, PaymentInfo.Payment memory payment, bool useQuoteCall)
+    function bridgeUSDC(BridgeAsset memory bridge, PaymentInfo.Payment memory payment, bool useQuotecall)
         internal
         pure
         returns (IQuarkWallet.QuarkOperation memory, Action memory)
@@ -235,7 +350,7 @@ library Actions {
 
         if (payment.isToken) {
             // Wrap operation with paycall
-            quarkOperation = useQuoteCall
+            quarkOperation = useQuotecall
                 ? QuotecallWrapper.wrap(
                     quarkOperation, bridge.srcChainId, payment.currency, PaymentInfo.findMaxCost(payment, bridge.srcChainId)
                 )
@@ -259,7 +374,7 @@ library Actions {
         string memory paymentMethod;
         if (payment.isToken) {
             // To pay with token, it has to be a paycall or quotecall.
-            paymentMethod = useQuoteCall ? PAYMENT_METHOD_QUOTECALL : PAYMENT_METHOD_PAYCALL;
+            paymentMethod = useQuotecall ? PAYMENT_METHOD_QUOTECALL : PAYMENT_METHOD_PAYCALL;
         } else {
             paymentMethod = PAYMENT_METHOD_OFFCHAIN;
         }
@@ -346,7 +461,7 @@ library Actions {
         return (quarkOperation, action);
     }
 
-    function transferAsset(TransferAsset memory transfer, PaymentInfo.Payment memory payment, bool useQuoteCall)
+    function transferAsset(TransferAsset memory transfer, PaymentInfo.Payment memory payment, bool useQuotecall)
         internal
         pure
         returns (IQuarkWallet.QuarkOperation memory, Action memory)
@@ -385,7 +500,7 @@ library Actions {
 
         if (payment.isToken) {
             // Wrap operation with paycall
-            quarkOperation = useQuoteCall
+            quarkOperation = useQuotecall
                 ? QuotecallWrapper.wrap(
                     quarkOperation, transfer.chainId, payment.currency, PaymentInfo.findMaxCost(payment, transfer.chainId)
                 )
@@ -406,7 +521,7 @@ library Actions {
         string memory paymentMethod;
         if (payment.isToken) {
             // To pay with token, it has to be a paycall or quotecall.
-            paymentMethod = useQuoteCall ? PAYMENT_METHOD_QUOTECALL : PAYMENT_METHOD_PAYCALL;
+            paymentMethod = useQuotecall ? PAYMENT_METHOD_QUOTECALL : PAYMENT_METHOD_PAYCALL;
         } else {
             paymentMethod = PAYMENT_METHOD_OFFCHAIN;
         }
@@ -426,13 +541,13 @@ library Actions {
         return (quarkOperation, action);
     }
 
-    function findActionsOfType(Actions.Action[] memory actions, string memory actionType)
+    function findActionsOfType(Action[] memory actions, string memory actionType)
         internal
         pure
-        returns (Actions.Action[] memory)
+        returns (Action[] memory)
     {
         uint256 count = 0;
-        Actions.Action[] memory result = new Actions.Action[](actions.length);
+        Action[] memory result = new Action[](actions.length);
         for (uint256 i = 0; i < actions.length; ++i) {
             if (Strings.stringEqIgnoreCase(actions[i].actionType, actionType)) {
                 result[count++] = actions[i];
@@ -458,12 +573,8 @@ library Actions {
         return truncate(result, count);
     }
 
-    function truncate(Actions.Action[] memory actions, uint256 length)
-        internal
-        pure
-        returns (Actions.Action[] memory)
-    {
-        Actions.Action[] memory result = new Actions.Action[](length);
+    function truncate(Action[] memory actions, uint256 length) internal pure returns (Action[] memory) {
+        Action[] memory result = new Action[](length);
         for (uint256 i = 0; i < length; ++i) {
             result[i] = actions[i];
         }
