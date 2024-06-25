@@ -22,7 +22,7 @@ contract QuarkBuilder {
 
     error AssetPositionNotFound();
     error FundsUnavailable(uint256 requiredAmount, uint256 actualAmount, uint256 missingAmount);
-    error InsufficientFunds();
+    error InsufficientFunds(uint256 requiredAmount, uint256 actualAmount);
     error InvalidInput();
     error MaxCostTooHigh();
     error TooManyBridgeOperations();
@@ -66,7 +66,12 @@ contract QuarkBuilder {
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
     ) external pure returns (BuilderResult memory) {
-        // TransferMax flag
+        // If the action is paid for with tokens, filter out any chain accounts that do not have corresponding payment information
+        if (payment.isToken) {
+            chainAccountsList = Accounts.findChainAccountsWithPaymentInfo(chainAccountsList, payment);
+        }
+
+        // Initialize TransferMax flag
         bool isMaxTransfer = transferIntent.amount == type(uint256).max;
         // Convert transferIntent to user aggregated balance
         if (isMaxTransfer) {
@@ -106,15 +111,18 @@ contract QuarkBuilder {
             // Iterate chainAccountList and find upto 2 chains that can provide enough fund
             // Backend can provide optimal routes by adjust the order in chainAccountList.
             for (uint256 i = 0; i < chainAccountsList.length; ++i) {
+                // End loop if enough tokens have been bridged
                 if (amountLeftToBridge == 0) {
                     break;
                 }
 
                 Accounts.ChainAccounts memory srcChainAccounts = chainAccountsList[i];
+                // Skip if the current chain is the target chain, since bridging is not possible
                 if (srcChainAccounts.chainId == transferIntent.chainId) {
                     continue;
                 }
 
+                // Skip if there is no bridge route for the current chain to the target chain
                 if (
                     !BridgeRoutes.canBridge(srcChainAccounts.chainId, transferIntent.chainId, transferIntent.assetSymbol)
                 ) {
@@ -250,47 +258,54 @@ contract QuarkBuilder {
         }
         // There are not enough aggregate funds on all chains to fulfill the transfer.
         if (aggregateTransferAssetBalance < transferIntent.amount) {
-            revert InsufficientFunds();
+            revert InsufficientFunds(transferIntent.amount, aggregateTransferAssetBalance);
         }
     }
 
-    // For some reason, funds that may otherwise be bridgeable or held by the
-    // user cannot be made available to fulfill the transaction. Funds cannot
-    // be bridged, e.g. no bridge exists Funds cannot be withdrawn from comet,
-    // e.g. no reserves In order to consider the availability here, we’d need
-    // comet data to be passed in as an input. (So, if we were including
-    // withdraw.)
+    // For some reason, funds that may otherwise be bridgeable or held by the user cannot
+    // be made available to fulfill the transaction.
+    // Funds cannot be bridged, e.g. no bridge exists
+    // Funds cannot be withdrawn from Comet, e.g. no reserves
     function assertFundsAvailable(
         TransferIntent memory transferIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
     ) internal pure {
-        if (needsBridgedFunds(transferIntent, chainAccountsList)) {
-            uint256 aggregateTransferAssetAvailableBalance;
-            for (uint256 i = 0; i < chainAccountsList.length; ++i) {
-                Accounts.AssetPositions memory positions =
-                    Accounts.findAssetPositions(transferIntent.assetSymbol, chainAccountsList[i].assetPositionsList);
-                if (
-                    chainAccountsList[i].chainId == transferIntent.chainId
-                        || BridgeRoutes.canBridge(
-                            chainAccountsList[i].chainId, transferIntent.chainId, transferIntent.assetSymbol
-                        )
-                ) {
-                    aggregateTransferAssetAvailableBalance += Accounts.sumBalances(positions);
-                    // If the payment token is the transfer token and user opt for paying with the payment token, reduce the available balance by the maxCost
-                    if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, transferIntent.assetSymbol)) {
-                        uint256 maxCost = PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId);
-                        aggregateTransferAssetAvailableBalance -= maxCost;
-                    }
+        // If no funds need to be bridged, then this check is satisfied
+        // TODO: We might still need to check the availability of funds on the target chain, e.g. see if
+        // funds are locked in a lending protocol and can't be withdrawn
+        if (!needsBridgedFunds(transferIntent, chainAccountsList)) {
+            return;
+        }
+
+        // Check each chain to see if there are enough transfer assets to be bridged over
+        uint256 aggregateTransferAssetAvailableBalance;
+        for (uint256 i = 0; i < chainAccountsList.length; ++i) {
+            Accounts.AssetPositions memory positions =
+                Accounts.findAssetPositions(transferIntent.assetSymbol, chainAccountsList[i].assetPositionsList);
+
+            if (
+                chainAccountsList[i].chainId == transferIntent.chainId
+                    || BridgeRoutes.canBridge(
+                        chainAccountsList[i].chainId, transferIntent.chainId, transferIntent.assetSymbol
+                    )
+            ) {
+                aggregateTransferAssetAvailableBalance += Accounts.sumBalances(positions);
+                // If the user opts for paying with the payment token and the payment token is the transfer token, reduce
+                // the available balance by the max cost because the max cost is reserved for paying the txn
+                if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, transferIntent.assetSymbol)) {
+                    uint256 maxCost = PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId);
+                    aggregateTransferAssetAvailableBalance -= maxCost;
                 }
             }
-            if (aggregateTransferAssetAvailableBalance < transferIntent.amount) {
-                revert FundsUnavailable(
-                    transferIntent.amount,
-                    aggregateTransferAssetAvailableBalance,
-                    transferIntent.amount - aggregateTransferAssetAvailableBalance
-                );
-            }
+        }
+        
+        if (aggregateTransferAssetAvailableBalance < transferIntent.amount) {
+            revert FundsUnavailable(
+                transferIntent.amount,
+                aggregateTransferAssetAvailableBalance,
+                transferIntent.amount - aggregateTransferAssetAvailableBalance
+            );
         }
     }
 
