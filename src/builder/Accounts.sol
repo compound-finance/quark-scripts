@@ -2,6 +2,7 @@
 pragma solidity ^0.8.23;
 
 import {Strings} from "./Strings.sol";
+import {PaymentInfo} from "./PaymentInfo.sol";
 
 library Accounts {
     struct ChainAccounts {
@@ -114,5 +115,26 @@ library Accounts {
     {
         AssetPositions memory positions = findAssetPositions(assetSymbol, chainId, chainAccountsList);
         return sumBalances(positions);
+    }
+
+    function totalAvailableAsset(
+        string memory tokenSymbol,
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        PaymentInfo.Payment memory payment
+    ) internal pure returns (uint256) {
+        uint256 total = 0;
+
+        for (uint256 i = 0; i < chainAccountsList.length; ++i) {
+            total += Accounts.sumBalances(
+                Accounts.findAssetPositions(tokenSymbol, chainAccountsList[i].chainId, chainAccountsList)
+            );
+
+            // Account for max cost if the payment token is the transfer token
+            // Simply offset the max cost from the available asset batch
+            if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, tokenSymbol)) {
+                total -= PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId);
+            }
+        }
+        return total;
     }
 }

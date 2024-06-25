@@ -70,7 +70,7 @@ contract QuarkBuilder {
         bool isMaxTransfer = transferIntent.amount == type(uint256).max;
         // Convert transferIntent to user aggregated balance
         if (isMaxTransfer) {
-            transferIntent.amount = totalAvailableAsset(transferIntent.assetSymbol, chainAccountsList, payment);
+            transferIntent.amount = Accounts.totalAvailableAsset(transferIntent.assetSymbol, chainAccountsList, payment);
         }
 
         assertSufficientFunds(transferIntent, chainAccountsList);
@@ -376,26 +376,5 @@ contract QuarkBuilder {
                 }
             }
         }
-    }
-
-    function totalAvailableAsset(
-        string memory tokenSymbol,
-        Accounts.ChainAccounts[] memory chainAccountsList,
-        PaymentInfo.Payment memory payment
-    ) internal pure returns (uint256) {
-        uint256 total = 0;
-
-        for (uint256 i = 0; i < chainAccountsList.length; ++i) {
-            total += Accounts.sumBalances(
-                Accounts.findAssetPositions(tokenSymbol, chainAccountsList[i].chainId, chainAccountsList)
-            );
-
-            // Account for max cost if the payment token is the transfer token
-            // Simply offset the max cost from the available asset batch
-            if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, tokenSymbol)) {
-                total -= PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId);
-            }
-        }
-        return total;
     }
 }
