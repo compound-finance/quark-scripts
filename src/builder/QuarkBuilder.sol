@@ -21,7 +21,7 @@ contract QuarkBuilder {
 
     error AssetPositionNotFound();
     error FundsUnavailable();
-    error InsufficientFunds();
+    error InsufficientFunds(uint256 requiredAmount, uint256 actualAmount);
     error InvalidInput();
     error MaxCostTooHigh();
     error TooManyBridgeOperations();
@@ -65,6 +65,11 @@ contract QuarkBuilder {
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
     ) external pure returns (BuilderResult memory) {
+        // If the action is paid for with tokens, filter out any chain accounts that do not have corresponding payment information
+        if (payment.isToken) {
+            chainAccountsList = Accounts.findChainAccountsWithPaymentInfo(chainAccountsList, payment);
+        }
+
         assertSufficientFunds(transferIntent, chainAccountsList);
         assertFundsAvailable(transferIntent, chainAccountsList, payment);
 
@@ -101,11 +106,6 @@ contract QuarkBuilder {
                 }
 
                 Accounts.ChainAccounts memory srcChainAccounts = chainAccountsList[i];
-                // Skip if action is paid for with token and max cost is not specified for the current chain
-                if (payment.isToken && !PaymentInfo.hasMaxCostForChain(payment, srcChainAccounts.chainId)) {
-                    continue;
-                }
-
                 // Skip if the current chain is the target chain, since bridging is not possible
                 if (srcChainAccounts.chainId == transferIntent.chainId) {
                     continue;
@@ -222,7 +222,7 @@ contract QuarkBuilder {
         }
         // There are not enough aggregate funds on all chains to fulfill the transfer.
         if (aggregateTransferAssetBalance < transferIntent.amount) {
-            revert InsufficientFunds();
+            revert InsufficientFunds(transferIntent.amount, aggregateTransferAssetBalance);
         }
     }
 
@@ -247,11 +247,6 @@ contract QuarkBuilder {
         for (uint256 i = 0; i < chainAccountsList.length; ++i) {
             Accounts.AssetPositions memory positions =
                 Accounts.findAssetPositions(transferIntent.assetSymbol, chainAccountsList[i].assetPositionsList);
-
-            // Skip the chain if action is paid for with token and max cost is not specified for the current chain
-            if (payment.isToken && !PaymentInfo.hasMaxCostForChain(payment, chainAccountsList[i].chainId)) {
-                continue;
-            }
 
             if (
                 chainAccountsList[i].chainId == transferIntent.chainId

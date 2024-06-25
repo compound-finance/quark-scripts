@@ -24,7 +24,7 @@ contract QuarkBuilderTest is Test {
 
     function testInsufficientFunds() public {
         QuarkBuilder builder = new QuarkBuilder();
-        vm.expectRevert(QuarkBuilder.InsufficientFunds.selector);
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.InsufficientFunds.selector, 10e6, 0e6));
         builder.transfer(
             transferUsdc_(1, 10e6, address(0xfe11a), BLOCK_TIMESTAMP), // transfer 10USDC on chain 1 to 0xfe11a
             chainAccountsList_(0e6), // but we are holding 0 USDC in total across 1, 8453
@@ -442,8 +442,8 @@ contract QuarkBuilderTest is Test {
 
         // Note: There are 3e6 USDC on each chain, so the Builder should attempt to bridge 2 USDC to chain 8453.
         // However, max cost is not specified for chain 1, so the Builder will ignore the chain and revert because
-        // not enough funds are available for the transfer.
-        vm.expectRevert(QuarkBuilder.FundsUnavailable.selector);
+        // there will be insufficient funds for the transfer.
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.InsufficientFunds.selector, 5e6, 3e6));
         builder.transfer(
             transferUsdc_(8453, 5e6, address(0xceecee), BLOCK_TIMESTAMP), // transfer 5 USDC on chain 8453 to 0xceecee
             chainAccountsList_(6e6), // holding 6 USDC in total across chains 1, 8453
