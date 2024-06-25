@@ -21,7 +21,7 @@ contract QuarkBuilder {
     /* ===== Custom Errors ===== */
 
     error AssetPositionNotFound();
-    error FundsUnavailable(uint256 requestedAmount, uint256 availableAmount, uint256 missingAmount);
+    error FundsUnavailable(uint256 requiredAmount, uint256 actualAmount, uint256 missingAmount);
     error InsufficientFunds();
     error InvalidInput();
     error MaxCostTooHigh();
