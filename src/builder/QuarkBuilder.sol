@@ -188,7 +188,7 @@ contract QuarkBuilder {
             if (amountLeftToBridge > 0) {
                 revert FundsUnavailable(
                     transferIntent.amount - balanceOnDstChain,
-                    transferIntent.amount - amountLeftToBridge,
+                    transferIntent.amount - balanceOnDstChain - amountLeftToBridge,
                     amountLeftToBridge
                 );
             }

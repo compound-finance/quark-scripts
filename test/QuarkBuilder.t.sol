@@ -641,6 +641,38 @@ contract QuarkBuilderTest is Test {
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
     }
 
+    function testBridgeTransferMaxFundUnavailableError() public {
+        QuarkBuilder builder = new QuarkBuilder();
+        PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](3);
+        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 0.5e6});
+        maxCosts[1] = PaymentInfo.PaymentMaxCost({chainId: 8453, amount: 0.1e6});
+        maxCosts[2] = PaymentInfo.PaymentMaxCost({chainId: 7777, amount: 0.1e6}); // Random L2 with no bridge support
+        Accounts.ChainAccounts[] memory chainAccountsList = new Accounts.ChainAccounts[](3);
+        chainAccountsList[0] = Accounts.ChainAccounts({
+            chainId: 1,
+            quarkStates: quarkStates_(address(0xa11ce), 12),
+            assetPositionsList: assetPositionsList_(1, address(0xa11ce), 8e6)
+        });
+        chainAccountsList[1] = Accounts.ChainAccounts({
+            chainId: 8453,
+            quarkStates: quarkStates_(address(0xb0b), 2),
+            assetPositionsList: assetPositionsList_(8453, address(0xb0b), 4e6)
+        });
+        chainAccountsList[2] = Accounts.ChainAccounts({
+            chainId: 7777,
+            quarkStates: quarkStates_(address(0xfe11a), 2),
+            assetPositionsList: assetPositionsList_(7777, address(0xfe11a), 5e6)
+        });
+
+        // User has total holding of 17 USDC, but only 12 USDC is available for transfer/bridge to 8453, and missing 5 USDC stuck in random L2 so will revert with FundsUnavailable error
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, 17e6, 12e6, 5e6));
+        builder.transfer(
+            transferUsdc_(8453, type(uint256).max, address(0xceecee), BLOCK_TIMESTAMP), // transfer max USDC on chain 8453 to 0xceecee
+            chainAccountsList, // holding 8 USDC on chains 1, 4 USDC on 8453, 5 USDC on 7777
+            paymentUsdc_(maxCosts)
+        );
+    }
+
     function testIgnoresChainIfMaxCostIsNotSpecified() public {
         QuarkBuilder builder = new QuarkBuilder();
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](2);
