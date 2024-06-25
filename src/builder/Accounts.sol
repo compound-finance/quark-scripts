@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.23;
 
+import {PaymentInfo} from "./PaymentInfo.sol";
 import {Strings} from "./Strings.sol";
 
 library Accounts {
@@ -99,6 +100,22 @@ library Accounts {
         }
     }
 
+    function findChainAccountsWithPaymentInfo(
+        ChainAccounts[] memory chainAccountsList,
+        PaymentInfo.Payment memory payment
+    ) internal pure returns (ChainAccounts[] memory found) {
+        ChainAccounts[] memory filteredAccounts = new ChainAccounts[](chainAccountsList.length);
+        uint256 count = 0;
+
+        for (uint256 i = 0; i < chainAccountsList.length; ++i) {
+            if (PaymentInfo.hasMaxCostForChain(payment, chainAccountsList[i].chainId)) {
+                filteredAccounts[count++] = chainAccountsList[i];
+            }
+        }
+
+        return truncate(filteredAccounts, count);
+    }
+
     function sumBalances(AssetPositions memory assetPositions) internal pure returns (uint256) {
         uint256 totalBalance = 0;
         for (uint256 i = 0; i < assetPositions.accountBalances.length; ++i) {
@@ -114,5 +131,17 @@ library Accounts {
     {
         AssetPositions memory positions = findAssetPositions(assetSymbol, chainId, chainAccountsList);
         return sumBalances(positions);
+    }
+
+    function truncate(ChainAccounts[] memory chainAccountsList, uint256 length)
+        internal
+        pure
+        returns (ChainAccounts[] memory)
+    {
+        ChainAccounts[] memory result = new ChainAccounts[](length);
+        for (uint256 i = 0; i < length; ++i) {
+            result[i] = chainAccountsList[i];
+        }
+        return result;
     }
 }
