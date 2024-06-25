@@ -669,7 +669,7 @@ contract QuarkBuilderTest is Test {
         // User has total holding of 17 USDC, but only 12 USDC is available for transfer/bridge to 8453, and missing 5 USDC stuck in random L2 so will revert with FundsUnavailable error
         // Actual number re-adjusted with max cost gas fee so that the:
         // Request amount = 17 USDC - 0.5 USDC (max cost on main) - 0.1 USDC (max cost on Base) - 0.1 USDC (max cost on RandomL2) = 16.3 USDC
-        // Actual amount = 8 USDC (available on main) + 4 USDC (available on Base) - 0.5 USDC - 0.1 UDC = 11.4 USDC
+        // Actual amount = 8 USDC (available on main) + 4 USDC (available on Base) - 0.5 USDC - 0.1 USDC = 11.4 USDC
         // Missing amount = 5 USDC - 0.1 USDC = 4.9 USDC
         vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, 16.3e6, 11.4e6, 4.9e6));
         builder.transfer(
