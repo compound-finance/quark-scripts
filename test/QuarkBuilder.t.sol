@@ -45,7 +45,8 @@ contract QuarkBuilderTest is Test {
 
     function testFundsUnavailable() public {
         QuarkBuilder builder = new QuarkBuilder();
-        vm.expectRevert(QuarkBuilder.FundsUnavailable.selector);
+        // FundsUnavailable(2e6, 0e6, 2e6): Requested 2e6, Available 0e6, Still missing 2e6
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, 2e6, 0e6, 2e6));
         builder.transfer(
             // there is no bridge to chain 7777, so we cannot get to our funds
             transferUsdc_(7777, 2e6, address(0xfe11a), BLOCK_TIMESTAMP), // transfer 2USDC on chain 7777 to 0xfe11a

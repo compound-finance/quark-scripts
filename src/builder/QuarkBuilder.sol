@@ -21,7 +21,7 @@ contract QuarkBuilder {
     /* ===== Custom Errors ===== */
 
     error AssetPositionNotFound();
-    error FundsUnavailable();
+    error FundsUnavailable(uint256 requestedAmount, uint256 availableAmount, uint256 missingAmount);
     error InsufficientFunds();
     error InvalidInput();
     error MaxCostTooHigh();
@@ -178,7 +178,11 @@ contract QuarkBuilder {
             }
 
             if (amountLeftToBridge > 0) {
-                revert FundsUnavailable();
+                revert FundsUnavailable(
+                    transferIntent.amount - balanceOnDstChain,
+                    transferIntent.amount - amountLeftToBridge,
+                    amountLeftToBridge
+                );
             }
         }
 
@@ -281,7 +285,11 @@ contract QuarkBuilder {
                 }
             }
             if (aggregateTransferAssetAvailableBalance < transferIntent.amount) {
-                revert FundsUnavailable();
+                revert FundsUnavailable(
+                    transferIntent.amount,
+                    aggregateTransferAssetAvailableBalance,
+                    transferIntent.amount - aggregateTransferAssetAvailableBalance
+                );
             }
         }
     }
