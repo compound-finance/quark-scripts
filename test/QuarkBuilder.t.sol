@@ -22,6 +22,8 @@ contract QuarkBuilderTest is Test {
     address constant ETH_USD_PRICE_FEED_8453 = 0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70;
     address constant USDC_1 = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address constant USDC_8453 = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
+    // Random address for mock of USDC in random unsupported L2 chain
+    address constant USDC_7777 = 0x8D89c5CaA76592e30e0410B9e68C0f235c62B312;
 
     function testInsufficientFunds() public {
         QuarkBuilder builder = new QuarkBuilder();
@@ -665,7 +667,11 @@ contract QuarkBuilderTest is Test {
         });
 
         // User has total holding of 17 USDC, but only 12 USDC is available for transfer/bridge to 8453, and missing 5 USDC stuck in random L2 so will revert with FundsUnavailable error
-        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, 17e6, 12e6, 5e6));
+        // Actual number re-adjusted with max cost gas fee so that the:
+        // Request amount = 17 USDC - 0.5 USDC (max cost on main) - 0.1 USDC (max cost on Base) - 0.1 USDC (max cost on RandomL2) = 16.3 USDC
+        // Actual amount = 8 USDC (available on main) + 4 USDC (available on Base) - 0.5 USDC - 0.1 UDC = 11.4 USDC
+        // Missing amount = 5 USDC - 0.1 USDC = 4.9 USDC
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, 16.3e6, 11.4e6, 4.9e6));
         builder.transfer(
             transferUsdc_(8453, type(uint256).max, address(0xceecee), BLOCK_TIMESTAMP), // transfer max USDC on chain 8453 to 0xceecee
             chainAccountsList, // holding 8 USDC on chains 1, 4 USDC on 8453, 5 USDC on 7777
@@ -792,6 +798,7 @@ contract QuarkBuilderTest is Test {
     function usdc_(uint256 chainId) internal pure returns (address) {
         if (chainId == 1) return USDC_1;
         if (chainId == 8453) return USDC_8453;
+        if (chainId == 7777) return USDC_7777; // Mock with random L2's usdc
         revert("no mock usdc for that chain id bye");
     }
 
