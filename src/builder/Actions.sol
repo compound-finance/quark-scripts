@@ -19,8 +19,17 @@ library Actions {
     string constant PAYMENT_METHOD_PAYCALL = "PAY_CALL";
     string constant PAYMENT_METHOD_QUOTECALL = "QUOTE_CALL";
 
+    string constant ACTION_TYPE_BORROW = "BORROW";
     string constant ACTION_TYPE_BRIDGE = "BRIDGE";
+    string constant ACTION_TYPE_BUY = "BUY";
+    string constant ACTION_TYPE_CLAIM_REWARDS = "CLAIM_REWARDS";
+    string constant ACTION_TYPE_DRIP_TOKENS = "DRIP_TOKENS";
+    string constant ACTION_TYPE_REPAY = "REPAY";
+    string constant ACTION_TYPE_SELL = "SELL";
+    string constant ACTION_TYPE_SUPPLY = "SUPPLY";
     string constant ACTION_TYPE_TRANSFER = "TRANSFER";
+    string constant ACTION_TYPE_WITHDRAW = "WITHDRAW";
+    string constant ACTION_TYPE_WITHDRAW_AND_BORROW = "WITHDRAW_AND_BORROW";
 
     string constant BRIDGE_TYPE_CCTP = "CCTP";
 
@@ -72,22 +81,96 @@ library Actions {
         uint256 paymentMaxCost;
     }
 
-    struct TransferActionContext {
+    struct BorrowActionContext {
         uint256 amount;
+        uint256 chainId;
+        uint256[] collateralAmounts;
+        uint256[] collateralTokenPrices;
+        address[] collateralTokens;
+        address comet;
         uint256 price;
         address token;
-        uint256 chainId;
-        address recipient;
     }
 
     struct BridgeActionContext {
         uint256 amount;
+        string bridgeType;
+        uint256 chainId;
+        uint256 destinationChainId;
+        uint256 price;
+        address recipient;
+        address token;
+    }
+
+    struct BuyActionContext {
+        uint256 amount;
+        uint256 chainId;
         uint256 price;
         address token;
+    }
+
+    struct ClaimRewardsActionContext {
+        uint256 amount;
         uint256 chainId;
+        uint256 price;
+        address token;
+    }
+
+    struct DripTokensActionContext {
+        uint256 chainId;
+    }
+
+    struct RepayActionContext {
+        uint256 amount;
+        uint256 chainId;
+        uint256[] collateralAmounts;
+        uint256[] collateralTokenPrices;
+        address[] collateralTokens;
+        address comet;
+        uint256 price;
+        address token;
+    }
+
+    struct SellActionContext {
+        uint256 amount;
+        uint256 chainId;
+        uint256 price;
+        address token;
+    }
+
+    struct SupplyActionContext {
+        uint256 amount;
+        uint256 chainId;
+        address comet;
+        uint256 price;
+        address token;
+    }
+
+    struct TransferActionContext {
+        uint256 amount;
+        uint256 chainId;
+        uint256 price;
         address recipient;
-        uint256 destinationChainId;
-        string bridgeType;
+        address token;
+    }
+
+    struct WithdrawActionContext {
+        uint256 chainId;
+        uint256 amount;
+        address comet;
+        uint256 price;
+    }
+
+    struct WithdrawAndBorrowActionContext {
+        uint256 borrowAmount;
+        uint256 chainId;
+        uint256[] collateralAmounts;
+        uint256[] collateralTokenPrices;
+        address[] collateralTokens;
+        address comet;
+        uint256 price;
+        address token;
+        uint256 withdrawAmount;
     }
 
     function bridgeAsset(BridgeAsset memory bridge, PaymentInfo.Payment memory payment, bool useQuoteCall)
