@@ -381,13 +381,58 @@ library Actions {
     // These structs are mostly used internally and returned in serialized format as bytes: actionContext
     // The caller can then decode them back into their struct form.
     // These empty husk functions exist so that the structs make it into the abi so the clients can know how to decode them.
-    function emptyTransferActionContext() external pure returns (TransferActionContext memory) {
-        TransferActionContext[] memory ts = new TransferActionContext[](1);
-        return ts[0];
+    function emptyBorrowActionContext() external pure returns (BorrowActionContext memory) {
+        BorrowActionContext[] memory bs = new BorrowActionContext[](1);
+        return bs[0];
     }
 
     function emptyBridgeActionContext() external pure returns (BridgeActionContext memory) {
         BridgeActionContext[] memory bs = new BridgeActionContext[](1);
         return bs[0];
+    }
+
+    function emptyBuyActionContext() external pure returns (BuyActionContext memory) {
+        BuyActionContext[] memory bs = new BuyActionContext[](1);
+        return bs[0];
+    }
+
+    function emptyClaimRewardsActionContext() external pure returns (ClaimRewardsActionContext memory) {
+        ClaimRewardsActionContext[] memory cs = new ClaimRewardsActionContext[](1);
+        return cs[0];
+    }
+
+    function emptyDripTokensActionContext() external pure returns (DripTokensActionContext memory) {
+        DripTokensActionContext[] memory ds = new DripTokensActionContext[](1);
+        return ds[0];
+    }
+
+    function emptyRepayActionContext() external pure returns (RepayActionContext memory) {
+        RepayActionContext[] memory rs = new RepayActionContext[](1);
+        return rs[0];
+    }
+
+    function emptySellActionContext() external pure returns (SellActionContext memory) {
+        SellActionContext[] memory ss = new SellActionContext[](1);
+        return ss[0];
+    }
+
+    function emptySupplyActionContext() external pure returns (SupplyActionContext memory) {
+        SupplyActionContext[] memory ss = new SupplyActionContext[](1);
+        return ss[0];
+    }
+
+    function emptyTransferActionContext() external pure returns (TransferActionContext memory) {
+        TransferActionContext[] memory ts = new TransferActionContext[](1);
+        return ts[0];
+    }
+
+    function emptyWithdrawActionContext() external pure returns (WithdrawActionContext memory) {
+        WithdrawActionContext[] memory ws = new WithdrawActionContext[](1);
+        return ws[0];
+    }
+
+    function emptyWithdrawAndBorrowActionContext() external pure returns (WithdrawAndBorrowActionContext memory) {
+        WithdrawAndBorrowActionContext[] memory ws = new WithdrawAndBorrowActionContext[](1);
+        return ws[0];
     }
 }
