@@ -149,11 +149,12 @@ contract QuarkBuilder {
                         ) {
                             amountToBridge = amountLeftToBridge;
                         } else {
+                            // NOTE: This logics only work when user has only single account on each chain, if having multiple then need to re-adjust to for multi-actions over multi-accounts
                             amountToBridge = srcAccountBalances[j].balance
                                 - PaymentInfo.findMaxCost(payment, srcChainAccounts.chainId);
                         }
                     } else {
-                        // Apply straighforward logics to bridge the token right away
+                        // Apply straightforward logics to bridge the token right away
                         if (srcAccountBalances[j].balance >= amountLeftToBridge) {
                             amountToBridge = amountLeftToBridge;
                         } else {
