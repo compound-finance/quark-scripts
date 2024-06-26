@@ -223,8 +223,8 @@ library Actions {
         uint256 amountLeftToBridge = bridgeInfo.amountNeededOnDst - balanceOnDstChain;
         uint256 bridgeActionCount = 0;
         // TODO: bridge routing logic (which bridge to prioritize, how many bridges?)
-        // Iterate chainAccountList and find up to 2 chains that can provide enough fund
-        // Backend can provide optimal routes by adjust the order in chainAccountList.
+        // Iterate chainAccountList and find chains that can provide enough funds to bridge.
+        // One optimization is to allow the client to provide optimal routes.
         for (uint256 i = 0; i < chainAccountsList.length; ++i) {
             // End loop if enough tokens have been bridged
             if (amountLeftToBridge == 0) {

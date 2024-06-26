@@ -217,8 +217,6 @@ contract QuarkBuilder {
         uint256 blockTimestamp;
     }
 
-    // TODO: handle transfer max
-    // TODO: support expiry
     function transfer(
         TransferIntent memory transferIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
