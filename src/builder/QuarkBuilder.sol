@@ -142,7 +142,8 @@ contract QuarkBuilder {
                             recipient: cometSupplyIntent.sender,
                             blockTimestamp: cometSupplyIntent.blockTimestamp
                         }),
-                        payment
+                        payment,
+                        false // XXX pass in an actual value for useQuoteCall
                     );
 
                     actionIndex++;
@@ -151,7 +152,11 @@ contract QuarkBuilder {
             }
 
             if (amountLeftToBridge > 0) {
-                revert FundsUnavailable();
+                revert FundsUnavailable(
+                    cometSupplyIntent.amount - balanceOnDstChain,
+                    cometSupplyIntent.amount - balanceOnDstChain - amountLeftToBridge,
+                    amountLeftToBridge
+                );
             }
         }
 
@@ -466,9 +471,7 @@ contract QuarkBuilder {
 
         if (aggregateTransferAssetAvailableBalance < amount) {
             revert FundsUnavailable(
-                amount,
-                aggregateTransferAssetAvailableBalance,
-                amount - aggregateTransferAssetAvailableBalance
+                amount, aggregateTransferAssetAvailableBalance, amount - aggregateTransferAssetAvailableBalance
             );
         }
     }
@@ -534,9 +537,9 @@ contract QuarkBuilder {
                 if (transferActionContext.token == paymentToken) {
                     paymentTokenCost += transferActionContext.amount;
                 }
-            } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_COMET_SUPPLY)) {
-                Actions.CometSupplyActionContext memory cometSupplyActionContext =
-                    abi.decode(nonBridgeAction.actionContext, (Actions.CometSupplyActionContext));
+            } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_SUPPLY)) {
+                Actions.SupplyActionContext memory cometSupplyActionContext =
+                    abi.decode(nonBridgeAction.actionContext, (Actions.SupplyActionContext));
                 if (cometSupplyActionContext.token == paymentToken) {
                     paymentTokenCost += cometSupplyActionContext.amount;
                 }

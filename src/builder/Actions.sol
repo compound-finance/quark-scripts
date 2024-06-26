@@ -317,7 +317,7 @@ library Actions {
         }
 
         // Construct Action
-        CometSupplyActionContext memory cometSupplyActionContext = CometSupplyActionContext({
+        SupplyActionContext memory cometSupplyActionContext = SupplyActionContext({
             amount: cometSupply.amount,
             chainId: cometSupply.chainId,
             comet: cometSupply.comet,
@@ -327,7 +327,7 @@ library Actions {
         Action memory action = Actions.Action({
             chainId: cometSupply.chainId,
             quarkAccount: cometSupply.sender,
-            actionType: ACTION_TYPE_COMET_SUPPLY,
+            actionType: ACTION_TYPE_SUPPLY,
             actionContext: abi.encode(cometSupplyActionContext),
             paymentMethod: payment.isToken ? PAYMENT_METHOD_PAYCALL : PAYMENT_METHOD_OFFCHAIN,
             // Null address for OFFCHAIN payment.

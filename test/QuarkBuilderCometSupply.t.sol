@@ -114,10 +114,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
         assertEq(
             result.actions[0].actionContext,
-            abi.encode(
-                Actions.CometSupplyActionContext({amount: 2, chainId: 1, comet: COMET, price: 1e8, token: USDC_1})
-            ),
-            "action context encoded from CometSupplyActionContext"
+            abi.encode(Actions.SupplyActionContext({amount: 2, chainId: 1, comet: COMET, price: 1e8, token: USDC_1})),
+            "action context encoded from SupplyActionContext"
         );
 
         // TODO: Check the contents of the EIP712 data
@@ -175,10 +173,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMaxCost, 1e5, "payment max is set to 1e5 in this test case");
         assertEq(
             result.actions[0].actionContext,
-            abi.encode(
-                Actions.CometSupplyActionContext({amount: 2, chainId: 1, comet: COMET, price: 1e8, token: USDC_1})
-            ),
-            "action context encoded from CometSupplyActionContext"
+            abi.encode(Actions.SupplyActionContext({amount: 2, chainId: 1, comet: COMET, price: 1e8, token: USDC_1})),
+            "action context encoded from SupplyActionContext"
         );
 
         // TODO: Check the contents of the EIP712 data
@@ -304,15 +300,9 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertEq(
             result.actions[1].actionContext,
             abi.encode(
-                Actions.CometSupplyActionContext({
-                    amount: 5e6,
-                    chainId: 8453,
-                    comet: COMET,
-                    price: 1e8,
-                    token: USDC_8453
-                })
+                Actions.SupplyActionContext({amount: 5e6, chainId: 8453, comet: COMET, price: 1e8, token: USDC_8453})
             ),
-            "action context encoded from CometSupplyActionContext"
+            "action context encoded from SupplyActionContext"
         );
 
         // TODO: Check the contents of the EIP712 data
@@ -428,15 +418,9 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertEq(
             result.actions[1].actionContext,
             abi.encode(
-                Actions.CometSupplyActionContext({
-                    amount: 5e6,
-                    chainId: 8453,
-                    comet: COMET,
-                    price: 1e8,
-                    token: USDC_8453
-                })
+                Actions.SupplyActionContext({amount: 5e6, chainId: 8453, comet: COMET, price: 1e8, token: USDC_8453})
             ),
-            "action context encoded from CometSupplyActionContext"
+            "action context encoded from SupplyActionContext"
         );
 
         // TODO: Check the contents of the EIP712 data
