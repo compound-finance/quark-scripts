@@ -10,6 +10,7 @@ import {TransferActions} from "../DeFiScripts.sol";
 
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
 import {PaycallWrapper} from "./PaycallWrapper.sol";
+import {QuotecallWrapper} from "./QuotecallWrapper.sol";
 import {PaymentInfo} from "./PaymentInfo.sol";
 
 library Actions {
@@ -89,19 +90,19 @@ library Actions {
         string bridgeType;
     }
 
-    function bridgeAsset(BridgeAsset memory bridge, PaymentInfo.Payment memory payment)
+    function bridgeAsset(BridgeAsset memory bridge, PaymentInfo.Payment memory payment, bool useQuoteCall)
         internal
         pure
         returns (IQuarkWallet.QuarkOperation memory, Action memory)
     {
         if (Strings.stringEqIgnoreCase(bridge.assetSymbol, "USDC")) {
-            return bridgeUSDC(bridge, payment);
+            return bridgeUSDC(bridge, payment, useQuoteCall);
         } else {
             revert BridgingUnsupportedForAsset();
         }
     }
 
-    function bridgeUSDC(BridgeAsset memory bridge, PaymentInfo.Payment memory payment)
+    function bridgeUSDC(BridgeAsset memory bridge, PaymentInfo.Payment memory payment, bool useQuoteCall)
         internal
         pure
         returns (IQuarkWallet.QuarkOperation memory, Action memory)
@@ -134,9 +135,13 @@ library Actions {
 
         if (payment.isToken) {
             // Wrap operation with paycall
-            quarkOperation = PaycallWrapper.wrap(
-                quarkOperation, bridge.srcChainId, payment.currency, PaymentInfo.findMaxCost(payment, bridge.srcChainId)
-            );
+            quarkOperation = useQuoteCall
+                ? QuotecallWrapper.wrap(
+                    quarkOperation, bridge.srcChainId, payment.currency, PaymentInfo.findMaxCost(payment, bridge.srcChainId)
+                )
+                : PaycallWrapper.wrap(
+                    quarkOperation, bridge.srcChainId, payment.currency, PaymentInfo.findMaxCost(payment, bridge.srcChainId)
+                );
         }
 
         // Construct Action
@@ -149,12 +154,21 @@ library Actions {
             destinationChainId: bridge.destinationChainId,
             bridgeType: BRIDGE_TYPE_CCTP
         });
+
+        string memory paymentMethod;
+        if (payment.isToken) {
+            // To pay with token, it has to be a paycall or quotecall.
+            paymentMethod = useQuoteCall ? PAYMENT_METHOD_QUOTECALL : PAYMENT_METHOD_PAYCALL;
+        } else {
+            paymentMethod = PAYMENT_METHOD_OFFCHAIN;
+        }
+
         Action memory action = Actions.Action({
             chainId: bridge.srcChainId,
             quarkAccount: bridge.sender,
             actionType: ACTION_TYPE_BRIDGE,
             actionContext: abi.encode(bridgeActionContext),
-            paymentMethod: payment.isToken ? PAYMENT_METHOD_PAYCALL : PAYMENT_METHOD_OFFCHAIN,
+            paymentMethod: paymentMethod,
             // Null address for OFFCHAIN payment.
             paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, bridge.srcChainId).token : address(0),
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, bridge.srcChainId) : 0
@@ -163,7 +177,7 @@ library Actions {
         return (quarkOperation, action);
     }
 
-    function transferAsset(TransferAsset memory transfer, PaymentInfo.Payment memory payment)
+    function transferAsset(TransferAsset memory transfer, PaymentInfo.Payment memory payment, bool useQuoteCall)
         internal
         pure
         returns (IQuarkWallet.QuarkOperation memory, Action memory)
@@ -202,9 +216,13 @@ library Actions {
 
         if (payment.isToken) {
             // Wrap operation with paycall
-            quarkOperation = PaycallWrapper.wrap(
-                quarkOperation, transfer.chainId, payment.currency, PaymentInfo.findMaxCost(payment, transfer.chainId)
-            );
+            quarkOperation = useQuoteCall
+                ? QuotecallWrapper.wrap(
+                    quarkOperation, transfer.chainId, payment.currency, PaymentInfo.findMaxCost(payment, transfer.chainId)
+                )
+                : PaycallWrapper.wrap(
+                    quarkOperation, transfer.chainId, payment.currency, PaymentInfo.findMaxCost(payment, transfer.chainId)
+                );
         }
 
         // Construct Action
@@ -215,12 +233,20 @@ library Actions {
             chainId: transfer.chainId,
             recipient: transfer.recipient
         });
+        string memory paymentMethod;
+        if (payment.isToken) {
+            // To pay with token, it has to be a paycall or quotecall.
+            paymentMethod = useQuoteCall ? PAYMENT_METHOD_QUOTECALL : PAYMENT_METHOD_PAYCALL;
+        } else {
+            paymentMethod = PAYMENT_METHOD_OFFCHAIN;
+        }
+
         Action memory action = Actions.Action({
             chainId: transfer.chainId,
             quarkAccount: transfer.sender,
             actionType: ACTION_TYPE_TRANSFER,
             actionContext: abi.encode(transferActionContext),
-            paymentMethod: payment.isToken ? PAYMENT_METHOD_PAYCALL : PAYMENT_METHOD_OFFCHAIN,
+            paymentMethod: paymentMethod,
             // Null address for OFFCHAIN payment.
             paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, transfer.chainId).token : address(0),
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, transfer.chainId) : 0

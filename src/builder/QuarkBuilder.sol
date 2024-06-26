@@ -9,6 +9,7 @@ import {BridgeRoutes} from "./BridgeRoutes.sol";
 import {EIP712Helper} from "./EIP712Helper.sol";
 import {Strings} from "./Strings.sol";
 import {PaycallWrapper} from "./PaycallWrapper.sol";
+import {QuotecallWrapper} from "./QuotecallWrapper.sol";
 import {PaymentInfo} from "./PaymentInfo.sol";
 
 contract QuarkBuilder {
@@ -20,7 +21,7 @@ contract QuarkBuilder {
     /* ===== Custom Errors ===== */
 
     error AssetPositionNotFound();
-    error FundsUnavailable();
+    error FundsUnavailable(uint256 requiredAmount, uint256 actualAmount, uint256 missingAmount);
     error InsufficientFunds(uint256 requiredAmount, uint256 actualAmount);
     error InvalidInput();
     error MaxCostTooHigh();
@@ -70,6 +71,13 @@ contract QuarkBuilder {
             chainAccountsList = Accounts.findChainAccountsWithPaymentInfo(chainAccountsList, payment);
         }
 
+        // Initialize TransferMax flag
+        bool isMaxTransfer = transferIntent.amount == type(uint256).max;
+        // Convert transferIntent to user aggregated balance
+        if (isMaxTransfer) {
+            transferIntent.amount = Accounts.totalAvailableAsset(transferIntent.assetSymbol, chainAccountsList, payment);
+        }
+
         assertSufficientFunds(transferIntent, chainAccountsList);
         assertFundsAvailable(transferIntent, chainAccountsList, payment);
 
@@ -80,6 +88,9 @@ contract QuarkBuilder {
          * therefore the upper bound is chainAccountsList.length.
          */
         uint256 actionIndex = 0;
+
+        // TransferMax will always use quotecall to avoid leaving dust in wallet
+        bool useQuotecall = isMaxTransfer;
         // TODO: actually allocate quark actions
         Actions.Action[] memory actions = new Actions.Action[](chainAccountsList.length);
         IQuarkWallet.QuarkOperation[] memory quarkOperations =
@@ -128,9 +139,29 @@ contract QuarkBuilder {
                         revert TooManyBridgeOperations();
                     }
 
-                    uint256 amountToBridge = srcAccountBalances[j].balance >= amountLeftToBridge
-                        ? amountLeftToBridge
-                        : srcAccountBalances[j].balance;
+                    uint256 amountToBridge;
+                    // Handle differently if the transfer intent token is the payment token
+                    if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, transferIntent.assetSymbol)) {
+                        // Apply payment token logics to figure out the amount to bridge
+                        if (
+                            srcAccountBalances[j].balance
+                                >= amountLeftToBridge + PaymentInfo.findMaxCost(payment, srcChainAccounts.chainId)
+                        ) {
+                            amountToBridge = amountLeftToBridge;
+                        } else {
+                            // NOTE: This logics only work when user has only single account on each chain, if having multiple then need to re-adjust to for multi-actions over multi-accounts
+                            amountToBridge = srcAccountBalances[j].balance
+                                - PaymentInfo.findMaxCost(payment, srcChainAccounts.chainId);
+                        }
+                    } else {
+                        // Apply straightforward logics to bridge the token right away
+                        if (srcAccountBalances[j].balance >= amountLeftToBridge) {
+                            amountToBridge = amountLeftToBridge;
+                        } else {
+                            amountToBridge = srcAccountBalances[j].balance;
+                        }
+                    }
+
                     amountLeftToBridge -= amountToBridge;
 
                     (quarkOperations[actionIndex], actions[actionIndex]) = Actions.bridgeAsset(
@@ -146,7 +177,8 @@ contract QuarkBuilder {
                             recipient: transferIntent.sender,
                             blockTimestamp: transferIntent.blockTimestamp
                         }),
-                        payment
+                        payment,
+                        useQuotecall
                     );
 
                     actionIndex++;
@@ -155,7 +187,11 @@ contract QuarkBuilder {
             }
 
             if (amountLeftToBridge > 0) {
-                revert FundsUnavailable();
+                revert FundsUnavailable(
+                    transferIntent.amount - balanceOnDstChain,
+                    transferIntent.amount - balanceOnDstChain - amountLeftToBridge,
+                    amountLeftToBridge
+                );
             }
         }
 
@@ -170,7 +206,8 @@ contract QuarkBuilder {
                 recipient: transferIntent.recipient,
                 blockTimestamp: transferIntent.blockTimestamp
             }),
-            payment
+            payment,
+            useQuotecall
         );
 
         actionIndex++;
@@ -263,8 +300,13 @@ contract QuarkBuilder {
                 }
             }
         }
+
         if (aggregateTransferAssetAvailableBalance < transferIntent.amount) {
-            revert FundsUnavailable();
+            revert FundsUnavailable(
+                transferIntent.amount,
+                aggregateTransferAssetAvailableBalance,
+                transferIntent.amount - aggregateTransferAssetAvailableBalance
+            );
         }
     }
 
