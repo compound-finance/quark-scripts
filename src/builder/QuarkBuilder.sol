@@ -59,6 +59,7 @@ contract QuarkBuilder {
         address sender;
     }
 
+    // TODO: handle supply max
     function cometSupply(
         CometSupplyIntent memory cometSupplyIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
