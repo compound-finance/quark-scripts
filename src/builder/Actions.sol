@@ -48,12 +48,12 @@ library Actions {
 
     struct CometSupply {
         Accounts.ChainAccounts[] chainAccountsList;
-        uint256 amount;
         string assetSymbol;
-        uint256 blockTimestamp;
+        uint256 amount;
         uint256 chainId;
         address comet;
         address sender;
+        uint256 blockTimestamp;
     }
 
     struct TransferAsset {
