@@ -53,9 +53,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
 
     function testFundsUnavailable() public {
         QuarkBuilder builder = new QuarkBuilder();
-        vm.expectRevert(
-            abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, 2e6, 0, 2e6)
-        );
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, 2e6, 0, 2e6));
         builder.cometSupply(
             // there is no bridge to chain 7777, so we cannot get to our funds
             cometSupply_(7777, 2e6), // transfer 2 USDC on chain 7777 to 0xfe11a
@@ -129,7 +127,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
     function testCometSupplyWithPaycall() public {
         QuarkBuilder builder = new QuarkBuilder();
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
-        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 1e5});
+        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 0.1e6});
         QuarkBuilder.BuilderResult memory result = builder.cometSupply(
             cometSupply_(1, 1e6),
             chainAccountsList_(3e6), // holding 3 USDC in total across chains 1, 8453
@@ -157,9 +155,9 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                 Paycall.run.selector,
                 cometSupplyActionsAddress,
                 abi.encodeWithSelector(CometSupplyActions.supply.selector, COMET, usdc_(1), 1e6),
-                1e5
+                0.1e6
             ),
-            "calldata is Paycall.run(CometSupplyActions.supply(COMET, USDC, 1e6), 1e5);"
+            "calldata is Paycall.run(CometSupplyActions.supply(COMET, USDC, 1e6), 0.1e6);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
@@ -172,7 +170,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].actionType, "SUPPLY", "action type is 'SUPPLY'");
         assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
-        assertEq(result.actions[0].paymentMaxCost, 1e5, "payment max is set to 1e5 in this test case");
+        assertEq(result.actions[0].paymentMaxCost, 0.1e6, "payment max is set to .1e6 in this test case");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(Actions.SupplyActionContext({amount: 1e6, chainId: 1, comet: COMET, price: 1e8, token: USDC_1})),
@@ -316,8 +314,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
     function testCometSupplyWithBridgeAndPaycall() public {
         QuarkBuilder builder = new QuarkBuilder();
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](2);
-        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 5e5});
-        maxCosts[1] = PaymentInfo.PaymentMaxCost({chainId: 8453, amount: 1e5});
+        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 0.5e6});
+        maxCosts[1] = PaymentInfo.PaymentMaxCost({chainId: 8453, amount: 0.1e6});
 
         // Note: There are 3e6 USDC on each chain, so the Builder should attempt to bridge 2 USDC to chain 8453
         QuarkBuilder.BuilderResult memory result = builder.cometSupply(
@@ -360,7 +358,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                 ),
                 0.5e6
             ),
-            "calldata is Paycall.run(CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 2.1e6, 6, bytes32(uint256(uint160(0xa11ce))), usdc_(1))), 5e5);"
+            "calldata is Paycall.run(CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 2.1e6, 6, bytes32(uint256(uint160(0xa11ce))), usdc_(1))), 0.5e6);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
@@ -380,7 +378,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                 abi.encodeCall(CometSupplyActions.supply, (COMET, usdc_(8453), 5e6)),
                 0.1e6
             ),
-            "calldata is Paycall.run(TransferActions.transferERC20Token(USDC_8453, address(0xceecee), 5e6), 1e5);"
+            "calldata is Paycall.run(TransferActions.transferERC20Token(USDC_8453, address(0xceecee), 5e6), 0.1e6);"
         );
         assertEq(
             result.quarkOperations[1].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
@@ -394,7 +392,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].actionType, "BRIDGE", "action type is 'BRIDGE'");
         assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC on mainnet");
-        assertEq(result.actions[0].paymentMaxCost, 0.5e6, "payment should have max cost of 5e5");
+        assertEq(result.actions[0].paymentMaxCost, 0.5e6, "payment should have max cost of 0.5e6");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
@@ -416,7 +414,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertEq(result.actions[1].actionType, "SUPPLY", "action type is 'SUPPLY'");
         assertEq(result.actions[1].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[1].paymentToken, USDC_8453, "payment token is USDC on Base");
-        assertEq(result.actions[1].paymentMaxCost, 0.1e6, "payment should have max cost of 1e5");
+        assertEq(result.actions[1].paymentMaxCost, 0.1e6, "payment should have max cost of 0.1e6");
         assertEq(
             result.actions[1].actionContext,
             abi.encode(
