@@ -11,8 +11,11 @@ import {QuarkBuilder} from "../../src/builder/QuarkBuilder.sol";
 contract QuarkBuilderTest {
     address constant USDC_1 = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address constant USDC_8453 = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
-    // Random address for mock of USDC in random unsupported L2 chain
+    address constant USDT_1 = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
+    address constant USDT_8453 = 0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2;
+    // Random address for mock assets in random unsupported chain
     address constant USDC_7777 = 0x8D89c5CaA76592e30e0410B9e68C0f235c62B312;
+    address constant USDT_7777 = address(0xDEADBEEF);
 
     address constant ETH_USD_PRICE_FEED_1 = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address constant ETH_USD_PRICE_FEED_8453 = 0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70;
@@ -81,10 +84,17 @@ contract QuarkBuilderTest {
         pure
         returns (Accounts.AssetPositions[] memory)
     {
-        Accounts.AssetPositions[] memory assetPositionsList = new Accounts.AssetPositions[](1);
+        Accounts.AssetPositions[] memory assetPositionsList = new Accounts.AssetPositions[](2);
         assetPositionsList[0] = Accounts.AssetPositions({
             asset: usdc_(chainId),
             symbol: "USDC",
+            decimals: 6,
+            usdPrice: 1_0000_0000,
+            accountBalances: accountBalances_(account, balance)
+        });
+        assetPositionsList[1] = Accounts.AssetPositions({
+            asset: usdt_(chainId),
+            symbol: "USDT",
             decimals: 6,
             usdPrice: 1_0000_0000,
             accountBalances: accountBalances_(account, balance)
@@ -105,8 +115,15 @@ contract QuarkBuilderTest {
     function usdc_(uint256 chainId) internal pure returns (address) {
         if (chainId == 1) return USDC_1;
         if (chainId == 8453) return USDC_8453;
-        if (chainId == 7777) return USDC_7777; // Mock with random L2's usdc
+        if (chainId == 7777) return USDC_7777; // Mock with random chain's USDC
         revert("no mock usdc for that chain id bye");
+    }
+
+    function usdt_(uint256 chainId) internal pure returns (address) {
+        if (chainId == 1) return USDT_1;
+        if (chainId == 8453) return USDT_8453;
+        if (chainId == 7777) return USDT_7777; // Mock with random chain's USDT
+        revert("no mock usdt for that chain id bye");
     }
 
     function quarkStates_(address account, uint96 nextNonce) internal pure returns (Accounts.QuarkState[] memory) {
