@@ -63,7 +63,7 @@ contract QuarkBuilder {
         CometSupplyIntent memory cometSupplyIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) external pure returns (BuilderResult memory /* builderResult */ ) {
+    ) external pure returns (BuilderResult memory) {
         assertSufficientFunds(cometSupplyIntent.assetSymbol, cometSupplyIntent.amount, chainAccountsList);
         assertFundsAvailable(
             cometSupplyIntent.chainId,
@@ -134,6 +134,76 @@ contract QuarkBuilder {
         // Validate generated actions for affordability
         if (payment.isToken) {
             assertSufficientPaymentTokenBalances(actions, chainAccountsList, cometSupplyIntent.chainId);
+        }
+
+        // Construct EIP712 digests
+        EIP712Helper.EIP712Data memory eip712Data;
+        if (quarkOperations.length == 1) {
+            eip712Data = EIP712Helper.EIP712Data({
+                digest: EIP712Helper.getDigestForQuarkOperation(
+                    quarkOperations[0], actions[0].quarkAccount, actions[0].chainId
+                    ),
+                domainSeparator: EIP712Helper.getDomainSeparator(actions[0].quarkAccount, actions[0].chainId),
+                hashStruct: EIP712Helper.getHashStructForQuarkOperation(quarkOperations[0])
+            });
+        } else if (quarkOperations.length > 1) {
+            eip712Data = EIP712Helper.EIP712Data({
+                digest: EIP712Helper.getDigestForMultiQuarkOperation(quarkOperations, actions),
+                domainSeparator: EIP712Helper.MULTI_QUARK_OPERATION_DOMAIN_SEPARATOR,
+                hashStruct: EIP712Helper.getHashStructForMultiQuarkOperation(quarkOperations, actions)
+            });
+        }
+
+        return BuilderResult({
+            version: VERSION,
+            actions: actions,
+            quarkOperations: quarkOperations,
+            paymentCurrency: payment.currency,
+            eip712Data: eip712Data
+        });
+    }
+
+    struct CometWithdrawIntent {
+        uint256 amount;
+        string assetSymbol;
+        uint256 blockTimestamp;
+        uint256 chainId;
+        address comet;
+        address withdrawer;
+    }
+
+    function cometWithdraw(
+        CometWithdrawIntent memory cometWithdrawIntent,
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        PaymentInfo.Payment memory payment
+    ) external pure returns (BuilderResult memory) {
+        uint256 actionIndex = 0;
+        Actions.Action[] memory actions = new Actions.Action[](chainAccountsList.length);
+        IQuarkWallet.QuarkOperation[] memory quarkOperations =
+            new IQuarkWallet.QuarkOperation[](chainAccountsList.length);
+
+        (quarkOperations[actionIndex], actions[actionIndex]) = Actions.cometWithdrawAsset(
+            Actions.CometWithdraw({
+                chainAccountsList: chainAccountsList,
+                assetSymbol: cometWithdrawIntent.assetSymbol,
+                amount: cometWithdrawIntent.amount,
+                chainId: cometWithdrawIntent.chainId,
+                comet: cometWithdrawIntent.comet,
+                withdrawer: cometWithdrawIntent.withdrawer,
+                blockTimestamp: cometWithdrawIntent.blockTimestamp
+            }),
+            payment
+        );
+
+        actionIndex++;
+
+        // Truncate actions and quark operations
+        actions = Actions.truncate(actions, actionIndex);
+        quarkOperations = Actions.truncate(quarkOperations, actionIndex);
+
+        // Validate generated actions for affordability
+        if (payment.isToken) {
+            assertSufficientPaymentTokenBalances(actions, chainAccountsList, cometWithdrawIntent.chainId);
         }
 
         // Construct EIP712 digests
