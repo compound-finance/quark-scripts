@@ -4,9 +4,9 @@ pragma solidity ^0.8.23;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-import {Accounts} from "../../src/builder/Accounts.sol";
-import {PaymentInfo} from "../../src/builder/PaymentInfo.sol";
-import {QuarkBuilder} from "../../src/builder/QuarkBuilder.sol";
+import {Accounts} from "src/builder/Accounts.sol";
+import {PaymentInfo} from "src/builder/PaymentInfo.sol";
+import {QuarkBuilder} from "src/builder/QuarkBuilder.sol";
 
 contract QuarkBuilderTest {
     address constant USDC_1 = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;

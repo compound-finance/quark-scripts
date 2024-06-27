@@ -4,13 +4,13 @@ pragma solidity ^0.8.23;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-import {Actions} from "../src/builder/Actions.sol";
-import {CCTPBridgeActions} from "../src/BridgeScripts.sol";
-import {CodeJarHelper} from "../src/builder/CodeJarHelper.sol";
-import {CometSupplyActions, TransferActions} from "../src/DeFiScripts.sol";
-import {Paycall} from "../src/Paycall.sol";
+import {QuarkBuilderTest, Accounts, PaymentInfo, QuarkBuilder} from "test/builder/lib/QuarkBuilderTest.sol";
 
-import "./lib/QuarkBuilderTest.sol";
+import {Actions} from "src/builder/Actions.sol";
+import {CCTPBridgeActions} from "src/BridgeScripts.sol";
+import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
+import {CometSupplyActions, TransferActions} from "src/DeFiScripts.sol";
+import {Paycall} from "src/Paycall.sol";
 
 contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
     uint256 constant BLOCK_TIMESTAMP = 123_456_789;
