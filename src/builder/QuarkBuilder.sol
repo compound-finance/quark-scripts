@@ -20,7 +20,7 @@ contract QuarkBuilder {
     /* ===== Custom Errors ===== */
 
     error AssetPositionNotFound();
-    error FundsUnavailable(string assetSymbol, uint256 requiredAmount, uint256 actualAmount, uint256 missingAmount);
+    error FundsUnavailable(string assetSymbol, uint256 requiredAmount, uint256 actualAmount);
     error InsufficientFunds(uint256 requiredAmount, uint256 actualAmount);
     error InvalidActionChain();
     error InvalidActionType();
@@ -151,8 +151,7 @@ contract QuarkBuilder {
                 revert FundsUnavailable(
                     cometSupplyIntent.assetSymbol,
                     cometSupplyIntent.amount - balanceOnDstChain,
-                    cometSupplyIntent.amount - balanceOnDstChain - amountLeftToBridge,
-                    amountLeftToBridge
+                    cometSupplyIntent.amount - balanceOnDstChain - amountLeftToBridge
                 );
             }
         }
@@ -423,12 +422,7 @@ contract QuarkBuilder {
         }
 
         if (aggregateTransferAssetAvailableBalance < amount) {
-            revert FundsUnavailable(
-                assetSymbol,
-                amount,
-                aggregateTransferAssetAvailableBalance,
-                amount - aggregateTransferAssetAvailableBalance
-            );
+            revert FundsUnavailable(assetSymbol, amount, aggregateTransferAssetAvailableBalance);
         }
     }
 
