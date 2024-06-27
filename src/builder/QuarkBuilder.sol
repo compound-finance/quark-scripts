@@ -173,6 +173,132 @@ contract QuarkBuilder {
         });
     }
 
+    struct CometWithdrawIntent {
+        uint256 amount;
+        string assetSymbol;
+        uint256 blockTimestamp;
+        uint256 chainId;
+        address comet;
+        address withdrawer;
+    }
+
+    function subtractUnsigned(uint256 a, uint256 b) internal pure returns (uint256) {
+        if (b < a) {
+            return a - b;
+        } else {
+            return 0;
+        }
+    }
+
+    // XXX support withdraw max
+    // XXX support Quotecall?
+    function cometWithdraw(
+        CometWithdrawIntent memory cometWithdrawIntent,
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        PaymentInfo.Payment memory payment
+    ) external pure returns (BuilderResult memory) {
+        // XXX confirm that you actually have the amount to withdraw
+
+        uint256 actionIndex = 0;
+        Actions.Action[] memory actions = new Actions.Action[](chainAccountsList.length);
+        IQuarkWallet.QuarkOperation[] memory quarkOperations =
+            new IQuarkWallet.QuarkOperation[](chainAccountsList.length);
+
+        // when paying with tokens, you may need to bridge the payment token to cover the cost
+        if (payment.isToken) {
+            uint256 maxCostOnDstChain = PaymentInfo.findMaxCost(payment, cometWithdrawIntent.chainId);
+            // if you're withdrawing the payment token, you can use the withdrawn amount to cover the cost
+            if (Strings.stringEqIgnoreCase(payment.currency, cometWithdrawIntent.assetSymbol)) {
+                // XXX in the withdrawMax case, use the Comet balance
+                maxCostOnDstChain = subtractUnsigned(maxCostOnDstChain, cometWithdrawIntent.amount);
+            }
+
+            if (
+                needsBridgedFunds(
+                    payment.currency, maxCostOnDstChain, cometWithdrawIntent.chainId, chainAccountsList, payment
+                )
+            ) {
+                (IQuarkWallet.QuarkOperation[] memory bridgeQuarkOperations, Actions.Action[] memory bridgeActions) =
+                Actions.constructBridgeOperations(
+                    Actions.BridgeOperationInfo({
+                        assetSymbol: payment.currency,
+                        amountNeededOnDst: maxCostOnDstChain,
+                        dstChainId: cometWithdrawIntent.chainId,
+                        recipient: cometWithdrawIntent.withdrawer,
+                        blockTimestamp: cometWithdrawIntent.blockTimestamp,
+                        useQuotecall: false // XXX support Quotecall
+                    }),
+                    chainAccountsList,
+                    payment
+                );
+
+                for (uint256 i = 0; i < bridgeQuarkOperations.length; ++i) {
+                    quarkOperations[actionIndex] = bridgeQuarkOperations[i];
+                    actions[actionIndex] = bridgeActions[i];
+                    actionIndex++;
+                }
+            }
+        }
+
+        (quarkOperations[actionIndex], actions[actionIndex]) = Actions.cometWithdrawAsset(
+            Actions.CometWithdraw({
+                chainAccountsList: chainAccountsList,
+                assetSymbol: cometWithdrawIntent.assetSymbol,
+                amount: cometWithdrawIntent.amount,
+                chainId: cometWithdrawIntent.chainId,
+                comet: cometWithdrawIntent.comet,
+                withdrawer: cometWithdrawIntent.withdrawer,
+                blockTimestamp: cometWithdrawIntent.blockTimestamp
+            }),
+            payment
+        );
+
+        actionIndex++;
+
+        // Truncate actions and quark operations
+        actions = Actions.truncate(actions, actionIndex);
+        quarkOperations = Actions.truncate(quarkOperations, actionIndex);
+
+        // Validate generated actions for affordability
+        if (payment.isToken) {
+            uint256 supplementalPaymentTokenBalance = 0;
+            if (Strings.stringEqIgnoreCase(payment.currency, cometWithdrawIntent.assetSymbol)) {
+                // XXX in the withdrawMax case, use the Comet balance
+                supplementalPaymentTokenBalance += cometWithdrawIntent.amount;
+            }
+
+            assertSufficientPaymentTokenBalances(
+                actions, chainAccountsList, cometWithdrawIntent.chainId, supplementalPaymentTokenBalance
+            );
+        }
+
+        // Construct EIP712 digests
+        EIP712Helper.EIP712Data memory eip712Data;
+        if (quarkOperations.length == 1) {
+            eip712Data = EIP712Helper.EIP712Data({
+                digest: EIP712Helper.getDigestForQuarkOperation(
+                    quarkOperations[0], actions[0].quarkAccount, actions[0].chainId
+                    ),
+                domainSeparator: EIP712Helper.getDomainSeparator(actions[0].quarkAccount, actions[0].chainId),
+                hashStruct: EIP712Helper.getHashStructForQuarkOperation(quarkOperations[0])
+            });
+        } else if (quarkOperations.length > 1) {
+            eip712Data = EIP712Helper.EIP712Data({
+                digest: EIP712Helper.getDigestForMultiQuarkOperation(quarkOperations, actions),
+                domainSeparator: EIP712Helper.MULTI_QUARK_OPERATION_DOMAIN_SEPARATOR,
+                hashStruct: EIP712Helper.getHashStructForMultiQuarkOperation(quarkOperations, actions)
+            });
+        }
+
+        return BuilderResult({
+            version: VERSION,
+            actions: actions,
+            quarkOperations: quarkOperations,
+            paymentCurrency: payment.currency,
+            eip712Data: eip712Data
+        });
+    }
+
     struct TransferIntent {
         uint256 chainId;
         string assetSymbol;
@@ -648,6 +774,15 @@ contract QuarkBuilder {
         Accounts.ChainAccounts[] memory chainAccountsList,
         uint256 targetChainId
     ) internal pure {
+        return assertSufficientPaymentTokenBalances(actions, chainAccountsList, targetChainId, 0);
+    }
+
+    function assertSufficientPaymentTokenBalances(
+        Actions.Action[] memory actions,
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        uint256 targetChainId,
+        uint256 supplementalPaymentTokenBalance
+    ) internal pure {
         Actions.Action[] memory bridgeActions = Actions.findActionsOfType(actions, Actions.ACTION_TYPE_BRIDGE);
         Actions.Action[] memory nonBridgeActions = Actions.findActionsNotOfType(actions, Actions.ACTION_TYPE_BRIDGE);
 
@@ -716,12 +851,17 @@ contract QuarkBuilder {
                 if (Strings.stringEqIgnoreCase(swapActionContext.inputAssetSymbol, paymentTokenSymbol)) {
                     paymentTokenCost += swapActionContext.inputAmount;
                 }
+            } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_WITHDRAW)) {
+                continue;
             } else {
                 revert InvalidActionType();
             }
         }
 
-        if (paymentTokenCost > (targetChainPaymentTokenBalance + paymentTokenBridgeAmount)) {
+        if (
+            paymentTokenCost
+                > (targetChainPaymentTokenBalance + paymentTokenBridgeAmount + supplementalPaymentTokenBalance)
+        ) {
             revert MaxCostTooHigh();
         }
     }
