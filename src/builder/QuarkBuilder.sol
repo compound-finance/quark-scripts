@@ -84,75 +84,29 @@ contract QuarkBuilder {
             )
         ) {
             // Note: Assumes that the asset uses the same # of decimals on each chain
-            uint256 balanceOnDstChain =
-                Accounts.getBalanceOnChain(cometSupplyIntent.assetSymbol, cometSupplyIntent.chainId, chainAccountsList);
-            uint256 amountLeftToBridge = cometSupplyIntent.amount - balanceOnDstChain;
+            uint256 amountNeededOnDst = cometSupplyIntent.amount;
             // If the payment token is the transfer token and user opt for paying with the payment token, need to add max cost back to the amountLeftToBridge for target chain
             if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, cometSupplyIntent.assetSymbol)) {
-                amountLeftToBridge += PaymentInfo.findMaxCost(payment, cometSupplyIntent.chainId);
+                amountNeededOnDst += PaymentInfo.findMaxCost(payment, cometSupplyIntent.chainId);
             }
+            (IQuarkWallet.QuarkOperation[] memory bridgeQuarkOperations, Actions.Action[] memory bridgeActions) =
+            Actions.constructBridgeOperations(
+                Actions.BridgeOperationInfo({
+                    assetSymbol: cometSupplyIntent.assetSymbol,
+                    amountNeededOnDst: amountNeededOnDst,
+                    dstChainId: cometSupplyIntent.chainId,
+                    recipient: cometSupplyIntent.sender,
+                    blockTimestamp: cometSupplyIntent.blockTimestamp,
+                    useQuotecall: false // TODO: pass in an actual value for useQuoteCall
+                }),
+                chainAccountsList,
+                payment
+            );
 
-            uint256 bridgeActionCount = 0;
-            // TODO: bridge routing logic (which bridge to prioritize, how many bridges?)
-            // Iterate chainAccountList and find up to 2 chains that can provide enough fund
-            // Backend can provide optimal routes by adjusting the order in chainAccountList.
-            for (uint256 i = 0; i < chainAccountsList.length; ++i) {
-                if (amountLeftToBridge == 0) {
-                    break;
-                }
-
-                Accounts.ChainAccounts memory srcChainAccounts = chainAccountsList[i];
-                if (srcChainAccounts.chainId == cometSupplyIntent.chainId) {
-                    continue;
-                }
-
-                if (
-                    !BridgeRoutes.canBridge(
-                        srcChainAccounts.chainId, cometSupplyIntent.chainId, cometSupplyIntent.assetSymbol
-                    )
-                ) {
-                    continue;
-                }
-
-                Accounts.AssetPositions memory srcAssetPositions =
-                    Accounts.findAssetPositions(cometSupplyIntent.assetSymbol, srcChainAccounts.assetPositionsList);
-                Accounts.AccountBalance[] memory srcAccountBalances = srcAssetPositions.accountBalances;
-                // TODO: Make logic smarter. Currently, this uses a greedy algorithm.
-                // e.g. Optimize by trying to bridge with the least amount of bridge operations
-                for (uint256 j = 0; j < srcAccountBalances.length; ++j) {
-                    uint256 amountToBridge = srcAccountBalances[j].balance >= amountLeftToBridge
-                        ? amountLeftToBridge
-                        : srcAccountBalances[j].balance;
-                    amountLeftToBridge -= amountToBridge;
-
-                    (quarkOperations[actionIndex], actions[actionIndex]) = Actions.bridgeAsset(
-                        Actions.BridgeAsset({
-                            chainAccountsList: chainAccountsList,
-                            assetSymbol: cometSupplyIntent.assetSymbol,
-                            amount: amountToBridge,
-                            // where it comes from
-                            srcChainId: srcChainAccounts.chainId,
-                            sender: srcAccountBalances[j].account,
-                            // where it goes
-                            destinationChainId: cometSupplyIntent.chainId,
-                            recipient: cometSupplyIntent.sender,
-                            blockTimestamp: cometSupplyIntent.blockTimestamp
-                        }),
-                        payment,
-                        false // XXX pass in an actual value for useQuoteCall
-                    );
-
-                    actionIndex++;
-                    bridgeActionCount++;
-                }
-            }
-
-            if (amountLeftToBridge > 0) {
-                revert FundsUnavailable(
-                    cometSupplyIntent.assetSymbol,
-                    cometSupplyIntent.amount - balanceOnDstChain,
-                    cometSupplyIntent.amount - balanceOnDstChain - amountLeftToBridge
-                );
+            for (uint256 i = 0; i < bridgeQuarkOperations.length; ++i) {
+                quarkOperations[actionIndex] = bridgeQuarkOperations[i];
+                actions[actionIndex] = bridgeActions[i];
+                actionIndex++;
             }
         }
 
@@ -168,6 +122,8 @@ contract QuarkBuilder {
             }),
             payment
         );
+
+        // TODO: Bridge payment token
 
         actionIndex++;
 
@@ -248,7 +204,6 @@ contract QuarkBuilder {
 
         // TransferMax will always use quotecall to avoid leaving dust in wallet
         bool useQuotecall = isMaxTransfer;
-        // TODO: actually allocate quark actions
         Actions.Action[] memory actions = new Actions.Action[](chainAccountsList.length);
         IQuarkWallet.QuarkOperation[] memory quarkOperations =
             new IQuarkWallet.QuarkOperation[](2 * chainAccountsList.length);
