@@ -23,6 +23,7 @@ contract QuarkBuilder {
     error AssetPositionNotFound();
     error FundsUnavailable(uint256 requiredAmount, uint256 actualAmount, uint256 missingAmount);
     error InsufficientFunds(uint256 requiredAmount, uint256 actualAmount);
+    error InvalidActionChain();
     error InvalidActionType();
     error InvalidInput();
     error MaxCostTooHigh();
@@ -528,8 +529,10 @@ contract QuarkBuilder {
         uint256 paymentTokenCost = 0;
 
         for (uint256 i = 0; i < nonBridgeActions.length; ++i) {
-            // revert if not on the target chain?
             Actions.Action memory nonBridgeAction = nonBridgeActions[i];
+            if (nonBridgeAction.chainId != targetChainId) {
+                revert InvalidActionChain();
+            }
             paymentTokenCost += nonBridgeAction.paymentMaxCost;
 
             if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_TRANSFER)) {

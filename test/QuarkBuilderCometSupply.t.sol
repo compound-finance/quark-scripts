@@ -47,16 +47,18 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         builder.cometSupply(
             cometSupply_(1, 1e6),
             chainAccountsList_(2e6), // holding 2 USDC in total across 1, 8453
-            paymentUsdc_(maxCosts_(1, 1_000e6)) // but costs 1,000USDC
+            paymentUsdc_(maxCosts_(1, 1_000e6)) // but costs 1,000 USDC
         );
     }
 
     function testFundsUnavailable() public {
         QuarkBuilder builder = new QuarkBuilder();
-        vm.expectRevert(QuarkBuilder.FundsUnavailable.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, 2e6, 0, 2e6)
+        );
         builder.cometSupply(
             // there is no bridge to chain 7777, so we cannot get to our funds
-            cometSupply_(7777, 2), // transfer 2USDC on chain 7777 to 0xfe11a
+            cometSupply_(7777, 2e6), // transfer 2 USDC on chain 7777 to 0xfe11a
             chainAccountsList_(3e6), // holding 3 USDC in total across chains 1, 8453
             paymentUsd_()
         );
@@ -65,7 +67,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
     function testSimpleCometSupply() public {
         QuarkBuilder builder = new QuarkBuilder();
         QuarkBuilder.BuilderResult memory result = builder.cometSupply(
-            cometSupply_(1, 2),
+            cometSupply_(1, 1e6),
             chainAccountsList_(3e6), // holding 3 USDC in total across chains 1, 8453
             paymentUsd_()
         );
@@ -97,7 +99,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         );
         assertEq(
             result.quarkOperations[0].scriptCalldata,
-            abi.encodeCall(CometSupplyActions.supply, (COMET, usdc_(1), 2)),
+            abi.encodeCall(CometSupplyActions.supply, (COMET, usdc_(1), 1e6)),
             "calldata is CometSupplyActions.supply(COMET, usdc, 2);"
         );
         assertEq(
@@ -108,17 +110,17 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertEq(result.actions.length, 1, "one action");
         assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
         assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.actions[0].actionType, "COMET_SUPPLY", "action type is 'COMET_SUPPLY'");
+        assertEq(result.actions[0].actionType, "SUPPLY", "action type is 'SUPPLY'");
         assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
         assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
         assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
         assertEq(
             result.actions[0].actionContext,
-            abi.encode(Actions.SupplyActionContext({amount: 2, chainId: 1, comet: COMET, price: 1e8, token: USDC_1})),
+            abi.encode(Actions.SupplyActionContext({amount: 1e6, chainId: 1, comet: COMET, price: 1e8, token: USDC_1})),
             "action context encoded from SupplyActionContext"
         );
 
-        // TODO: Check the contents of the EIP712 data
+        // // TODO: Check the contents of the EIP712 data
         assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
         assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
@@ -129,7 +131,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
         maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 1e5});
         QuarkBuilder.BuilderResult memory result = builder.cometSupply(
-            cometSupply_(1, 2),
+            cometSupply_(1, 1e6),
             chainAccountsList_(3e6), // holding 3 USDC in total across chains 1, 8453
             paymentUsdc_(maxCosts)
         );
@@ -154,10 +156,10 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
             abi.encodeWithSelector(
                 Paycall.run.selector,
                 cometSupplyActionsAddress,
-                abi.encodeWithSelector(CometSupplyActions.supply.selector, COMET, usdc_(1), 2),
+                abi.encodeWithSelector(CometSupplyActions.supply.selector, COMET, usdc_(1), 1e6),
                 1e5
             ),
-            "calldata is Paycall.run(CometSupplyActions.supply(COMET, USDC, 2), 1e5);"
+            "calldata is Paycall.run(CometSupplyActions.supply(COMET, USDC, 1e6), 1e5);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
@@ -167,13 +169,13 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertEq(result.actions.length, 1, "one action");
         assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
         assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.actions[0].actionType, "COMET_SUPPLY", "action type is 'COMET_SUPPLY'");
+        assertEq(result.actions[0].actionType, "SUPPLY", "action type is 'SUPPLY'");
         assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
         assertEq(result.actions[0].paymentMaxCost, 1e5, "payment max is set to 1e5 in this test case");
         assertEq(
             result.actions[0].actionContext,
-            abi.encode(Actions.SupplyActionContext({amount: 2, chainId: 1, comet: COMET, price: 1e8, token: USDC_1})),
+            abi.encode(Actions.SupplyActionContext({amount: 1e6, chainId: 1, comet: COMET, price: 1e8, token: USDC_1})),
             "action context encoded from SupplyActionContext"
         );
 
@@ -293,7 +295,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         // second action
         assertEq(result.actions[1].chainId, 8453, "second action is on chainid 8453");
         assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.actions[1].actionType, "COMET_SUPPLY", "action type is 'COMET_SUPPLY'");
+        assertEq(result.actions[1].actionType, "SUPPLY", "action type is 'SUPPLY'");
         assertEq(result.actions[1].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
         assertEq(result.actions[1].paymentToken, address(0), "payment token is null");
         assertEq(result.actions[1].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
@@ -411,7 +413,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         // second action
         assertEq(result.actions[1].chainId, 8453, "operation is on chainid 8453");
         assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.actions[1].actionType, "COMET_SUPPLY", "action type is 'COMET_SUPPLY'");
+        assertEq(result.actions[1].actionType, "SUPPLY", "action type is 'SUPPLY'");
         assertEq(result.actions[1].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[1].paymentToken, USDC_8453, "payment token is USDC on Base");
         assertEq(result.actions[1].paymentMaxCost, 0.1e6, "payment should have max cost of 1e5");
