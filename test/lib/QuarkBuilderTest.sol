@@ -25,21 +25,6 @@ contract QuarkBuilderTest {
      * a function call is used to mock some data, we suffix all of our fixture-generating
      * functions with a single underscore, like so: transferIntent_(...).
      */
-    function transferUsdc_(uint256 chainId, uint256 amount, address recipient, uint256 blockTimestamp)
-        internal
-        pure
-        returns (QuarkBuilder.TransferIntent memory)
-    {
-        return QuarkBuilder.TransferIntent({
-            chainId: chainId,
-            sender: address(0xa11ce),
-            recipient: recipient,
-            amount: amount,
-            assetSymbol: "USDC",
-            blockTimestamp: blockTimestamp
-        });
-    }
-
     function paymentUsdc_() internal pure returns (PaymentInfo.Payment memory) {
         return paymentUsdc_(new PaymentInfo.PaymentMaxCost[](0));
     }

@@ -21,6 +21,21 @@ import {PaymentInfo} from "../src/builder/PaymentInfo.sol";
 contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
     uint256 constant BLOCK_TIMESTAMP = 123_456_789;
 
+    function transferUsdc_(uint256 chainId, uint256 amount, address recipient, uint256 blockTimestamp)
+        internal
+        pure
+        returns (QuarkBuilder.TransferIntent memory)
+    {
+        return QuarkBuilder.TransferIntent({
+            chainId: chainId,
+            sender: address(0xa11ce),
+            recipient: recipient,
+            amount: amount,
+            assetSymbol: "USDC",
+            blockTimestamp: blockTimestamp
+        });
+    }
+
     function testInsufficientFunds() public {
         QuarkBuilder builder = new QuarkBuilder();
         vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.InsufficientFunds.selector, 10e6, 0e6));
