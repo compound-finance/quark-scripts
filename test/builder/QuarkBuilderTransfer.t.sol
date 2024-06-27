@@ -4,7 +4,7 @@ pragma solidity ^0.8.23;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-import {QuarkBuilderTest, Accounts, PaymentInfo, QuarkBuilder} from "test/builder/lib/QuarkBuilderTest.sol";
+import {QuarkBuilderTest} from "test/builder/lib/QuarkBuilderTest.sol";
 
 import {TransferActions} from "src/DeFiScripts.sol";
 import {CCTPBridgeActions} from "src/BridgeScripts.sol";
