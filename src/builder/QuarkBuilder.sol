@@ -21,7 +21,6 @@ contract QuarkBuilder {
 
     error AssetPositionNotFound();
     error FundsUnavailable(string assetSymbol, uint256 requiredAmount, uint256 actualAmount);
-    error InsufficientFunds(uint256 requiredAmount, uint256 actualAmount);
     error InvalidActionChain();
     error InvalidActionType();
     error InvalidInput();
@@ -64,7 +63,11 @@ contract QuarkBuilder {
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
     ) external pure returns (BuilderResult memory /* builderResult */ ) {
-        assertSufficientFunds(cometSupplyIntent.assetSymbol, cometSupplyIntent.amount, chainAccountsList);
+        // If the action is paid for with tokens, filter out any chain accounts that do not have corresponding payment information
+        if (payment.isToken) {
+            chainAccountsList = Accounts.findChainAccountsWithPaymentInfo(chainAccountsList, payment);
+        }
+
         assertFundsAvailable(
             cometSupplyIntent.chainId,
             cometSupplyIntent.assetSymbol,
@@ -80,12 +83,16 @@ contract QuarkBuilder {
 
         if (
             needsBridgedFunds(
-                cometSupplyIntent.assetSymbol, cometSupplyIntent.amount, cometSupplyIntent.chainId, chainAccountsList
+                cometSupplyIntent.assetSymbol,
+                cometSupplyIntent.amount,
+                cometSupplyIntent.chainId,
+                chainAccountsList,
+                payment
             )
         ) {
             // Note: Assumes that the asset uses the same # of decimals on each chain
             uint256 amountNeededOnDst = cometSupplyIntent.amount;
-            // If the payment token is the transfer token and user opt for paying with the payment token, need to add max cost back to the amountLeftToBridge for target chain
+            // If action is paid for with tokens and the payment token is the transfer token, we need to add the max cost to the amountLeftToBridge for target chain
             if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, cometSupplyIntent.assetSymbol)) {
                 amountNeededOnDst += PaymentInfo.findMaxCost(payment, cometSupplyIntent.chainId);
             }
@@ -189,7 +196,6 @@ contract QuarkBuilder {
             transferIntent.amount = Accounts.totalAvailableAsset(transferIntent.assetSymbol, chainAccountsList, payment);
         }
 
-        assertSufficientFunds(transferIntent.assetSymbol, transferIntent.amount, chainAccountsList);
         assertFundsAvailable(
             transferIntent.chainId, transferIntent.assetSymbol, transferIntent.amount, chainAccountsList, payment
         );
@@ -210,12 +216,12 @@ contract QuarkBuilder {
 
         if (
             needsBridgedFunds(
-                transferIntent.assetSymbol, transferIntent.amount, transferIntent.chainId, chainAccountsList
+                transferIntent.assetSymbol, transferIntent.amount, transferIntent.chainId, chainAccountsList, payment
             )
         ) {
             // Note: Assumes that the asset uses the same # of decimals on each chain
             uint256 amountNeededOnDst = transferIntent.amount;
-            // If the payment token is the transfer token and user opt for paying with the payment token, need to add max cost back to the amountLeftToBridge for target chain
+            // If action is paid for with tokens and the payment token is the transfer token, we need to add the max cost to the amountLeftToBridge for target chain
             if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, transferIntent.assetSymbol)) {
                 amountNeededOnDst += PaymentInfo.findMaxCost(payment, transferIntent.chainId);
             }
@@ -245,7 +251,11 @@ contract QuarkBuilder {
         if (payment.isToken && !Strings.stringEqIgnoreCase(payment.currency, transferIntent.assetSymbol)) {
             // Bridge over payment token if not enough
             uint256 maxCostOnDstChain = PaymentInfo.findMaxCost(payment, transferIntent.chainId);
-            if (needsBridgedFunds(payment.currency, maxCostOnDstChain, transferIntent.chainId, chainAccountsList)) {
+            if (
+                needsBridgedFunds(
+                    payment.currency, maxCostOnDstChain, transferIntent.chainId, chainAccountsList, payment
+                )
+            ) {
                 (IQuarkWallet.QuarkOperation[] memory bridgeQuarkOperations, Actions.Action[] memory bridgeActions) =
                 Actions.constructBridgeOperations(
                     Actions.BridgeOperationInfo({
@@ -322,22 +332,6 @@ contract QuarkBuilder {
         });
     }
 
-    function assertSufficientFunds(
-        string memory assetSymbol,
-        uint256 amount,
-        Accounts.ChainAccounts[] memory chainAccountsList
-    ) internal pure {
-        uint256 aggregateTransferAssetBalance;
-        for (uint256 i = 0; i < chainAccountsList.length; ++i) {
-            aggregateTransferAssetBalance +=
-                Accounts.sumBalances(Accounts.findAssetPositions(assetSymbol, chainAccountsList[i].assetPositionsList));
-        }
-        // There are not enough aggregate funds on all chains to fulfill the transfer.
-        if (aggregateTransferAssetBalance < amount) {
-            revert InsufficientFunds(amount, aggregateTransferAssetBalance);
-        }
-    }
-
     // For some reason, funds that may otherwise be bridgeable or held by the user cannot
     // be made available to fulfill the transaction.
     // Funds cannot be bridged, e.g. no bridge exists
@@ -352,12 +346,13 @@ contract QuarkBuilder {
         // If no funds need to be bridged, then this check is satisfied
         // TODO: We might still need to check the availability of funds on the target chain, e.g. see if
         // funds are locked in a lending protocol and can't be withdrawn
-        if (!needsBridgedFunds(assetSymbol, amount, chainId, chainAccountsList)) {
+        if (!needsBridgedFunds(assetSymbol, amount, chainId, chainAccountsList, payment)) {
             return;
         }
 
-        // Check each chain to see if there are enough transfer assets to be bridged over
-        uint256 aggregateTransferAssetAvailableBalance;
+        // Check each chain to see if there are enough action assets to be bridged over
+        uint256 aggregateAssetBalance;
+        uint256 aggregateMaxCosts;
         for (uint256 i = 0; i < chainAccountsList.length; ++i) {
             Accounts.AssetPositions memory positions =
                 Accounts.findAssetPositions(assetSymbol, chainAccountsList[i].assetPositionsList);
@@ -366,18 +361,19 @@ contract QuarkBuilder {
                 chainAccountsList[i].chainId == chainId
                     || BridgeRoutes.canBridge(chainAccountsList[i].chainId, chainId, assetSymbol)
             ) {
-                aggregateTransferAssetAvailableBalance += Accounts.sumBalances(positions);
+                aggregateAssetBalance += Accounts.sumBalances(positions);
                 // If the user opts for paying with the payment token and the payment token is the transfer token, reduce
                 // the available balance by the max cost because the max cost is reserved for paying the txn
                 if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, assetSymbol)) {
-                    uint256 maxCost = PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId);
-                    aggregateTransferAssetAvailableBalance -= maxCost;
+                    aggregateMaxCosts += PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId);
                 }
             }
         }
 
-        if (aggregateTransferAssetAvailableBalance < amount) {
-            revert FundsUnavailable(assetSymbol, amount, aggregateTransferAssetAvailableBalance);
+        uint256 aggregateAvailableAssetBalance =
+            aggregateAssetBalance >= aggregateMaxCosts ? aggregateAssetBalance - aggregateMaxCosts : 0;
+        if (aggregateAvailableAssetBalance < amount) {
+            revert FundsUnavailable(assetSymbol, amount, aggregateAvailableAssetBalance);
         }
     }
 
@@ -385,9 +381,15 @@ contract QuarkBuilder {
         string memory assetSymbol,
         uint256 amount,
         uint256 chainId,
-        Accounts.ChainAccounts[] memory chainAccountsList
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        PaymentInfo.Payment memory payment
     ) internal pure returns (bool) {
-        return Accounts.getBalanceOnChain(assetSymbol, chainId, chainAccountsList) < amount;
+        // If action is paid for with tokens and the payment token is the transfer token, then add the payment max cost for the target chain to the amount needed
+        uint256 amountNeededOnDstChain = amount;
+        if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, assetSymbol)) {
+            amountNeededOnDstChain += PaymentInfo.findMaxCost(payment, chainId);
+        }
+        return Accounts.getBalanceOnChain(assetSymbol, chainId, chainAccountsList) < amountNeededOnDstChain;
     }
 
     // Assert that each chain with a bridge action has enough payment token to

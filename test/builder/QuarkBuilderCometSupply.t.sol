@@ -33,7 +33,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
 
     function testInsufficientFunds() public {
         QuarkBuilder builder = new QuarkBuilder();
-        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.InsufficientFunds.selector, 2e6, 0e6));
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "USDC", 2e6, 0e6));
         builder.cometSupply(
             cometSupply_(1, 2e6),
             chainAccountsList_(0e6), // but we are holding 0 USDC in total across 1, 8453
@@ -43,7 +43,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
 
     function testMaxCostTooHigh() public {
         QuarkBuilder builder = new QuarkBuilder();
-        vm.expectRevert(QuarkBuilder.MaxCostTooHigh.selector);
+        // Max cost is too high, so total available funds is 0
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "USDC", 1e6, 0e6));
         builder.cometSupply(
             cometSupply_(1, 1e6),
             chainAccountsList_(2e6), // holding 2 USDC in total across 1, 8453

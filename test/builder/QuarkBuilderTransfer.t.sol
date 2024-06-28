@@ -48,40 +48,53 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
 
     function testInsufficientFunds() public {
         QuarkBuilder builder = new QuarkBuilder();
-        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.InsufficientFunds.selector, 10e6, 0e6));
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "USDC", 10e6, 0e6));
         builder.transfer(
-            transferUsdc_(1, 10e6, address(0xfe11a), BLOCK_TIMESTAMP), // transfer 10USDC on chain 1 to 0xfe11a
+            transferUsdc_(1, 10e6, address(0xfe11a), BLOCK_TIMESTAMP), // transfer 10 USDC on chain 1 to 0xfe11a
             chainAccountsList_(0e6), // but we are holding 0 USDC in total across 1, 8453
             paymentUsd_()
         );
     }
 
+    // TODO: This no longer tests for the MaxCostTooHigh, since it may be unreachable now. Verify that this is the case.
     function testMaxCostTooHigh() public {
         QuarkBuilder builder = new QuarkBuilder();
-        vm.expectRevert(QuarkBuilder.MaxCostTooHigh.selector);
+        // Max cost is too high, so total available funds is 0
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "USDC", 1e6, 0e6));
         builder.transfer(
-            transferUsdc_(1, 1e6, address(0xfe11a), BLOCK_TIMESTAMP), // transfer 1USDC on chain 1 to 0xfe11a
+            transferUsdc_(1, 1e6, address(0xfe11a), BLOCK_TIMESTAMP), // transfer 1 USDC on chain 1 to 0xfe11a
             chainAccountsList_(2e6), // holding 2 USDC in total across 1, 8453
-            paymentUsdc_(maxCosts_(1, 1_000e6)) // but costs 1,000USDC
+            paymentUsdc_(maxCosts_(1, 1_000e6)) // but costs 1,000 USDC
         );
     }
 
-    function testFundsUnavailable() public {
+    function testFundsOnUnbridgeableChains() public {
         QuarkBuilder builder = new QuarkBuilder();
-        // FundsUnavailable(2e6, 0e6, 2e6): Requested 2e6, Available 0e6, Still missing 2e6
+        // FundsUnavailable(2e6, 0e6, 2e6): Requested 2e6, Available 0e6
         vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "USDC", 2e6, 0e6));
         builder.transfer(
             // there is no bridge to chain 7777, so we cannot get to our funds
-            transferUsdc_(7777, 2e6, address(0xfe11a), BLOCK_TIMESTAMP), // transfer 2USDC on chain 7777 to 0xfe11a
+            transferUsdc_(7777, 2e6, address(0xfe11a), BLOCK_TIMESTAMP), // transfer 2 USDC on chain 7777 to 0xfe11a
             chainAccountsList_(3e6), // holding 3 USDC in total across chains 1, 8453
             paymentUsd_()
+        );
+    }
+
+    function testFundsUnavailableErrorGivesSuggestionForAvailableFunds() public {
+        QuarkBuilder builder = new QuarkBuilder();
+        // The 97e6 is the suggested amount (total available funds) to transfer
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "USDC", 100e6, 97e6));
+        builder.transfer(
+            transferUsdc_(1, 100e6, address(0xfe11a), BLOCK_TIMESTAMP), // transfer 1 USDC on chain 1 to 0xfe11a
+            chainAccountsList_(200e6), // holding 200 USDC in total across 1, 8453
+            paymentUsdc_(maxCosts_(1, 3e6)) // but costs 3 USDC
         );
     }
 
     function testSimpleLocalTransferSucceeds() public {
         QuarkBuilder builder = new QuarkBuilder();
         QuarkBuilder.BuilderResult memory result = builder.transfer(
-            transferUsdc_(1, 1e6, address(0xceecee), BLOCK_TIMESTAMP), // transfer 1 usdc on chain 1 to 0xceecee
+            transferUsdc_(1, 1e6, address(0xceecee), BLOCK_TIMESTAMP), // transfer 1 USDC on chain 1 to 0xceecee
             chainAccountsList_(3e6), // holding 3 USDC in total across chains 1, 8453
             paymentUsd_()
         );
@@ -830,12 +843,16 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
     function testIgnoresChainIfMaxCostIsNotSpecified() public {
         QuarkBuilder builder = new QuarkBuilder();
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
-        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 8453, amount: 1e5});
+        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 8453, amount: 0.1e6});
 
-        // Note: There are 3e6 USDC on each chain, so the Builder should attempt to bridge 2 USDC to chain 8453.
+        // Note: There are 3e6 USDC on each chain, so the Builder should attempt to bridge 2.1 USDC to chain 8453.
+        // The extra 0.1 USDC is to cover the payment max cost on chain 8453.
         // However, max cost is not specified for chain 1, so the Builder will ignore the chain and revert because
         // there will be insufficient funds for the transfer.
-        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.InsufficientFunds.selector, 5e6, 3e6));
+
+        // The `FundsAvailable` error tells us that 5 USDC was asked to be transferred, but only 2.9 USDC was available.
+        // (2.9 USDC instead of 3 USDC because 0.1 USDC is reserved for the payment max cost)
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "USDC", 5e6, 2.9e6));
         builder.transfer(
             transferUsdc_(8453, 5e6, address(0xceecee), BLOCK_TIMESTAMP), // transfer 5 USDC on chain 8453 to 0xceecee
             chainAccountsList_(6e6), // holding 6 USDC in total across chains 1, 8453
