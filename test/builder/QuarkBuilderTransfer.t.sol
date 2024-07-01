@@ -70,7 +70,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
 
     function testFundsOnUnbridgeableChains() public {
         QuarkBuilder builder = new QuarkBuilder();
-        // FundsUnavailable(2e6, 0e6, 2e6): Requested 2e6, Available 0e6
+        // FundsUnavailable("USDC", 2e6, 0e6): Requested 2e6, Available 0e6
         vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "USDC", 2e6, 0e6));
         builder.transfer(
             // there is no bridge to chain 7777, so we cannot get to our funds
