@@ -526,7 +526,7 @@ contract QuarkBuilder {
         Actions.Action[] memory actions,
         Accounts.ChainAccounts[] memory chainAccountsList,
         uint256 targetChainId,
-        uint256 supplementalPaymentTokenBalance
+        uint256 _supplementalPaymentTokenBalance
     ) internal pure {
         Actions.Action[] memory bridgeActions = Actions.findActionsOfType(actions, Actions.ACTION_TYPE_BRIDGE);
         Actions.Action[] memory nonBridgeActions = Actions.findActionsNotOfType(actions, Actions.ACTION_TYPE_BRIDGE);
