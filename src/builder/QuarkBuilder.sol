@@ -133,7 +133,7 @@ contract QuarkBuilder {
 
         // Validate generated actions for affordability
         if (payment.isToken) {
-            assertSufficientPaymentTokenBalances(actions, chainAccountsList, cometSupplyIntent.chainId);
+            assertSufficientPaymentTokenBalances(actions, chainAccountsList, cometSupplyIntent.chainId, 0); // XXX
         }
 
         // Construct EIP712 digests
@@ -172,15 +172,67 @@ contract QuarkBuilder {
         address withdrawer;
     }
 
+    // XXX rename
+    function unsignedSubtract(uint256 a, uint256 b) internal pure returns (uint256) {
+      if (b < a) {
+        return a - b;
+      } else {
+        return 0;
+      }
+    }
+
+    // XXX support withdraw max
+    // XXX support Quotecall?
     function cometWithdraw(
         CometWithdrawIntent memory cometWithdrawIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
     ) external pure returns (BuilderResult memory) {
+        // XXX confirm that you actually have the amount to withdraw
+
         uint256 actionIndex = 0;
         Actions.Action[] memory actions = new Actions.Action[](chainAccountsList.length);
         IQuarkWallet.QuarkOperation[] memory quarkOperations =
             new IQuarkWallet.QuarkOperation[](chainAccountsList.length);
+
+        // when paying with tokens, you may need to bridge the payment token to cover the cost
+        if (payment.isToken) {
+            uint256 maxCostOnDstChain = PaymentInfo.findMaxCost(payment, cometWithdrawIntent.chainId);
+            // if you're withdrawing the payment token, you can use the withdrawn amount to cover the cost
+            if (Strings.stringEqIgnoreCase(payment.currency, cometWithdrawIntent.assetSymbol)) {
+                // XXX in the withdrawMax case, use the Comet balance 
+                maxCostOnDstChain = unsignedSubtract(maxCostOnDstChain, cometWithdrawIntent.amount);
+            }
+
+            if (
+                needsBridgedFunds(
+                    cometWithdrawIntent.assetSymbol,
+                    maxCostOnDstChain,
+                    cometWithdrawIntent.chainId,
+                    chainAccountsList
+                )
+            ) {
+                (IQuarkWallet.QuarkOperation[] memory bridgeQuarkOperations, Actions.Action[] memory bridgeActions) =
+                Actions.constructBridgeOperations(
+                    Actions.BridgeOperationInfo({
+                        assetSymbol: payment.currency,
+                        amountNeededOnDst: maxCostOnDstChain,
+                        dstChainId: cometWithdrawIntent.chainId,
+                        recipient: cometWithdrawIntent.withdrawer,
+                        blockTimestamp: cometWithdrawIntent.blockTimestamp,
+                        useQuotecall: false // XXX support Quotecall?
+                    }),
+                    chainAccountsList,
+                    payment
+                );
+
+                for (uint256 i = 0; i < bridgeQuarkOperations.length; ++i) {
+                    quarkOperations[actionIndex] = bridgeQuarkOperations[i];
+                    actions[actionIndex] = bridgeActions[i];
+                    actionIndex++;
+                }
+            }
+        }
 
         (quarkOperations[actionIndex], actions[actionIndex]) = Actions.cometWithdrawAsset(
             Actions.CometWithdraw({
@@ -203,7 +255,13 @@ contract QuarkBuilder {
 
         // Validate generated actions for affordability
         if (payment.isToken) {
-            assertSufficientPaymentTokenBalances(actions, chainAccountsList, cometWithdrawIntent.chainId);
+            uint256 supplementalPaymentTokenBalance = 0;
+            if (Strings.stringEqIgnoreCase(payment.currency, cometWithdrawIntent.assetSymbol)) {
+                // XXX in the withdrawMax case, use the Comet balance 
+                supplementalPaymentTokenBalance += cometWithdrawIntent.amount;
+            }
+
+            assertSufficientPaymentTokenBalances(actions, chainAccountsList, cometWithdrawIntent.chainId, supplementalPaymentTokenBalance);
         }
 
         // Construct EIP712 digests
@@ -362,7 +420,7 @@ contract QuarkBuilder {
 
         // Validate generated actions for affordability
         if (payment.isToken) {
-            assertSufficientPaymentTokenBalances(actions, chainAccountsList, transferIntent.chainId);
+            assertSufficientPaymentTokenBalances(actions, chainAccountsList, transferIntent.chainId, 0); // XXX
         }
 
         // Construct EIP712 digests
@@ -467,7 +525,8 @@ contract QuarkBuilder {
     function assertSufficientPaymentTokenBalances(
         Actions.Action[] memory actions,
         Accounts.ChainAccounts[] memory chainAccountsList,
-        uint256 targetChainId
+        uint256 targetChainId,
+        uint256 supplementalPaymentTokenBalance
     ) internal pure {
         Actions.Action[] memory bridgeActions = Actions.findActionsOfType(actions, Actions.ACTION_TYPE_BRIDGE);
         Actions.Action[] memory nonBridgeActions = Actions.findActionsNotOfType(actions, Actions.ACTION_TYPE_BRIDGE);

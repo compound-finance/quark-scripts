@@ -9,6 +9,8 @@ import {PaymentInfo} from "src/builder/PaymentInfo.sol";
 import {QuarkBuilder} from "src/builder/QuarkBuilder.sol";
 
 contract QuarkBuilderTest {
+    address constant COMET_1 = address(0xc3);
+
     address constant USDC_1 = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address constant USDC_8453 = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
     address constant USDT_1 = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
