@@ -85,7 +85,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         // The 97e6 is the suggested amount (total available funds) to transfer
         vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "USDC", 100e6, 97e6));
         builder.transfer(
-            transferUsdc_(1, 100e6, address(0xfe11a), BLOCK_TIMESTAMP), // transfer 1 USDC on chain 1 to 0xfe11a
+            transferUsdc_(1, 100e6, address(0xfe11a), BLOCK_TIMESTAMP), // transfer 100 USDC on chain 1 to 0xfe11a
             chainAccountsList_(200e6), // holding 200 USDC in total across 1, 8453
             paymentUsdc_(maxCosts_(1, 3e6)) // but costs 3 USDC
         );
