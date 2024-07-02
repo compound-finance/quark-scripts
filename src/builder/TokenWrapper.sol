@@ -5,6 +5,9 @@ import "./Strings.sol";
 import {IWETHActions, IWstETHActions} from "../WrapperScripts.sol";
 
 library TokenWrapper {
+    error NotWrappable();
+    error NotUnwrappable();
+
     struct KnownWrapperTokenPair {
         uint256 chainId;
         address wrapper;
@@ -62,13 +65,24 @@ library TokenWrapper {
         return Strings.stringEqIgnoreCase(tokenSymbol, getWrapperContract(chainId, tokenSymbol).wrappedSymbol);
     }
 
-    function encodeWrapToken(uint256 chainId, string memory tokenSymbol, uint256 amount)
+    function encodeWrapToken(uint256 chainId, string memory tokenSymbol, address tokenAddress, uint256 amount)
         internal
         pure
         returns (bytes memory)
     {
-        KnownWrapperTokenPair memory wrapper = getWrapperContract(chainId, tokenSymbol);
-        return abi.encodeWithSignature("wrap(address,uint256)", wrapper.wrapper, amount);
+        if (Strings.stringEqIgnoreCase(tokenSymbol, "ETH")) {
+            return abi.encodeWithSelector(
+                IWETHActions.wrapETH.selector, getWrapperContract(chainId, tokenSymbol).wrapper, amount
+            );
+        } else if (Strings.stringEqIgnoreCase(tokenSymbol, "stETH")) {
+            return abi.encodeWithSelector(
+                IWstETHActions.wrapLidoStETH.selector,
+                getWrapperContract(chainId, tokenSymbol).wrapper,
+                tokenAddress,
+                amount
+            );
+        }
+        revert NotWrappable();
     }
 
     function encodeUnwrapToken(uint256 chainId, string memory tokenSymbol, uint256 amount)
@@ -76,7 +90,15 @@ library TokenWrapper {
         pure
         returns (bytes memory)
     {
-        KnownWrapperTokenPair memory wrapper = getWrapperContract(chainId, tokenSymbol);
-        return abi.encodeWithSignature("unwrap(address,uint256)", wrapper.wrapper, amount);
+        if (Strings.stringEqIgnoreCase(tokenSymbol, "WETH")) {
+            return abi.encodeWithSelector(
+                IWETHActions.unwrapWETH.selector, getWrapperContract(chainId, tokenSymbol).wrapper, amount
+            );
+        } else if (Strings.stringEqIgnoreCase(tokenSymbol, "wstETH")) {
+            return abi.encodeWithSelector(
+                IWstETHActions.unwrapLidoWstETH.selector, getWrapperContract(chainId, tokenSymbol).wrapper, amount
+            );
+        }
+        revert NotUnwrappable();
     }
 }
