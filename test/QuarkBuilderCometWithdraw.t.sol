@@ -31,40 +31,37 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
         });
     }
 
-    // delete
-    function testTest() public {
-        assertEq(true, true);
-    }
+    // XXX test that you have enough of the asset to withdraw
 
-    // function cometWithdraw
-
-    // testMaxCostTooHigh
-
-    function testWithdrawMaxCostTooHigh() public {
-        QuarkBuilder builder = new QuarkBuilder();
-        vm.expectRevert(QuarkBuilder.MaxCostTooHigh.selector);
-        builder.cometWithdraw(
-            cometWithdraw_(1, 1e6),
-            chainAccountsList_(2e6), // holding 2 USDC in total across 1, 8453
-            paymentUsdc_(maxCosts_(1, 1_000e6)) // but costs 1,000 USDC
-        );
-    }
-
-
-    // test assertions
-
-    // confirm that you have enough of the token to withdraw
-
-    // test cometWithdraw
+    // XXX test cometWithdraw
     //   default path: withdrawing a token; paying with credit car
+    // function testWithdrawMaxCostTooHigh() public {
+    //     QuarkBuilder builder = new QuarkBuilder();
+    //     vm.expectRevert(QuarkBuilder.MaxCostTooHigh.selector);
+    //     builder.cometWithdraw(
+    //         cometWithdraw_(1, 1e6),
+    //         chainAccountsList_(2e6), // holding 2 USDC in total across 1, 8453
+    //         paymentUsdc_(maxCosts_(1, 1_000e6)) // but costs 1,000 USDC
+    //     );
+    // }
 
-    // testCometWithdrawWithPaycall
+    // XXX testCometWithdrawWithPaycall
     //   testing a withdraw of a non-payment token; paying with the operation with the pay token
 
-    // testCometWithdrawPayWithWithdraw
+    // XXX testCometWithdrawPayWithWithdraw
     //   testing that you can pay for the operation with the amount that you've withdrawn
 
-    // testCometWithdrawWithBridgeOfPaymentToken
+    // XXX testCometWithdrawWithBridgeOfPaymentToken
     //   testing that you can pay for the withdraw with funds that have been bridged
 
+    // XXX test that it reverts if the actions are not affordable
+    // function testWithdrawMaxCostTooHigh() public {
+    //     QuarkBuilder builder = new QuarkBuilder();
+    //     vm.expectRevert(QuarkBuilder.MaxCostTooHigh.selector);
+    //     builder.cometWithdraw(
+    //         cometWithdraw_(1, 1e6),
+    //         chainAccountsList_(2e6), // holding 2 USDC in total across 1, 8453
+    //         paymentUsdc_(maxCosts_(1, 1_000e6)) // but costs 1,000 USDC
+    //     );
+    // }
 }
