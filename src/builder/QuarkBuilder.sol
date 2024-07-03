@@ -11,6 +11,7 @@ import {Strings} from "./Strings.sol";
 import {PaycallWrapper} from "./PaycallWrapper.sol";
 import {QuotecallWrapper} from "./QuotecallWrapper.sol";
 import {PaymentInfo} from "./PaymentInfo.sol";
+import {TokenWrapper} from "./TokenWrapper.sol";
 
 contract QuarkBuilder {
     /* ===== Constants ===== */
@@ -210,7 +211,7 @@ contract QuarkBuilder {
 
         // TransferMax will always use quotecall to avoid leaving dust in wallet
         bool useQuotecall = isMaxTransfer;
-        Actions.Action[] memory actions = new Actions.Action[](chainAccountsList.length);
+        Actions.Action[] memory actions = new Actions.Action[](chainAccountsList.length * 2);
         IQuarkWallet.QuarkOperation[] memory quarkOperations =
             new IQuarkWallet.QuarkOperation[](2 * chainAccountsList.length);
 
@@ -368,6 +369,34 @@ contract QuarkBuilder {
                     aggregateMaxCosts += PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId);
                 }
             }
+
+            // If the asset has wrapper counterpart and can locally wrap/unwrap, accumulate the balance of the the counterpart
+            // NOTE: Only count the counterpart balance if the counterpart can also be bridged
+            if (
+                TokenWrapper.hasWrapperContract(chainAccountsList[i].chainId, assetSymbol)
+                    && (
+                        chainAccountsList[i].chainId == chainId
+                            || BridgeRoutes.canBridge(
+                                chainAccountsList[i].chainId,
+                                chainId,
+                                TokenWrapper.getWrapperCounterpartSymbol(chainAccountsList[i].chainId, assetSymbol)
+                            )
+                    )
+            ) {
+                aggregateAssetBalance +=
+                    getWrapperCounterpartBalance(assetSymbol, chainAccountsList[i].chainId, chainAccountsList);
+                // If the user opts for paying with payment token and the payment token is also the transfer token's counterpart
+                // reduce the available balance by the max cost
+                if (
+                    payment.isToken
+                        && Strings.stringEqIgnoreCase(
+                            payment.currency,
+                            TokenWrapper.getWrapperCounterpartSymbol(chainAccountsList[i].chainId, assetSymbol)
+                        )
+                ) {
+                    aggregateMaxCosts += PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId);
+                }
+            }
         }
 
         uint256 aggregateAvailableAssetBalance =
@@ -377,6 +406,21 @@ contract QuarkBuilder {
         }
     }
 
+    function getWrapperCounterpartBalance(
+        string memory assetSymbol,
+        uint256 chainId,
+        Accounts.ChainAccounts[] memory chainAccountsList
+    ) internal pure returns (uint256) {
+        if (TokenWrapper.hasWrapperContract(chainId, assetSymbol)) {
+            // Add counterpart balance to balanceOnChain
+            return Accounts.getBalanceOnChain(
+                TokenWrapper.getWrapperCounterpartSymbol(chainId, assetSymbol), chainId, chainAccountsList
+            );
+        }
+
+        return 0;
+    }
+
     function needsBridgedFunds(
         string memory assetSymbol,
         uint256 amount,
@@ -384,12 +428,33 @@ contract QuarkBuilder {
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
     ) internal pure returns (bool) {
+        uint256 balanceOnChain = Accounts.getBalanceOnChain(assetSymbol, chainId, chainAccountsList);
         // If action is paid for with tokens and the payment token is the transfer token, then add the payment max cost for the target chain to the amount needed
         uint256 amountNeededOnDstChain = amount;
         if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, assetSymbol)) {
             amountNeededOnDstChain += PaymentInfo.findMaxCost(payment, chainId);
         }
-        return Accounts.getBalanceOnChain(assetSymbol, chainId, chainAccountsList) < amountNeededOnDstChain;
+
+        // If has wrap token counterpart, try to wrap/unwrap first before attempt to bridge
+        uint256 wrapperCounterpartBalance = getWrapperCounterpartBalance(assetSymbol, chainId, chainAccountsList);
+        // Substract max cost if the wrapper counter part is the payment token for wrap/unwrap action
+        if (
+            payment.isToken
+                && Strings.stringEqIgnoreCase(
+                    payment.currency, TokenWrapper.getWrapperCounterpartSymbol(chainId, assetSymbol)
+                )
+        ) {
+            uint256 maxCost = PaymentInfo.findMaxCost(payment, chainId);
+            if (wrapperCounterpartBalance >= maxCost) {
+                wrapperCounterpartBalance -= maxCost;
+            } else {
+                // Can't afford to wrap/unwrap == can't use that balance
+                wrapperCounterpartBalance = 0;
+            }
+        }
+        balanceOnChain += wrapperCounterpartBalance;
+
+        return balanceOnChain < amountNeededOnDstChain;
     }
 
     // Assert that each chain with a bridge action has enough payment token to

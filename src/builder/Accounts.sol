@@ -4,6 +4,7 @@ pragma solidity ^0.8.23;
 import {PaymentInfo} from "./PaymentInfo.sol";
 import {Strings} from "./Strings.sol";
 import {PaymentInfo} from "./PaymentInfo.sol";
+import {TokenWrapper} from "./TokenWrapper.sol";
 
 library Accounts {
     struct ChainAccounts {
@@ -150,15 +151,53 @@ library Accounts {
         uint256 total = 0;
 
         for (uint256 i = 0; i < chainAccountsList.length; ++i) {
-            total += Accounts.sumBalances(
+            uint256 balance = Accounts.sumBalances(
                 Accounts.findAssetPositions(tokenSymbol, chainAccountsList[i].chainId, chainAccountsList)
             );
 
             // Account for max cost if the payment token is the transfer token
             // Simply offset the max cost from the available asset batch
             if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, tokenSymbol)) {
-                total -= PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId);
+                uint256 maxCost = PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId);
+
+                // Prevent errors from underflowing
+                if (balance >= maxCost) {
+                    balance -= maxCost;
+                } else {
+                    balance = 0;
+                }
             }
+
+            // If the wrapper contract exists in the chain, add the balance of the wrapped/unwrapped token here as well
+            // Offset with another max cost for wrapping/unwrapping action when the counter part is payment token
+            uint256 counterPartBalance = 0;
+            if (TokenWrapper.hasWrapperContract(chainAccountsList[i].chainId, tokenSymbol)) {
+                // Add the balance of the wrapped token
+                counterPartBalance += Accounts.sumBalances(
+                    Accounts.findAssetPositions(
+                        TokenWrapper.getWrapperCounterpartSymbol(chainAccountsList[i].chainId, tokenSymbol),
+                        chainAccountsList[i].chainId,
+                        chainAccountsList
+                    )
+                );
+                // If the wrapped token is the payment token, offset the max cost
+                if (
+                    payment.isToken
+                        && Strings.stringEqIgnoreCase(
+                            payment.currency,
+                            TokenWrapper.getWrapperCounterpartSymbol(chainAccountsList[i].chainId, tokenSymbol)
+                        )
+                ) {
+                    uint256 counterPartMaxCost = PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId);
+                    if (counterPartBalance >= counterPartMaxCost) {
+                        counterPartBalance -= counterPartMaxCost;
+                    } else {
+                        counterPartBalance = 0;
+                    }
+                }
+            }
+
+            total += balance + counterPartBalance;
         }
         return total;
     }

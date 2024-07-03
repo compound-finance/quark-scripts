@@ -2,7 +2,7 @@
 pragma solidity ^0.8.23;
 
 import "./Strings.sol";
-import {IWETHActions, IWstETHActions} from "../WrapperScripts.sol";
+import {WrapperActions} from "../WrapperScripts.sol";
 
 library TokenWrapper {
     error NotWrappable();
@@ -61,6 +61,25 @@ library TokenWrapper {
         return getWrapperContract(chainId, tokenSymbol).wrapper != address(0);
     }
 
+    function getWrapperCounterpartSymbol(uint256 chainId, string memory assetSymbol)
+        internal
+        pure
+        returns (string memory counterpartSymbol)
+    {
+        // If is wrappable token, accumulate the balance of the the counterpart
+        if (hasWrapperContract(chainId, assetSymbol)) {
+            KnownWrapperTokenPair memory p = getWrapperContract(chainId, assetSymbol);
+            if (isWrappedToken(chainId, assetSymbol)) {
+                return p.underlyingSymbol;
+            } else {
+                return p.wrappedSymbol;
+            }
+        }
+
+        // Return empty string if no counterpart
+        return "";
+    }
+
     function isWrappedToken(uint256 chainId, string memory tokenSymbol) internal pure returns (bool) {
         return Strings.stringEqIgnoreCase(tokenSymbol, getWrapperContract(chainId, tokenSymbol).wrappedSymbol);
     }
@@ -72,11 +91,11 @@ library TokenWrapper {
     {
         if (Strings.stringEqIgnoreCase(tokenSymbol, "ETH")) {
             return abi.encodeWithSelector(
-                IWETHActions.wrapETH.selector, getWrapperContract(chainId, tokenSymbol).wrapper, amount
+                WrapperActions.wrapETH.selector, getWrapperContract(chainId, tokenSymbol).wrapper, amount
             );
         } else if (Strings.stringEqIgnoreCase(tokenSymbol, "stETH")) {
             return abi.encodeWithSelector(
-                IWstETHActions.wrapLidoStETH.selector,
+                WrapperActions.wrapLidoStETH.selector,
                 getWrapperContract(chainId, tokenSymbol).wrapper,
                 tokenAddress,
                 amount
@@ -92,11 +111,11 @@ library TokenWrapper {
     {
         if (Strings.stringEqIgnoreCase(tokenSymbol, "WETH")) {
             return abi.encodeWithSelector(
-                IWETHActions.unwrapWETH.selector, getWrapperContract(chainId, tokenSymbol).wrapper, amount
+                WrapperActions.unwrapWETH.selector, getWrapperContract(chainId, tokenSymbol).wrapper, amount
             );
         } else if (Strings.stringEqIgnoreCase(tokenSymbol, "wstETH")) {
             return abi.encodeWithSelector(
-                IWstETHActions.unwrapLidoWstETH.selector, getWrapperContract(chainId, tokenSymbol).wrapper, amount
+                WrapperActions.unwrapLidoWstETH.selector, getWrapperContract(chainId, tokenSymbol).wrapper, amount
             );
         }
         revert NotUnwrappable();
