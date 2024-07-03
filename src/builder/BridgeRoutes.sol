@@ -27,9 +27,15 @@ library CCTP {
     }
 
     function knownChains() internal pure returns (CCTPChain[] memory) {
-        CCTPChain[] memory chains = new CCTPChain[](2);
+        CCTPChain[] memory chains = new CCTPChain[](4);
+        // Mainnet
         chains[0] = CCTPChain({chainId: 1, domainId: 0, bridge: 0xBd3fa81B58Ba92a82136038B25aDec7066af3155});
+        // Base
         chains[1] = CCTPChain({chainId: 8453, domainId: 6, bridge: 0x1682Ae6375C4E4A97e4B583BC394c861A46D8962});
+        // Sepolia
+        chains[2] = CCTPChain({chainId: 11155111, domainId: 0, bridge: 0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5});
+        // Base Sepolia
+        chains[3] = CCTPChain({chainId: 84532, domainId: 6, bridge: 0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5});
         return chains;
     }
 
