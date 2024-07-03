@@ -727,12 +727,19 @@ library Actions {
             toAssetSymbol: TokenWrapper.getWrapperContract(unwrap.chainId, unwrap.assetSymbol).underlyingSymbol
         });
 
+        string memory paymentMethod;
+        if (payment.isToken) {
+            // To pay with token, it has to be a paycall or quotecall.
+            paymentMethod = useQuotecall ? PAYMENT_METHOD_QUOTECALL : PAYMENT_METHOD_PAYCALL;
+        } else {
+            paymentMethod = PAYMENT_METHOD_OFFCHAIN;
+        }
         Action memory action = Actions.Action({
             chainId: unwrap.chainId,
             quarkAccount: unwrap.sender,
             actionType: ACTION_TYPE_UNWRAP,
             actionContext: abi.encode(wrapActionContext),
-            paymentMethod: payment.isToken ? PAYMENT_METHOD_PAYCALL : PAYMENT_METHOD_OFFCHAIN,
+            paymentMethod: paymentMethod,
             // Null address for OFFCHAIN payment.
             paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, unwrap.chainId).token : address(0),
             paymentTokenSymbol: payment.currency,
@@ -786,12 +793,19 @@ library Actions {
             toAssetSymbol: TokenWrapper.getWrapperContract(wrap.chainId, wrap.assetSymbol).wrappedSymbol
         });
 
+        string memory paymentMethod;
+        if (payment.isToken) {
+            // To pay with token, it has to be a paycall or quotecall.
+            paymentMethod = useQuotecall ? PAYMENT_METHOD_QUOTECALL : PAYMENT_METHOD_PAYCALL;
+        } else {
+            paymentMethod = PAYMENT_METHOD_OFFCHAIN;
+        }
         Action memory action = Actions.Action({
             chainId: wrap.chainId,
             quarkAccount: wrap.sender,
             actionType: ACTION_TYPE_WRAP,
             actionContext: abi.encode(wrapActionContext),
-            paymentMethod: payment.isToken ? PAYMENT_METHOD_PAYCALL : PAYMENT_METHOD_OFFCHAIN,
+            paymentMethod: paymentMethod,
             // Null address for OFFCHAIN payment.
             paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, wrap.chainId).token : address(0),
             paymentTokenSymbol: payment.currency,

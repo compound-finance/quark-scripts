@@ -1154,4 +1154,143 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
     }
+
+    function testTranfserMaxWithAutoWrapping() public {
+        QuarkBuilder builder = new QuarkBuilder();
+        address account = address(0xa11ce);
+        PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
+        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 1e5});
+        Accounts.ChainAccounts[] memory chainAccountsList = new Accounts.ChainAccounts[](1);
+        // Holding 10 USDC, 1ETH, and 1WETH on chain 1
+        Accounts.AssetPositions[] memory assetPositionsList = new Accounts.AssetPositions[](3);
+        assetPositionsList[0] = Accounts.AssetPositions({
+            asset: usdc_(1),
+            symbol: "USDC",
+            decimals: 6,
+            usdPrice: 1_0000_0000,
+            accountBalances: accountBalances_(account, 10e6)
+        });
+        assetPositionsList[1] = Accounts.AssetPositions({
+            asset: eth_(),
+            symbol: "ETH",
+            decimals: 18,
+            usdPrice: 3500_0000_0000,
+            accountBalances: accountBalances_(account, 1e18)
+        });
+        assetPositionsList[2] = Accounts.AssetPositions({
+            asset: weth_(1),
+            symbol: "WETH",
+            decimals: 18,
+            usdPrice: 3500_0000_0000,
+            accountBalances: accountBalances_(account, 1e18)
+        });
+
+        chainAccountsList[0] = Accounts.ChainAccounts({
+            chainId: 1,
+            quarkStates: quarkStates_(address(0xa11ce), 12),
+            assetPositionsList: assetPositionsList
+        });
+
+        // Transfer max ETH to 0xceecee on chain 1
+        // Should able to have auto unwrapping 0.5 WETH to ETH to cover the amount
+        QuarkBuilder.BuilderResult memory result = builder.transfer(
+            transferEth_(1, type(uint256).max, address(0xceecee), BLOCK_TIMESTAMP),
+            chainAccountsList,
+            paymentUsdc_(maxCosts)
+        );
+
+        address transferActionsAddress = CodeJarHelper.getCodeAddress(type(TransferActions).creationCode);
+        address wrapperActionsAddress = CodeJarHelper.getCodeAddress(type(WrapperActions).creationCode);
+        address quotecallAddress = CodeJarHelper.getCodeAddress(
+            abi.encodePacked(type(Quotecall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
+        );
+
+        assertEq(result.version, "1.0.0", "version 1");
+        assertEq(result.paymentCurrency, "usdc", "usdc currency");
+
+        // Check the quark operations
+        assertEq(result.quarkOperations.length, 2, "two operations");
+        assertEq(
+            result.quarkOperations[0].scriptAddress,
+            quotecallAddress,
+            "script address is correct given the code jar address on mainnet"
+        );
+        assertEq(
+            result.quarkOperations[0].scriptCalldata,
+            abi.encodeWithSelector(
+                Quotecall.run.selector,
+                wrapperActionsAddress,
+                abi.encodeWithSelector(
+                    WrapperActions.unwrapWETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18
+                ),
+                1e5
+            ),
+            "calldata is Quotecall.run(wrapperActionsAddress, WrapperActions.unwrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18));"
+        );
+        assertEq(
+            result.quarkOperations[1].scriptAddress,
+            quotecallAddress,
+            "script address is correct given the code jar address on mainnet"
+        );
+        assertEq(
+            result.quarkOperations[1].scriptCalldata,
+            abi.encodeWithSelector(
+                Quotecall.run.selector,
+                transferActionsAddress,
+                abi.encodeWithSelector(TransferActions.transferNativeToken.selector, address(0xceecee), 2e18),
+                1e5
+            ),
+            "calldata is Quotecall.run(transferActionAddress, TransferActions.transferNativeToken(address(0xceecee), 2e18));"
+        );
+        assertEq(
+            result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
+        );
+        assertEq(
+            result.quarkOperations[1].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
+        );
+        // check the actions
+        assertEq(result.actions.length, 2, "2 actions");
+        assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
+        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce unwraps the WETH");
+        assertEq(result.actions[0].actionType, "UNWRAP", "action type is 'UNWRAP'");
+        assertEq(result.actions[0].paymentMethod, "QUOTE_CALL", "payment method is 'QUOTE_CALL'");
+        assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
+        assertEq(
+            result.actions[0].actionContext,
+            abi.encode(
+                Actions.WrappingActionContext({
+                    chainId: 1,
+                    amount: 1e18,
+                    token: weth_(1),
+                    fromAssetSymbol: "WETH",
+                    toAssetSymbol: "ETH"
+                })
+            ),
+            "action context encoded from WrappingActionContext"
+        );
+        assertEq(result.actions[1].chainId, 1, "operation is on chainid 1");
+        assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[1].actionType, "TRANSFER", "action type is 'TRANSFER'");
+        assertEq(result.actions[1].paymentMethod, "QUOTE_CALL", "payment method is 'QUOTE_CALL'");
+        assertEq(result.actions[1].paymentToken, USDC_1, "payment token is USDC");
+        assertEq(
+            result.actions[1].actionContext,
+            abi.encode(
+                Actions.TransferActionContext({
+                    amount: 2e18,
+                    price: 3500e8,
+                    token: eth_(),
+                    assetSymbol: "ETH",
+                    chainId: 1,
+                    recipient: address(0xceecee)
+                })
+            ),
+            "action context encoded from TransferActionContext"
+        );
+
+        // TODO: Check the contents of the EIP712 data
+        assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
+        assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
+        assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
+    }
 }

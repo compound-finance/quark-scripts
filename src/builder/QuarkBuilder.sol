@@ -12,7 +12,6 @@ import {PaycallWrapper} from "./PaycallWrapper.sol";
 import {QuotecallWrapper} from "./QuotecallWrapper.sol";
 import {PaymentInfo} from "./PaymentInfo.sol";
 import {TokenWrapper} from "./TokenWrapper.sol";
-import "forge-std/console.sol";
 
 contract QuarkBuilder {
     /* ===== Constants ===== */
