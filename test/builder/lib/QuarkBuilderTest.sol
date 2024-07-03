@@ -13,6 +13,8 @@ contract QuarkBuilderTest {
     address constant USDC_8453 = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
     address constant USDT_1 = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
     address constant USDT_8453 = 0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2;
+    address constant WETH_1 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address constant WETH_8453 = 0x4200000000000000000000000000000000000006;
     // Random address for mock assets in random unsupported chain
     address constant USDC_7777 = 0x8D89c5CaA76592e30e0410B9e68C0f235c62B312;
     address constant USDT_7777 = address(0xDEADBEEF);
@@ -124,6 +126,16 @@ contract QuarkBuilderTest {
         if (chainId == 8453) return USDT_8453;
         if (chainId == 7777) return USDT_7777; // Mock with random chain's USDT
         revert("no mock usdt for that chain id bye");
+    }
+
+    function eth_() internal pure returns (address) {
+        return 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    }
+
+    function weth_(uint256 chainId) internal pure returns (address) {
+        if (chainId == 1) return WETH_1;
+        if (chainId == 8453) return WETH_8453;
+        revert("no mock weth for that chain id bye");
     }
 
     function quarkStates_(address account, uint96 nextNonce) internal pure returns (Accounts.QuarkState[] memory) {
