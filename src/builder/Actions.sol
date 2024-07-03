@@ -281,38 +281,9 @@ library Actions {
                 }
             }
 
-            // Append wrap/unwrap action
+            // NOTE: Only adjusts amount LeftToBridge
+            // The real wrappping/unwrapping will be done outside of the construct bridge operation function
             if (amountToWrapOrUnwrap > 0) {
-                if (TokenWrapper.isWrappedToken(bridgeInfo.dstChainId, bridgeInfo.assetSymbol)) {
-                    (quarkOperations[actionIndex], actions[actionIndex]) = unwrapAsset(
-                        UnwrapAsset({
-                            chainAccountsList: chainAccountsList,
-                            assetSymbol: bridgeInfo.assetSymbol,
-                            amount: amountToWrapOrUnwrap,
-                            chainId: bridgeInfo.dstChainId,
-                            sender: bridgeInfo.recipient,
-                            blockTimestamp: bridgeInfo.blockTimestamp
-                        }),
-                        payment,
-                        bridgeInfo.useQuotecall
-                    );
-                    actionIndex++;
-                } else {
-                    (quarkOperations[actionIndex], actions[actionIndex]) = wrapAsset(
-                        WrapAsset({
-                            chainAccountsList: chainAccountsList,
-                            assetSymbol: bridgeInfo.assetSymbol,
-                            amount: amountToWrapOrUnwrap,
-                            chainId: bridgeInfo.dstChainId,
-                            sender: bridgeInfo.recipient,
-                            blockTimestamp: bridgeInfo.blockTimestamp
-                        }),
-                        payment,
-                        bridgeInfo.useQuotecall
-                    );
-                    actionIndex++;
-                }
-
                 // Update amountLeftToBridge
                 amountLeftToBridge -= amountToWrapOrUnwrap;
             }
