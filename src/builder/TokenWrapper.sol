@@ -16,7 +16,7 @@ library TokenWrapper {
     }
 
     function knownWrapperTokenPairs() internal pure returns (KnownWrapperTokenPair[] memory) {
-        KnownWrapperTokenPair[] memory pairs = new KnownWrapperTokenPair[](4);
+        KnownWrapperTokenPair[] memory pairs = new KnownWrapperTokenPair[](2);
         pairs[0] = KnownWrapperTokenPair({
             chainId: 1,
             wrapper: 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2,
@@ -29,12 +29,17 @@ library TokenWrapper {
             underlyingSymbol: "ETH",
             wrappedSymbol: "WETH"
         });
-        pairs[2] = KnownWrapperTokenPair({
-            chainId: 1,
-            wrapper: 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0,
-            underlyingSymbol: "stETH",
-            wrappedSymbol: "wstETH"
-        });
+        // NOTE: Leave out stETH and wstETH auto wrapper for now
+        // TODO: Need to figure a way out to compute the "correct" ratio between stETH and wstETH for QuarkBuilder
+        // Because QuarkBuilder doesn't have access to on-chain data, but eht ratio between stETH and wstETH is constantly changing, 
+        // which will be hard if we need to use it to compute the absolute number of wstETH to unwrap into stETH or vice versa
+        //
+        // pairs[2] = KnownWrapperTokenPair({
+        //     chainId: 1,
+        //     wrapper: 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0,
+        //     underlyingSymbol: "stETH",
+        //     wrappedSymbol: "wstETH"
+        // });
         return pairs;
     }
 
