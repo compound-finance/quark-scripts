@@ -14,7 +14,7 @@ contract WrapperActions {
         IWETH(wrapper).withdraw(amount);
     }
 
-    function wrapLidoStETH(address wrapper, address tokenToWrap, uint256 amount) external {
+    function wrapLidoStETH(address wstETH, address stETH, uint256 amount) external {
         IERC20(tokenToWrap).approve(wrapper, amount);
         IWstETH(wrapper).wrap(amount);
     }
