@@ -6,7 +6,7 @@ import {IWETH} from "./interfaces/IWETH.sol";
 import {IWstETH} from "./interfaces/IWstETH.sol";
 
 contract WrapperActions {
-    function wrapETH(address wrapper, uint256 amount) external payable {
+    function wrapETH(address weth, uint256 amount) external payable {
         IWETH(wrapper).deposit{value: amount}();
     }
 
