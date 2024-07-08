@@ -19,7 +19,7 @@ contract WrapperActions {
         IWstETH(wrapper).wrap(amount);
     }
 
-    function unwrapLidoWstETH(address wrapper, uint256 amount) external {
+    function unwrapLidoWstETH(address wstETH, uint256 amount) external {
         IWstETH(wrapper).unwrap(amount);
     }
 }
