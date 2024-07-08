@@ -281,6 +281,7 @@ contract QuarkBuilder {
 
         // Check if need to wrap/unwrap token to cover the transferIntent amount
         // If the existing balance is not enough to cover the transferIntent amount, wrap/unwrap the counterpart token here
+        // NOTE: We prioritize unwrap/wrap in the dst chain over bridging, bridging logic checks for counterpart tokens when calculating the amounts to bridge.
         uint256 existingBalance =
             Accounts.getBalanceOnChain(transferIntent.assetSymbol, transferIntent.chainId, chainAccountsList);
         if (
@@ -290,17 +291,6 @@ contract QuarkBuilder {
             // If the asset has a wrapper counterpart, wrap/unwrap the token to cover the transferIntent amount
             string memory counterpartSymbol =
                 TokenWrapper.getWrapperCounterpartSymbol(transferIntent.chainId, transferIntent.assetSymbol);
-            uint256 counterpartBalance =
-                getWrapperCounterpartBalance(transferIntent.assetSymbol, transferIntent.chainId, chainAccountsList);
-            // If the counterpart is the payment token, reduce the balance by the max cost
-            if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, counterpartSymbol)) {
-                uint256 maxCost = PaymentInfo.findMaxCost(payment, transferIntent.chainId);
-                if (counterpartBalance >= maxCost) {
-                    counterpartBalance -= maxCost;
-                } else {
-                    counterpartBalance = 0;
-                }
-            }
 
             // Wrap/unwrap the token to cover the transferIntent amount
             if (TokenWrapper.isWrappedToken(transferIntent.chainId, transferIntent.assetSymbol)) {
@@ -429,7 +419,7 @@ contract QuarkBuilder {
                 if (TokenWrapper.hasWrapperContract(chainAccountsList[i].chainId, assetSymbol)) {
                     uint256 counterpartBalance =
                         getWrapperCounterpartBalance(assetSymbol, chainAccountsList[i].chainId, chainAccountsList);
-                    // If the user opts for paying with payment token and the payment token is also the transfer token's counterpart
+                    // If the user opts for paying with payment token and the payment token is also the action token's counterpart
                     // reduce the available balance by the max cost
                     if (
                         payment.isToken
