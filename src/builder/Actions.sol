@@ -253,7 +253,7 @@ library Actions {
             Accounts.getBalanceOnChain(bridgeInfo.assetSymbol, bridgeInfo.dstChainId, chainAccountsList);
         uint256 amountLeftToBridge = bridgeInfo.amountNeededOnDst - balanceOnDstChain;
 
-        // Check on local chain if there is any wrapper counterpart token to grab before starts searching bridging routes
+        // Check to see if there are counterpart tokens on the destination chain that can be used. If there are, subtract the balance from `amountLeftToBridge`
         if (TokenWrapper.hasWrapperContract(bridgeInfo.dstChainId, bridgeInfo.assetSymbol)) {
             string memory counterpartSymbol =
                 TokenWrapper.getWrapperCounterpartSymbol(bridgeInfo.dstChainId, bridgeInfo.assetSymbol);
@@ -282,7 +282,7 @@ library Actions {
             }
 
             // NOTE: Only adjusts amount LeftToBridge
-            // The real wrappping/unwrapping will be done outside of the construct bridge operation function
+            // The real wrapping/unwrapping will be done outside of the construct bridge operation function
             // Update amountLeftToBridge
             amountLeftToBridge -= amountToWrapOrUnwrap;
         }
