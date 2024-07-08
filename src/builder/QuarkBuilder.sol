@@ -278,7 +278,7 @@ contract QuarkBuilder {
             }
         }
 
-        // Then, transferIntent `amount` of `assetSymbol` to `recipient`
+        // Then, transfer `amount` of `assetSymbol` to `recipient`
         (quarkOperations[actionIndex], actions[actionIndex]) = Actions.transferAsset(
             Actions.TransferAsset({
                 chainAccountsList: chainAccountsList,
@@ -303,6 +303,166 @@ contract QuarkBuilder {
         // Validate generated actions for affordability
         if (payment.isToken) {
             assertSufficientPaymentTokenBalances(actions, chainAccountsList, transferIntent.chainId);
+        }
+
+        // Construct EIP712 digests
+        EIP712Helper.EIP712Data memory eip712Data;
+        if (quarkOperations.length == 1) {
+            eip712Data = EIP712Helper.EIP712Data({
+                digest: EIP712Helper.getDigestForQuarkOperation(
+                    quarkOperations[0], actions[0].quarkAccount, actions[0].chainId
+                    ),
+                domainSeparator: EIP712Helper.getDomainSeparator(actions[0].quarkAccount, actions[0].chainId),
+                hashStruct: EIP712Helper.getHashStructForQuarkOperation(quarkOperations[0])
+            });
+        } else if (quarkOperations.length > 1) {
+            eip712Data = EIP712Helper.EIP712Data({
+                digest: EIP712Helper.getDigestForMultiQuarkOperation(quarkOperations, actions),
+                domainSeparator: EIP712Helper.MULTI_QUARK_OPERATION_DOMAIN_SEPARATOR,
+                hashStruct: EIP712Helper.getHashStructForMultiQuarkOperation(quarkOperations, actions)
+            });
+        }
+
+        return BuilderResult({
+            version: VERSION,
+            actions: actions,
+            quarkOperations: quarkOperations,
+            paymentCurrency: payment.currency,
+            eip712Data: eip712Data
+        });
+    }
+
+    struct MatchaSwapIntent {
+        uint256 chainId;
+        address entryPoint;
+        bytes swapData;
+        address sellToken;
+        uint256 sellAmount;
+        address buyToken;
+        uint256 expectedBuyAmount;
+        address sender;
+        uint256 blockTimestamp;
+    }
+
+    function swap(
+        MatchaSwapIntent memory swapIntent,
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        PaymentInfo.Payment memory payment
+    ) external pure returns (BuilderResult memory) {
+        // If the action is paid for with tokens, filter out any chain accounts that do not have corresponding payment information
+        if (payment.isToken) {
+            chainAccountsList = Accounts.findChainAccountsWithPaymentInfo(chainAccountsList, payment);
+        }
+
+        string memory sellTokenSymbol =
+            Accounts.findAssetPositions(swapIntent.sellToken, swapIntent.chainId, chainAccountsList).symbol;
+        string memory buyTokenSymbol =
+            Accounts.findAssetPositions(swapIntent.buyToken, swapIntent.chainId, chainAccountsList).symbol;
+        assertFundsAvailable(swapIntent.chainId, sellTokenSymbol, swapIntent.sellAmount, chainAccountsList, payment);
+
+        /*
+         * at most two bridge operation per non-destination chain (transfer and payment tokens),
+         * and at most one transferIntent operation on the destination chain.
+         *
+         * therefore the upper bound is 2 * chainAccountsList.length.
+         */
+        uint256 actionIndex = 0;
+
+        // TODO: When should we use quotecall?
+        Actions.Action[] memory actions = new Actions.Action[](chainAccountsList.length);
+        IQuarkWallet.QuarkOperation[] memory quarkOperations =
+            new IQuarkWallet.QuarkOperation[](2 * chainAccountsList.length);
+
+        if (needsBridgedFunds(sellTokenSymbol, swapIntent.sellAmount, swapIntent.chainId, chainAccountsList, payment)) {
+            // Note: Assumes that the asset uses the same # of decimals on each chain
+            uint256 amountNeededOnDst = swapIntent.sellAmount;
+            // If action is paid for with tokens and the payment token is the transfer token, we need to add the max cost to the amountLeftToBridge for target chain
+            if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, sellTokenSymbol)) {
+                amountNeededOnDst += PaymentInfo.findMaxCost(payment, swapIntent.chainId);
+            }
+            (IQuarkWallet.QuarkOperation[] memory bridgeQuarkOperations, Actions.Action[] memory bridgeActions) =
+            Actions.constructBridgeOperations(
+                Actions.BridgeOperationInfo({
+                    assetSymbol: sellTokenSymbol,
+                    amountNeededOnDst: amountNeededOnDst,
+                    dstChainId: swapIntent.chainId,
+                    recipient: swapIntent.sender,
+                    blockTimestamp: swapIntent.blockTimestamp,
+                    // TODO: set
+                    useQuotecall: false
+                }),
+                chainAccountsList,
+                payment
+            );
+
+            for (uint256 i = 0; i < bridgeQuarkOperations.length; ++i) {
+                quarkOperations[actionIndex] = bridgeQuarkOperations[i];
+                actions[actionIndex] = bridgeActions[i];
+                actionIndex++;
+            }
+        }
+
+        // If action is paid for with tokens and the payment token is not the transfer token, attempt to bridge some over if not enough
+        // Note: The previous code block for bridging the sell token already handles the case where payment token == transfer token
+        if (payment.isToken && !Strings.stringEqIgnoreCase(payment.currency, sellTokenSymbol)) {
+            // Bridge over payment token if not enough
+            uint256 maxCostOnDstChain = PaymentInfo.findMaxCost(payment, swapIntent.chainId);
+            if (needsBridgedFunds(payment.currency, maxCostOnDstChain, swapIntent.chainId, chainAccountsList, payment))
+            {
+                (IQuarkWallet.QuarkOperation[] memory bridgeQuarkOperations, Actions.Action[] memory bridgeActions) =
+                Actions.constructBridgeOperations(
+                    Actions.BridgeOperationInfo({
+                        assetSymbol: payment.currency,
+                        amountNeededOnDst: maxCostOnDstChain,
+                        dstChainId: swapIntent.chainId,
+                        recipient: swapIntent.sender,
+                        blockTimestamp: swapIntent.blockTimestamp,
+                        // TODO: set
+                        useQuotecall: false
+                    }),
+                    chainAccountsList,
+                    payment
+                );
+
+                for (uint256 i = 0; i < bridgeQuarkOperations.length; ++i) {
+                    quarkOperations[actionIndex] = bridgeQuarkOperations[i];
+                    actions[actionIndex] = bridgeActions[i];
+                    actionIndex++;
+                }
+            }
+        }
+
+        // Then, swap `amount` of `assetSymbol` to `recipient`
+        (quarkOperations[actionIndex], actions[actionIndex]) = Actions.matchaSwap(
+            Actions.MatchaSwap({
+                chainAccountsList: chainAccountsList,
+                entryPoint: swapIntent.entryPoint,
+                swapData: swapIntent.swapData,
+                sellToken: swapIntent.sellToken,
+                sellTokenSymbol: sellTokenSymbol,
+                sellAmount: swapIntent.sellAmount,
+                buyToken: swapIntent.buyToken,
+                buyTokenSymbol: buyTokenSymbol,
+                expectedBuyAmount: swapIntent.expectedBuyAmount,
+                chainId: swapIntent.chainId,
+                sender: swapIntent.sender,
+                blockTimestamp: swapIntent.blockTimestamp
+            }),
+            payment,
+            // TODO: Set this
+            false
+        );
+        actionIndex++;
+
+        // TODO: Merge transactions on same chain into Multicall. Maybe do that separately at the end via a helper function.
+
+        // Truncate actions and quark operations
+        actions = Actions.truncate(actions, actionIndex);
+        quarkOperations = Actions.truncate(quarkOperations, actionIndex);
+
+        // Validate generated actions for affordability
+        if (payment.isToken) {
+            assertSufficientPaymentTokenBalances(actions, chainAccountsList, swapIntent.chainId);
         }
 
         // Construct EIP712 digests
@@ -453,6 +613,12 @@ contract QuarkBuilder {
                     abi.decode(nonBridgeAction.actionContext, (Actions.SupplyActionContext));
                 if (Strings.stringEqIgnoreCase(cometSupplyActionContext.assetSymbol, paymentTokenSymbol)) {
                     paymentTokenCost += cometSupplyActionContext.amount;
+                }
+            } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_SWAP)) {
+                Actions.SwapActionContext memory swapActionContext =
+                    abi.decode(nonBridgeAction.actionContext, (Actions.SwapActionContext));
+                if (Strings.stringEqIgnoreCase(swapActionContext.inputTokenSymbol, paymentTokenSymbol)) {
+                    paymentTokenCost += swapActionContext.inputAmount;
                 }
             } else {
                 revert InvalidActionType();
