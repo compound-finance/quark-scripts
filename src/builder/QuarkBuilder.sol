@@ -478,7 +478,7 @@ contract QuarkBuilder {
 
         // If has wrap token counterpart, try to wrap/unwrap first before attempt to bridge
         uint256 wrapperCounterpartBalance = getWrapperCounterpartBalance(assetSymbol, chainId, chainAccountsList);
-        // Substract max cost if the wrapper counter part is the payment token for wrap/unwrap action
+        // Subtract max cost if the counterpart token is the payment token
         if (
             payment.isToken
                 && Strings.stringEqIgnoreCase(
