@@ -574,10 +574,10 @@ contract QuarkBuilder {
                 Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_UNWRAP)
                     || Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_WRAP)
             ) {
-                Actions.WrappingActionContext memory wrappingActionContext =
-                    abi.decode(nonBridgeAction.actionContext, (Actions.WrappingActionContext));
-                if (Strings.stringEqIgnoreCase(wrappingActionContext.fromAssetSymbol, paymentTokenSymbol)) {
-                    paymentTokenCost += wrappingActionContext.amount;
+                Actions.WrapActionContext memory WrapActionContext =
+                    abi.decode(nonBridgeAction.actionContext, (Actions.WrapActionContext));
+                if (Strings.stringEqIgnoreCase(WrapActionContext.fromAssetSymbol, paymentTokenSymbol)) {
+                    paymentTokenCost += WrapActionContext.amount;
                 }
             } else {
                 revert InvalidActionType();

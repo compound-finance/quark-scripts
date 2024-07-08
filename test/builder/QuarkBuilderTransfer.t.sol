@@ -982,7 +982,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
-                Actions.WrappingActionContext({
+                Actions.WrapActionContext({
                     chainId: 1,
                     amount: 0.5e18,
                     token: weth_(1),
@@ -990,7 +990,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
                     toAssetSymbol: "ETH"
                 })
             ),
-            "action context encoded from WrappingActionContext"
+            "action context encoded from WrapActionContext"
         );
         assertEq(result.actions[1].chainId, 1, "operation is on chainid 1");
         assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
@@ -1119,7 +1119,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
-                Actions.WrappingActionContext({
+                Actions.WrapActionContext({
                     chainId: 1,
                     amount: 0.5e18,
                     token: weth_(1),
@@ -1127,7 +1127,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
                     toAssetSymbol: "ETH"
                 })
             ),
-            "action context encoded from WrappingActionContext"
+            "action context encoded from WrapActionContext"
         );
         assertEq(result.actions[1].chainId, 1, "operation is on chainid 1");
         assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
@@ -1258,7 +1258,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
-                Actions.WrappingActionContext({
+                Actions.WrapActionContext({
                     chainId: 1,
                     amount: 1e18,
                     token: weth_(1),
@@ -1266,7 +1266,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
                     toAssetSymbol: "ETH"
                 })
             ),
-            "action context encoded from WrappingActionContext"
+            "action context encoded from WrapActionContext"
         );
         assertEq(result.actions[1].chainId, 1, "operation is on chainid 1");
         assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
@@ -1380,7 +1380,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
-                Actions.WrappingActionContext({
+                Actions.WrapActionContext({
                     chainId: 1,
                     amount: 0.75e18,
                     token: eth_(),
@@ -1388,7 +1388,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
                     toAssetSymbol: "WETH"
                 })
             ),
-            "action context encoded from WrappingActionContext"
+            "action context encoded from WrapActionContext"
         );
         assertEq(result.actions[1].chainId, 1, "operation is on chainid 1");
         assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");

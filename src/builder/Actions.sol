@@ -224,7 +224,7 @@ library Actions {
         uint256 withdrawAmount;
     }
 
-    struct WrappingActionContext {
+    struct WrapActionContext {
         uint256 chainId;
         uint256 amount;
         address token;
@@ -283,10 +283,8 @@ library Actions {
 
             // NOTE: Only adjusts amount LeftToBridge
             // The real wrappping/unwrapping will be done outside of the construct bridge operation function
-            if (amountToWrapOrUnwrap > 0) {
-                // Update amountLeftToBridge
-                amountLeftToBridge -= amountToWrapOrUnwrap;
-            }
+            // Update amountLeftToBridge
+            amountLeftToBridge -= amountToWrapOrUnwrap;
         }
 
         uint256 bridgeActionCount = 0;
@@ -702,7 +700,7 @@ library Actions {
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
             nonce: accountState.quarkNextNonce,
             scriptAddress: CodeJarHelper.getCodeAddress(type(WrapperActions).creationCode),
-            scriptCalldata: TokenWrapper.encodeUnwrapToken(unwrap.chainId, unwrap.assetSymbol, unwrap.amount),
+            scriptCalldata: TokenWrapper.encodeActionToUnwrapToken(unwrap.chainId, unwrap.assetSymbol, unwrap.amount),
             scriptSources: scriptSources,
             expiry: unwrap.blockTimestamp + STANDARD_EXPIRY_BUFFER
         });
@@ -719,12 +717,12 @@ library Actions {
         }
 
         // Construct Action
-        WrappingActionContext memory wrapActionContext = WrappingActionContext({
+        WrapActionContext memory wrapActionContext = WrapActionContext({
             chainId: unwrap.chainId,
             amount: unwrap.amount,
             token: assetPositions.asset,
             fromAssetSymbol: assetPositions.symbol,
-            toAssetSymbol: TokenWrapper.getWrapperContract(unwrap.chainId, unwrap.assetSymbol).underlyingSymbol
+            toAssetSymbol: TokenWrapper.getKnownWrapperTokenPair(unwrap.chainId, unwrap.assetSymbol).underlyingSymbol
         });
 
         string memory paymentMethod;
@@ -768,7 +766,9 @@ library Actions {
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
             nonce: accountState.quarkNextNonce,
             scriptAddress: CodeJarHelper.getCodeAddress(type(WrapperActions).creationCode),
-            scriptCalldata: TokenWrapper.encodeWrapToken(wrap.chainId, wrap.assetSymbol, assetPositions.asset, wrap.amount),
+            scriptCalldata: TokenWrapper.encodeActionToWrapToken(
+                wrap.chainId, wrap.assetSymbol, assetPositions.asset, wrap.amount
+                ),
             scriptSources: scriptSources,
             expiry: wrap.blockTimestamp + STANDARD_EXPIRY_BUFFER
         });
@@ -785,12 +785,12 @@ library Actions {
         }
 
         // Construct Action
-        WrappingActionContext memory wrapActionContext = WrappingActionContext({
+        WrapActionContext memory wrapActionContext = WrapActionContext({
             chainId: wrap.chainId,
             amount: wrap.amount,
             token: assetPositions.asset,
             fromAssetSymbol: assetPositions.symbol,
-            toAssetSymbol: TokenWrapper.getWrapperContract(wrap.chainId, wrap.assetSymbol).wrappedSymbol
+            toAssetSymbol: TokenWrapper.getKnownWrapperTokenPair(wrap.chainId, wrap.assetSymbol).wrappedSymbol
         });
 
         string memory paymentMethod;
