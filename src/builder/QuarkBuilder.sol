@@ -476,7 +476,7 @@ contract QuarkBuilder {
             amountNeededOnDstChain += PaymentInfo.findMaxCost(payment, chainId);
         }
 
-        // If has wrap token counterpart, try to wrap/unwrap first before attempt to bridge
+        // If there exists a counterpart token, try to wrap/unwrap first before attempting to bridge
         uint256 wrapperCounterpartBalance = getWrapperCounterpartBalance(assetSymbol, chainId, chainAccountsList);
         // Subtract max cost if the counterpart token is the payment token
         if (
