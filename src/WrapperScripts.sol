@@ -10,7 +10,7 @@ contract WrapperActions {
         IWETH(wrapper).deposit{value: amount}();
     }
 
-    function unwrapWETH(address wrapper, uint256 amount) external {
+    function unwrapWETH(address weth, uint256 amount) external {
         IWETH(wrapper).withdraw(amount);
     }
 
