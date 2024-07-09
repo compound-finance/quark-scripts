@@ -365,7 +365,7 @@ library Actions {
 
                     // Append wrap/unwrap action
                     if (counterpartTokenAmountToUseToBridge > 0) {
-                        (quarkOperations[actionIndex], actions[actionIndex]) = transformToWrapperConterpartAsset(
+                        (quarkOperations[actionIndex], actions[actionIndex]) = transformToConterpartAsset(
                             WrapOrUnwrapAsset({
                                 chainAccountsList: chainAccountsList,
                                 assetSymbol: bridgeInfo.assetSymbol,
@@ -656,7 +656,7 @@ library Actions {
         return (quarkOperation, action);
     }
 
-    function transformToWrapperConterpartAsset(
+    function transformToConterpartAsset(
         WrapOrUnwrapAsset memory wrapOrUnwrap,
         PaymentInfo.Payment memory payment,
         bool useQuotecall

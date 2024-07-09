@@ -295,7 +295,7 @@ contract QuarkBuilder {
                 TokenWrapper.getWrapperCounterpartSymbol(transferIntent.chainId, transferIntent.assetSymbol);
 
             // Wrap/unwrap the token to cover the transferIntent amount
-            (quarkOperations[actionIndex], actions[actionIndex]) = Actions.transformToWrapperConterpartAsset(
+            (quarkOperations[actionIndex], actions[actionIndex]) = Actions.transformToConterpartAsset(
                 Actions.WrapOrUnwrapAsset({
                     chainAccountsList: chainAccountsList,
                     assetSymbol: counterpartSymbol,
