@@ -354,11 +354,11 @@ contract QuarkBuilder {
             chainAccountsList = Accounts.findChainAccountsWithPaymentInfo(chainAccountsList, payment);
         }
 
-        string memory sellTokenSymbol =
+        string memory sellAssetSymbol =
             Accounts.findAssetPositions(swapIntent.sellToken, swapIntent.chainId, chainAccountsList).symbol;
-        string memory buyTokenSymbol =
+        string memory buyAssetSymbol =
             Accounts.findAssetPositions(swapIntent.buyToken, swapIntent.chainId, chainAccountsList).symbol;
-        assertFundsAvailable(swapIntent.chainId, sellTokenSymbol, swapIntent.sellAmount, chainAccountsList, payment);
+        assertFundsAvailable(swapIntent.chainId, sellAssetSymbol, swapIntent.sellAmount, chainAccountsList, payment);
 
         /*
          * at most two bridge operation per non-destination chain (transfer and payment tokens),
@@ -373,17 +373,17 @@ contract QuarkBuilder {
         IQuarkWallet.QuarkOperation[] memory quarkOperations =
             new IQuarkWallet.QuarkOperation[](2 * chainAccountsList.length);
 
-        if (needsBridgedFunds(sellTokenSymbol, swapIntent.sellAmount, swapIntent.chainId, chainAccountsList, payment)) {
+        if (needsBridgedFunds(sellAssetSymbol, swapIntent.sellAmount, swapIntent.chainId, chainAccountsList, payment)) {
             // Note: Assumes that the asset uses the same # of decimals on each chain
             uint256 amountNeededOnDst = swapIntent.sellAmount;
             // If action is paid for with tokens and the payment token is the transfer token, we need to add the max cost to the amountLeftToBridge for target chain
-            if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, sellTokenSymbol)) {
+            if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, sellAssetSymbol)) {
                 amountNeededOnDst += PaymentInfo.findMaxCost(payment, swapIntent.chainId);
             }
             (IQuarkWallet.QuarkOperation[] memory bridgeQuarkOperations, Actions.Action[] memory bridgeActions) =
             Actions.constructBridgeOperations(
                 Actions.BridgeOperationInfo({
-                    assetSymbol: sellTokenSymbol,
+                    assetSymbol: sellAssetSymbol,
                     amountNeededOnDst: amountNeededOnDst,
                     dstChainId: swapIntent.chainId,
                     recipient: swapIntent.sender,
@@ -404,7 +404,7 @@ contract QuarkBuilder {
 
         // If action is paid for with tokens and the payment token is not the transfer token, attempt to bridge some over if not enough
         // Note: The previous code block for bridging the sell token already handles the case where payment token == transfer token
-        if (payment.isToken && !Strings.stringEqIgnoreCase(payment.currency, sellTokenSymbol)) {
+        if (payment.isToken && !Strings.stringEqIgnoreCase(payment.currency, sellAssetSymbol)) {
             // Bridge over payment token if not enough
             uint256 maxCostOnDstChain = PaymentInfo.findMaxCost(payment, swapIntent.chainId);
             if (needsBridgedFunds(payment.currency, maxCostOnDstChain, swapIntent.chainId, chainAccountsList, payment))
@@ -439,10 +439,10 @@ contract QuarkBuilder {
                 entryPoint: swapIntent.entryPoint,
                 swapData: swapIntent.swapData,
                 sellToken: swapIntent.sellToken,
-                sellTokenSymbol: sellTokenSymbol,
+                sellAssetSymbol: sellAssetSymbol,
                 sellAmount: swapIntent.sellAmount,
                 buyToken: swapIntent.buyToken,
-                buyTokenSymbol: buyTokenSymbol,
+                buyAssetSymbol: buyAssetSymbol,
                 expectedBuyAmount: swapIntent.expectedBuyAmount,
                 chainId: swapIntent.chainId,
                 sender: swapIntent.sender,
@@ -617,7 +617,7 @@ contract QuarkBuilder {
             } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_SWAP)) {
                 Actions.SwapActionContext memory swapActionContext =
                     abi.decode(nonBridgeAction.actionContext, (Actions.SwapActionContext));
-                if (Strings.stringEqIgnoreCase(swapActionContext.inputTokenSymbol, paymentTokenSymbol)) {
+                if (Strings.stringEqIgnoreCase(swapActionContext.inputAssetSymbol, paymentTokenSymbol)) {
                     paymentTokenCost += swapActionContext.inputAmount;
                 }
             } else {
