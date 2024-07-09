@@ -6,7 +6,7 @@ import {Strings} from "./Strings.sol";
 import {Accounts} from "./Accounts.sol";
 import {CodeJarHelper} from "./CodeJarHelper.sol";
 
-import {CometSupplyActions, TransferActions} from "../DeFiScripts.sol";
+import {ApproveAndSwap, CometSupplyActions, TransferActions} from "../DeFiScripts.sol";
 import {WrapperActions} from "../WrapperScripts.sol";
 
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
@@ -23,12 +23,11 @@ library Actions {
 
     string constant ACTION_TYPE_BORROW = "BORROW";
     string constant ACTION_TYPE_BRIDGE = "BRIDGE";
-    string constant ACTION_TYPE_BUY = "BUY";
     string constant ACTION_TYPE_CLAIM_REWARDS = "CLAIM_REWARDS";
     string constant ACTION_TYPE_DRIP_TOKENS = "DRIP_TOKENS";
     string constant ACTION_TYPE_REPAY = "REPAY";
-    string constant ACTION_TYPE_SELL = "SELL";
     string constant ACTION_TYPE_SUPPLY = "SUPPLY";
+    string constant ACTION_TYPE_SWAP = "SWAP";
     string constant ACTION_TYPE_TRANSFER = "TRANSFER";
     string constant ACTION_TYPE_WITHDRAW = "WITHDRAW";
     string constant ACTION_TYPE_WITHDRAW_AND_BORROW = "WITHDRAW_AND_BORROW";
@@ -41,6 +40,7 @@ library Actions {
     uint256 constant STANDARD_EXPIRY_BUFFER = 7 days;
 
     uint256 constant BRIDGE_EXPIRY_BUFFER = 7 days;
+    uint256 constant SWAP_EXPIRY_BUFFER = 3 days;
     uint256 constant TRANSFER_EXPIRY_BUFFER = 7 days;
 
     /* ===== Custom Errors ===== */
@@ -87,6 +87,21 @@ library Actions {
         Accounts.ChainAccounts[] chainAccountsList;
         string assetSymbol;
         uint256 amount;
+        uint256 chainId;
+        address sender;
+        uint256 blockTimestamp;
+    }
+
+    struct MatchaSwap {
+        Accounts.ChainAccounts[] chainAccountsList;
+        address entryPoint;
+        bytes swapData;
+        address sellToken;
+        string sellTokenSymbol;
+        uint256 sellAmount;
+        address buyToken;
+        string buyTokenSymbol;
+        uint256 expectedBuyAmount;
         uint256 chainId;
         address sender;
         uint256 blockTimestamp;
@@ -142,13 +157,6 @@ library Actions {
         address token;
     }
 
-    struct BuyActionContext {
-        uint256 amount;
-        uint256 chainId;
-        uint256 price;
-        address token;
-    }
-
     struct ClaimRewardsActionContext {
         uint256 amount;
         uint256 chainId;
@@ -171,13 +179,6 @@ library Actions {
         address token;
     }
 
-    struct SellActionContext {
-        uint256 amount;
-        uint256 chainId;
-        uint256 price;
-        address token;
-    }
-
     struct SupplyActionContext {
         uint256 amount;
         string assetSymbol;
@@ -185,6 +186,18 @@ library Actions {
         address comet;
         uint256 price;
         address token;
+    }
+
+    struct SwapActionContext {
+        uint256 chainId;
+        uint256 inputAmount;
+        address inputToken;
+        uint256 inputTokenPrice;
+        string inputTokenSymbol;
+        uint256 outputAmount;
+        address outputToken;
+        uint256 outputTokenPrice;
+        string outputTokenSymbol;
     }
 
     struct TransferActionContext {
@@ -614,7 +627,6 @@ library Actions {
             Accounts.findAssetPositions(wrapOrUnwrap.assetSymbol, accounts.assetPositionsList);
 
         Accounts.QuarkState memory accountState = Accounts.findQuarkState(wrapOrUnwrap.sender, accounts.quarkStates);
-
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
             nonce: accountState.quarkNextNonce,
@@ -675,6 +687,91 @@ library Actions {
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, wrapOrUnwrap.chainId) : 0
         });
+
+        return (quarkOperation, action);
+    }
+
+    function matchaSwap(MatchaSwap memory swap, PaymentInfo.Payment memory payment, bool useQuotecall)
+        internal
+        pure
+        returns (IQuarkWallet.QuarkOperation memory, Action memory)
+    {
+        bytes[] memory scriptSources = new bytes[](1);
+        scriptSources[0] = type(TransferActions).creationCode;
+
+        Accounts.ChainAccounts memory accounts = Accounts.findChainAccounts(swap.chainId, swap.chainAccountsList);
+
+        Accounts.AssetPositions memory sellTokenAssetPositions =
+            Accounts.findAssetPositions(swap.sellTokenSymbol, accounts.assetPositionsList);
+
+        Accounts.AssetPositions memory buyTokenAssetPositions =
+            Accounts.findAssetPositions(swap.buyTokenSymbol, accounts.assetPositionsList);
+
+        Accounts.QuarkState memory accountState = Accounts.findQuarkState(swap.sender, accounts.quarkStates);
+
+        // TODO: Handle wrapping ETH? Do we need to?
+        bytes memory scriptCalldata = abi.encodeWithSelector(
+            ApproveAndSwap.run.selector,
+            swap.entryPoint,
+            swap.sellToken,
+            swap.sellAmount,
+            swap.buyToken,
+            swap.expectedBuyAmount,
+            swap.swapData
+        );
+
+        // Construct QuarkOperation
+        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
+            nonce: accountState.quarkNextNonce,
+            scriptAddress: CodeJarHelper.getCodeAddress(type(ApproveAndSwap).creationCode),
+            scriptCalldata: scriptCalldata,
+            scriptSources: scriptSources,
+            expiry: swap.blockTimestamp + SWAP_EXPIRY_BUFFER
+        });
+
+        if (payment.isToken) {
+            // Wrap operation with paycall
+            quarkOperation = useQuotecall
+                ? QuotecallWrapper.wrap(
+                    quarkOperation, swap.chainId, payment.currency, PaymentInfo.findMaxCost(payment, swap.chainId)
+                )
+                : PaycallWrapper.wrap(
+                    quarkOperation, swap.chainId, payment.currency, PaymentInfo.findMaxCost(payment, swap.chainId)
+                );
+        }
+
+        // Construct Action
+        SwapActionContext memory swapActionContext = SwapActionContext({
+            chainId: swap.chainId,
+            inputToken: swap.sellToken,
+            inputTokenPrice: sellTokenAssetPositions.usdPrice,
+            inputTokenSymbol: swap.sellTokenSymbol,
+            inputAmount: swap.sellAmount,
+            outputToken: swap.buyToken,
+            outputTokenPrice: buyTokenAssetPositions.usdPrice,
+            outputTokenSymbol: swap.buyTokenSymbol,
+            outputAmount: swap.expectedBuyAmount
+        });
+        string memory paymentMethod;
+        if (payment.isToken) {
+            // To pay with token, it has to be a paycall or quotecall.
+            paymentMethod = useQuotecall ? PAYMENT_METHOD_QUOTECALL : PAYMENT_METHOD_PAYCALL;
+        } else {
+            paymentMethod = PAYMENT_METHOD_OFFCHAIN;
+        }
+
+        Action memory action = Actions.Action({
+            chainId: swap.chainId,
+            quarkAccount: swap.sender,
+            actionType: ACTION_TYPE_SWAP,
+            actionContext: abi.encode(swapActionContext),
+            paymentMethod: paymentMethod,
+            // Null address for OFFCHAIN payment.
+            paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, swap.chainId).token : address(0),
+            paymentTokenSymbol: payment.currency,
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, swap.chainId) : 0
+        });
+
         return (quarkOperation, action);
     }
 
@@ -743,11 +840,6 @@ library Actions {
         return bs[0];
     }
 
-    function emptyBuyActionContext() external pure returns (BuyActionContext memory) {
-        BuyActionContext[] memory bs = new BuyActionContext[](1);
-        return bs[0];
-    }
-
     function emptyClaimRewardsActionContext() external pure returns (ClaimRewardsActionContext memory) {
         ClaimRewardsActionContext[] memory cs = new ClaimRewardsActionContext[](1);
         return cs[0];
@@ -763,13 +855,13 @@ library Actions {
         return rs[0];
     }
 
-    function emptySellActionContext() external pure returns (SellActionContext memory) {
-        SellActionContext[] memory ss = new SellActionContext[](1);
+    function emptySupplyActionContext() external pure returns (SupplyActionContext memory) {
+        SupplyActionContext[] memory ss = new SupplyActionContext[](1);
         return ss[0];
     }
 
-    function emptySupplyActionContext() external pure returns (SupplyActionContext memory) {
-        SupplyActionContext[] memory ss = new SupplyActionContext[](1);
+    function emptySwapActionContext() external pure returns (SwapActionContext memory) {
+        SwapActionContext[] memory ss = new SwapActionContext[](1);
         return ss[0];
     }
 

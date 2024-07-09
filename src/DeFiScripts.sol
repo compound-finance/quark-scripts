@@ -298,6 +298,7 @@ contract ApproveAndSwap {
      * @param sellToken The token address to approve
      * @param sellAmount The amount to approve
      * @param buyToken The token that is being bought
+     * @param expectedBuyAmount The expected amount of the buy token to receive after the swap
      * @param data The data to execute
      */
     function run(
