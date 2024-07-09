@@ -10,8 +10,12 @@ library TokenWrapper {
 
     struct KnownWrapperTokenPair {
         uint256 chainId;
+        // The wrapper that perform wrapping/unwrapping actions
+        // NOTE: Assume wrapper contract address = wrapped token contract address, as 99% of the time it is the case for wapper contracts
         address wrapper;
         string underlyingSymbol;
+        // The underlying token address
+        address underlyingToken;
         string wrappedSymbol;
     }
 
@@ -21,12 +25,14 @@ library TokenWrapper {
             chainId: 1,
             wrapper: 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2,
             underlyingSymbol: "ETH",
+            underlyingToken: 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE,
             wrappedSymbol: "WETH"
         });
         pairs[1] = KnownWrapperTokenPair({
             chainId: 8453,
             wrapper: 0x4200000000000000000000000000000000000006,
             underlyingSymbol: "ETH",
+            underlyingToken: 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE,
             wrappedSymbol: "WETH"
         });
         // NOTE: Leave out stETH and wstETH auto wrapper for now
@@ -86,6 +92,19 @@ library TokenWrapper {
 
     function isWrappedToken(uint256 chainId, string memory tokenSymbol) internal pure returns (bool) {
         return Strings.stringEqIgnoreCase(tokenSymbol, getKnownWrapperTokenPair(chainId, tokenSymbol).wrappedSymbol);
+    }
+
+    function encodeActionToTransformToCounterpart(uint256 chainId, string memory tokenSymbol, uint256 amount)
+        internal
+        pure
+        returns (bytes memory)
+    {
+        KnownWrapperTokenPair memory pair = getKnownWrapperTokenPair(chainId, tokenSymbol);
+        if (isWrappedToken(chainId, tokenSymbol)) {
+            return encodeActionToUnwrapToken(chainId, tokenSymbol, amount);
+        } else {
+            return encodeActionToWrapToken(chainId, tokenSymbol, pair.underlyingToken, amount);
+        }
     }
 
     function encodeActionToWrapToken(uint256 chainId, string memory tokenSymbol, address tokenAddress, uint256 amount)
