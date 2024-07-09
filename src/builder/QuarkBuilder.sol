@@ -7,6 +7,7 @@ import {Actions} from "./Actions.sol";
 import {Accounts} from "./Accounts.sol";
 import {BridgeRoutes} from "./BridgeRoutes.sol";
 import {EIP712Helper} from "./EIP712Helper.sol";
+import {Math} from "src/lib/Math.sol";
 import {Strings} from "./Strings.sol";
 import {PaycallWrapper} from "./PaycallWrapper.sol";
 import {QuotecallWrapper} from "./QuotecallWrapper.sol";
@@ -403,21 +404,14 @@ contract QuarkBuilder {
                 if (TokenWrapper.hasWrapperContract(chainAccountsList[i].chainId, assetSymbol)) {
                     uint256 counterpartBalance =
                         getWrapperCounterpartBalance(assetSymbol, chainAccountsList[i].chainId, chainAccountsList);
+                    string memory counterpartSymbol =
+                        TokenWrapper.getWrapperCounterpartSymbol(chainAccountsList[i].chainId, assetSymbol);
                     // If the user opts for paying with payment token and the payment token is also the action token's counterpart
                     // reduce the available balance by the max cost
-                    if (
-                        payment.isToken
-                            && Strings.stringEqIgnoreCase(
-                                payment.currency,
-                                TokenWrapper.getWrapperCounterpartSymbol(chainAccountsList[i].chainId, assetSymbol)
-                            )
-                    ) {
-                        uint256 maxCost = PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId);
-                        if (counterpartBalance >= maxCost) {
-                            counterpartBalance -= maxCost;
-                        } else {
-                            counterpartBalance = 0;
-                        }
+                    if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, counterpartSymbol)) {
+                        counterpartBalance = Math.substractOrZero(
+                            counterpartBalance, PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId)
+                        );
                     }
                     aggregateAssetBalance += counterpartBalance;
                 }
@@ -469,13 +463,8 @@ contract QuarkBuilder {
                     payment.currency, TokenWrapper.getWrapperCounterpartSymbol(chainId, assetSymbol)
                 )
         ) {
-            uint256 maxCost = PaymentInfo.findMaxCost(payment, chainId);
-            if (counterpartBalance >= maxCost) {
-                counterpartBalance -= maxCost;
-            } else {
-                // Can't afford to wrap/unwrap == can't use that balance
-                counterpartBalance = 0;
-            }
+            // 0 if account can't afford to wrap/unwrap == can't use that balance
+            counterpartBalance = Math.substractOrZero(counterpartBalance, PaymentInfo.findMaxCost(payment, chainId));
         }
         balanceOnChain += counterpartBalance;
 

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.23;
 
+import {Math} from "src/lib/Math.sol";
 import {PaymentInfo} from "./PaymentInfo.sol";
 import {Strings} from "./Strings.sol";
 import {PaymentInfo} from "./PaymentInfo.sol";
@@ -158,14 +159,8 @@ library Accounts {
             // Account for max cost if the payment token is the transfer token
             // Simply offset the max cost from the available asset batch
             if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, tokenSymbol)) {
-                uint256 maxCost = PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId);
-
-                // Prevent errors from underflowing
-                if (balance >= maxCost) {
-                    balance -= maxCost;
-                } else {
-                    balance = 0;
-                }
+                // Use substractOrZero to prevent errors from underflowing
+                balance = Math.substractOrZero(balance, PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId));
             }
 
             // If the wrapper contract exists in the chain, add the balance of the wrapped/unwrapped token here as well
@@ -188,12 +183,9 @@ library Accounts {
                             TokenWrapper.getWrapperCounterpartSymbol(chainAccountsList[i].chainId, tokenSymbol)
                         )
                 ) {
-                    uint256 counterPartMaxCost = PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId);
-                    if (counterPartBalance >= counterPartMaxCost) {
-                        counterPartBalance -= counterPartMaxCost;
-                    } else {
-                        counterPartBalance = 0;
-                    }
+                    counterPartBalance = Math.substractOrZero(
+                        counterPartBalance, PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId)
+                    );
                 }
             }
 
