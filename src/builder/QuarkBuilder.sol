@@ -399,22 +399,26 @@ contract QuarkBuilder {
                 if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, assetSymbol)) {
                     aggregateMaxCosts += PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId);
                 }
+            }
 
-                // If the asset has wrapper counterpart and can locally wrap/unwrap, accumulate the balance of the the counterpart
-                if (TokenWrapper.hasWrapperContract(chainAccountsList[i].chainId, assetSymbol)) {
-                    uint256 counterpartBalance =
-                        getWrapperCounterpartBalance(assetSymbol, chainAccountsList[i].chainId, chainAccountsList);
-                    string memory counterpartSymbol =
-                        TokenWrapper.getWrapperCounterpartSymbol(chainAccountsList[i].chainId, assetSymbol);
-                    // If the user opts for paying with payment token and the payment token is also the action token's counterpart
-                    // reduce the available balance by the max cost
-                    if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, counterpartSymbol)) {
-                        counterpartBalance = Math.substractOrZero(
-                            counterpartBalance, PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId)
-                        );
-                    }
-                    aggregateAssetBalance += counterpartBalance;
+            // If the asset has wrapper counterpart and can locally wrap/unwrap, accumulate the balance of the the counterpart
+            // NOTE: Currently only at dst chain, and will ignore all the counterpart balance in other chains
+            if (
+                chainAccountsList[i].chainId == chainId
+                    && TokenWrapper.hasWrapperContract(chainAccountsList[i].chainId, assetSymbol)
+            ) {
+                uint256 counterpartBalance =
+                    getWrapperCounterpartBalance(assetSymbol, chainAccountsList[i].chainId, chainAccountsList);
+                string memory counterpartSymbol =
+                    TokenWrapper.getWrapperCounterpartSymbol(chainAccountsList[i].chainId, assetSymbol);
+                // If the user opts for paying with payment token and the payment token is also the action token's counterpart
+                // reduce the available balance by the max cost
+                if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, counterpartSymbol)) {
+                    counterpartBalance = Math.substractOrZero(
+                        counterpartBalance, PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId)
+                    );
                 }
+                aggregateAssetBalance += counterpartBalance;
             }
         }
 

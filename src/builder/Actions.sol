@@ -235,9 +235,9 @@ library Actions {
          * therefore the upper bound is chainAccountsList.length.
          */
         uint256 actionIndex = 0;
-        Action[] memory actions = new Action[](chainAccountsList.length * 2);
+        Action[] memory actions = new Action[](chainAccountsList.length);
         IQuarkWallet.QuarkOperation[] memory quarkOperations =
-            new IQuarkWallet.QuarkOperation[](chainAccountsList.length * 2);
+            new IQuarkWallet.QuarkOperation[](chainAccountsList.length);
 
         // Note: Assumes that the asset uses the same # of decimals on each chain
         uint256 balanceOnDstChain =
@@ -328,63 +328,6 @@ library Actions {
                 }
 
                 amountLeftToBridge -= amountToBridge;
-
-                uint256 counterpartTokenAmountToUseToBridge;
-                // Get wrap token counterpart balance on source chain, if there are still some amountLeftToBridge
-                // NOTE: For now it won't do smart cross chain wrapping (such as bridge to different chain to wrap/unwrap and bridge to dst chain...etc)
-                // Logics assumes the wrapper is available at source chain and wrap/unwrap at here then bridge to destination chain as a batch
-                // If the current chain wrapper is not available then it won't try to auto-wrap/unwrap.
-                if (
-                    amountLeftToBridge > 0
-                        && TokenWrapper.hasWrapperContract(srcChainAccounts.chainId, bridgeInfo.assetSymbol)
-                ) {
-                    string memory counterpartSymbol =
-                        TokenWrapper.getWrapperCounterpartSymbol(srcChainAccounts.chainId, bridgeInfo.assetSymbol);
-                    uint256 counterpartBalanceOnSrcChain =
-                        Accounts.getBalanceOnChain(counterpartSymbol, srcChainAccounts.chainId, chainAccountsList);
-                    // In case if the counterpart token is the payment token, we need to leave enough payment token on the source chain to cover the payment max cost
-                    if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, counterpartSymbol)) {
-                        if (
-                            counterpartBalanceOnSrcChain
-                                >= amountLeftToBridge + PaymentInfo.findMaxCost(payment, srcChainAccounts.chainId)
-                        ) {
-                            counterpartTokenAmountToUseToBridge = amountLeftToBridge;
-                        } else {
-                            // NOTE: This logic only works when the user has only a single account on each chain. If there are multiple,
-                            // then we need to re-adjust this.
-                            counterpartTokenAmountToUseToBridge = counterpartBalanceOnSrcChain
-                                - PaymentInfo.findMaxCost(payment, srcChainAccounts.chainId);
-                        }
-                    } else {
-                        if (counterpartBalanceOnSrcChain >= amountLeftToBridge) {
-                            counterpartTokenAmountToUseToBridge = amountLeftToBridge;
-                        } else {
-                            counterpartTokenAmountToUseToBridge = counterpartBalanceOnSrcChain;
-                        }
-                    }
-
-                    // Append wrap/unwrap action
-                    if (counterpartTokenAmountToUseToBridge > 0) {
-                        (quarkOperations[actionIndex], actions[actionIndex]) = transformToConterpartAsset(
-                            WrapOrUnwrapAsset({
-                                chainAccountsList: chainAccountsList,
-                                assetSymbol: bridgeInfo.assetSymbol,
-                                amount: counterpartTokenAmountToUseToBridge,
-                                chainId: srcChainAccounts.chainId,
-                                sender: srcAccountBalances[j].account,
-                                blockTimestamp: bridgeInfo.blockTimestamp
-                            }),
-                            payment,
-                            bridgeInfo.useQuotecall
-                        );
-                        actionIndex++;
-
-                        // Update amountLeftToBridge
-                        amountLeftToBridge -= counterpartTokenAmountToUseToBridge;
-                        // Override amountToBridge, so later bridge action can bridge both token in one batch
-                        amountToBridge += counterpartTokenAmountToUseToBridge;
-                    }
-                }
 
                 (quarkOperations[actionIndex], actions[actionIndex]) = bridgeAsset(
                     BridgeAsset({
