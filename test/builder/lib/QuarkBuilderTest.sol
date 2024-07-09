@@ -121,7 +121,7 @@ contract QuarkBuilderTest {
             asset: weth_(chainId),
             symbol: "WETH",
             decimals: 18,
-            usdPrice: 3000_0000_0000,
+            usdPrice: 3000e8,
             accountBalances: accountBalances_(account, 0)
         });
         assetPositionsList[3] = Accounts.AssetPositions({

@@ -53,6 +53,173 @@ contract QuarkBuilder {
 
     /* ===== Main Implementation ===== */
 
+    struct BorrowIntent {
+        uint256 amount;
+        string assetSymbol;
+        uint256 blockTimestamp;
+        address borrower;
+        uint256 chainId;
+        uint256[] collateralAmounts;
+        string[] collateralTokenSymbols;
+        address comet;
+    }
+
+    function borrow(
+        BorrowIntent memory borrowIntent,
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        PaymentInfo.Payment memory payment
+    ) external pure returns (BuilderResult memory /* builderResult */ ) {
+        if (borrowIntent.collateralAmounts.length != borrowIntent.collateralTokenSymbols.length) {
+            revert InvalidInput();
+        }
+
+        uint256 actionIndex = 0;
+        // max actions length = bridge each collateral asset + bridge payment token + perform borrow action
+        Actions.Action[] memory actions = new Actions.Action[](borrowIntent.collateralTokenSymbols.length + 1 + 1);
+        IQuarkWallet.QuarkOperation[] memory quarkOperations =
+            new IQuarkWallet.QuarkOperation[](chainAccountsList.length);
+
+        bool paymentTokenIsCollateralAsset;
+
+        for (uint256 i = 0; i < borrowIntent.collateralTokenSymbols.length; ++i) {
+            string memory assetSymbol = borrowIntent.collateralTokenSymbols[i];
+            uint256 supplyAmount = borrowIntent.collateralAmounts[i];
+
+            assertFundsAvailable(borrowIntent.chainId, assetSymbol, supplyAmount, chainAccountsList, payment);
+
+            if (Strings.stringEqIgnoreCase(assetSymbol, payment.currency)) {
+                paymentTokenIsCollateralAsset = true;
+            }
+
+            if (needsBridgedFunds(assetSymbol, supplyAmount, borrowIntent.chainId, chainAccountsList, payment)) {
+                // Note: Assumes that the asset uses the same # of decimals on each chain
+                uint256 amountNeededOnDst = supplyAmount;
+                // If action is paid for with tokens and the payment token is
+                // the supply token, we need to add the max cost to the
+                // amountLeftToBridge for target chain
+                if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, assetSymbol)) {
+                    amountNeededOnDst += PaymentInfo.findMaxCost(payment, borrowIntent.chainId);
+                }
+                (IQuarkWallet.QuarkOperation[] memory bridgeQuarkOperations, Actions.Action[] memory bridgeActions) =
+                Actions.constructBridgeOperations(
+                    Actions.BridgeOperationInfo({
+                        assetSymbol: assetSymbol,
+                        amountNeededOnDst: amountNeededOnDst,
+                        dstChainId: borrowIntent.chainId,
+                        recipient: borrowIntent.borrower,
+                        blockTimestamp: borrowIntent.blockTimestamp,
+                        useQuotecall: false // TODO: pass in an actual value for useQuoteCall
+                    }),
+                    chainAccountsList,
+                    payment
+                );
+
+                for (uint256 j = 0; j < bridgeQuarkOperations.length; ++j) {
+                    quarkOperations[actionIndex] = bridgeQuarkOperations[j];
+                    actions[actionIndex] = bridgeActions[j];
+                    actionIndex++;
+                }
+            }
+        }
+
+        // when paying with tokens, you may need to bridge the payment token to cover the cost
+        if (payment.isToken && !paymentTokenIsCollateralAsset) {
+            uint256 maxCostOnDstChain = PaymentInfo.findMaxCost(payment, borrowIntent.chainId);
+            // but if you're borrowing the payment token, you can use the
+            // borrowed amount to cover the cost
+
+            if (Strings.stringEqIgnoreCase(payment.currency, borrowIntent.assetSymbol)) {
+                // unnecessary variable to avoid compiler error :(
+                // https://github.com/ethereum/solidity/issues/14358
+                uint256 newMax = subtractUnsigned(maxCostOnDstChain, borrowIntent.amount);
+                maxCostOnDstChain = newMax;
+            }
+
+            if (
+                needsBridgedFunds(payment.currency, maxCostOnDstChain, borrowIntent.chainId, chainAccountsList, payment)
+            ) {
+                (IQuarkWallet.QuarkOperation[] memory bridgeQuarkOperations, Actions.Action[] memory bridgeActions) =
+                Actions.constructBridgeOperations(
+                    Actions.BridgeOperationInfo({
+                        assetSymbol: payment.currency,
+                        amountNeededOnDst: maxCostOnDstChain,
+                        dstChainId: borrowIntent.chainId,
+                        recipient: borrowIntent.borrower,
+                        blockTimestamp: borrowIntent.blockTimestamp,
+                        useQuotecall: false // XXX support Quotecall
+                    }),
+                    chainAccountsList,
+                    payment
+                );
+
+                for (uint256 i = 0; i < bridgeQuarkOperations.length; ++i) {
+                    quarkOperations[actionIndex] = bridgeQuarkOperations[i];
+                    actions[actionIndex] = bridgeActions[i];
+                    actionIndex++;
+                }
+            }
+        }
+
+        (quarkOperations[actionIndex], actions[actionIndex]) = Actions.borrow(
+            Actions.BorrowInput({
+                chainAccountsList: chainAccountsList,
+                amount: borrowIntent.amount,
+                assetSymbol: borrowIntent.assetSymbol,
+                blockTimestamp: borrowIntent.blockTimestamp,
+                borrower: borrowIntent.borrower,
+                chainId: borrowIntent.chainId,
+                collateralAmounts: borrowIntent.collateralAmounts,
+                collateralTokenSymbols: borrowIntent.collateralTokenSymbols,
+                comet: borrowIntent.comet
+            }),
+            payment
+        );
+
+        actionIndex++;
+
+        // Truncate actions and quark operations
+        actions = Actions.truncate(actions, actionIndex);
+        quarkOperations = Actions.truncate(quarkOperations, actionIndex);
+
+        // Validate generated actions for affordability
+        if (payment.isToken) {
+            uint256 supplementalPaymentTokenBalance = 0;
+            if (Strings.stringEqIgnoreCase(payment.currency, borrowIntent.assetSymbol)) {
+                supplementalPaymentTokenBalance += borrowIntent.amount;
+            }
+
+            assertSufficientPaymentTokenBalances(
+                actions, chainAccountsList, borrowIntent.chainId, supplementalPaymentTokenBalance
+            );
+        }
+
+        // Construct EIP712 digests
+        EIP712Helper.EIP712Data memory eip712Data;
+        if (quarkOperations.length == 1) {
+            eip712Data = EIP712Helper.EIP712Data({
+                digest: EIP712Helper.getDigestForQuarkOperation(
+                    quarkOperations[0], actions[0].quarkAccount, actions[0].chainId
+                    ),
+                domainSeparator: EIP712Helper.getDomainSeparator(actions[0].quarkAccount, actions[0].chainId),
+                hashStruct: EIP712Helper.getHashStructForQuarkOperation(quarkOperations[0])
+            });
+        } else if (quarkOperations.length > 1) {
+            eip712Data = EIP712Helper.EIP712Data({
+                digest: EIP712Helper.getDigestForMultiQuarkOperation(quarkOperations, actions),
+                domainSeparator: EIP712Helper.MULTI_QUARK_OPERATION_DOMAIN_SEPARATOR,
+                hashStruct: EIP712Helper.getHashStructForMultiQuarkOperation(quarkOperations, actions)
+            });
+        }
+
+        return BuilderResult({
+            version: VERSION,
+            actions: actions,
+            quarkOperations: quarkOperations,
+            paymentCurrency: payment.currency,
+            eip712Data: eip712Data
+        });
+    }
+
     struct CometSupplyIntent {
         uint256 amount;
         string assetSymbol;
@@ -873,6 +1040,9 @@ contract QuarkBuilder {
                     paymentTokenCost += swapActionContext.inputAmount;
                 }
             } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_WITHDRAW)) {
+                continue;
+            } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_BORROW)) {
+                // ????
                 continue;
             } else {
                 revert InvalidActionType();
