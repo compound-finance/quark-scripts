@@ -282,6 +282,7 @@ contract QuarkBuilder {
         // Check if need to wrap/unwrap token to cover the transferIntent amount
         // If the existing balance is not enough to cover the transferIntent amount, wrap/unwrap the counterpart token here
         // NOTE: We prioritize unwrap/wrap in the dst chain over bridging, bridging logic checks for counterpart tokens when calculating the amounts to bridge.
+        // TODO: Will also implement this logics in comet supply scenario
         uint256 existingBalance =
             Accounts.getBalanceOnChain(transferIntent.assetSymbol, transferIntent.chainId, chainAccountsList);
         if (
