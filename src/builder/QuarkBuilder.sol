@@ -27,6 +27,7 @@ contract QuarkBuilder {
     error InvalidActionType();
     error InvalidInput();
     error MaxCostTooHigh();
+    error MissingWrapperCounterpart();
 
     /* ===== Input Types ===== */
 
@@ -601,7 +602,7 @@ contract QuarkBuilder {
             );
         }
 
-        return 0;
+        revert MissingWrapperCounterpart();
     }
 
     function needsBridgedFunds(
@@ -619,19 +620,21 @@ contract QuarkBuilder {
         }
 
         // If there exists a counterpart token, try to wrap/unwrap first before attempting to bridge
-        uint256 counterpartBalance = getWrapperCounterpartBalance(assetSymbol, chainId, chainAccountsList);
-        // Subtract max cost if the counterpart token is the payment token
-        if (
-            payment.isToken
-                && Strings.stringEqIgnoreCase(
-                    payment.currency, TokenWrapper.getWrapperCounterpartSymbol(chainId, assetSymbol)
-                )
-        ) {
-            // 0 if account can't afford to wrap/unwrap == can't use that balance
-            counterpartBalance =
-                Math.subtractFlooredAtZero(counterpartBalance, PaymentInfo.findMaxCost(payment, chainId));
+        if (TokenWrapper.hasWrapperContract(chainId, assetSymbol)) {
+            uint256 counterpartBalance = getWrapperCounterpartBalance(assetSymbol, chainId, chainAccountsList);
+            // Subtract max cost if the counterpart token is the payment token
+            if (
+                payment.isToken
+                    && Strings.stringEqIgnoreCase(
+                        payment.currency, TokenWrapper.getWrapperCounterpartSymbol(chainId, assetSymbol)
+                    )
+            ) {
+                // 0 if account can't afford to wrap/unwrap == can't use that balance
+                counterpartBalance =
+                    Math.subtractFlooredAtZero(counterpartBalance, PaymentInfo.findMaxCost(payment, chainId));
+            }
+            balanceOnChain += counterpartBalance;
         }
-        balanceOnChain += counterpartBalance;
 
         return balanceOnChain < amountNeededOnDstChain;
     }
