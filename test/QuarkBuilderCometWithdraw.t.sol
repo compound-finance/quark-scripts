@@ -8,7 +8,7 @@ import {Accounts, PaymentInfo, QuarkBuilder, QuarkBuilderTest} from "test/builde
 import {Actions} from "src/builder/Actions.sol";
 import {CCTPBridgeActions} from "src/BridgeScripts.sol";
 import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
-import {CometSupplyActions, CometWithdrawActions, TransferActions} from "src/DeFiScripts.sol";
+import {CometWithdrawActions, TransferActions} from "src/DeFiScripts.sol";
 import {Paycall} from "src/Paycall.sol";
 
 contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
@@ -134,7 +134,7 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
                 abi.encodeWithSelector(CometWithdrawActions.withdraw.selector, COMET, link_(1), 1e18),
                 0.1e6
             ),
-            "calldata is Paycall.run(CometWithdrawActions.supply(COMET, LINK_1, 1e18), 0.1e6);"
+            "calldata is Paycall.run(CometWithdrawActions.withdraw(COMET, LINK_1, 1e18), 0.1e6);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
@@ -200,7 +200,7 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
                 abi.encodeWithSelector(CometWithdrawActions.withdraw.selector, COMET, usdc_(1), 1e6),
                 0.5e6
             ),
-            "calldata is Paycall.run(CometWithdrawActions.supply(COMET, USDC_1, 1e6), 0.5e6);"
+            "calldata is Paycall.run(CometWithdrawActions.withdraw(COMET, USDC_1, 1e6), 0.5e6);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"

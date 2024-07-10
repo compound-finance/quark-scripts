@@ -128,7 +128,7 @@ contract QuarkBuilderTest {
             asset: link_(chainId),
             symbol: "LINK",
             decimals: 18,
-            usdPrice: 14e8, // 14 USDC per LINK
+            usdPrice: 14e8, // 14 USD per LINK
             accountBalances: accountBalances_(account, 0) // empty balance
         });
         return assetPositionsList;
