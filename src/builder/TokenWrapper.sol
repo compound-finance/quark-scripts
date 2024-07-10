@@ -37,7 +37,7 @@ library TokenWrapper {
         });
         // NOTE: Leave out stETH and wstETH auto wrapper for now
         // TODO: Need to figure a way out to compute the "correct" ratio between stETH and wstETH for QuarkBuilder
-        // Because QuarkBuilder doesn't have access to on-chain data, but eht ratio between stETH and wstETH is constantly changing,
+        // Because QuarkBuilder doesn't have access to on-chain data, but the ratio between stETH and wstETH is constantly changing,
         // which will be hard if we need to use it to compute the absolute number of wstETH to unwrap into stETH or vice versa
         //
         // pairs[2] = KnownWrapperTokenPair({
