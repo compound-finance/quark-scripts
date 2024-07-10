@@ -758,10 +758,18 @@ contract QuarkBuilder is QuarkBuilderMath {
         return balanceOnChain < amountNeededOnDstChain;
     }
 
-    // Assert that each chain with a bridge action has enough payment token to
-    // cover the payment token cost of the bridging action and that the
-    // destination chain (once bridging is complete) will have a sufficient
-    // amount of the payment token to cover the non-bridged actions
+    /**
+     * @dev Asserts that each chain with a bridge action has enough payment
+     * token to cover the payment token cost of the bridging action and that
+     * the destination chain (once bridging is complete) will have a sufficient
+     * amount of the payment token to cover the non-bridged actions.
+     *
+     * Optional `supplementalPaymentTokenBalance` param describes an amount of
+     * the payment token that might have been received in the course of an
+     * action (for example, withdrawing an asset from Compound), which would
+     * therefore not be present in `chainAccountsList` but could be used to
+     * cover action costs.
+     */
     function assertSufficientPaymentTokenBalances(
         Actions.Action[] memory actions,
         Accounts.ChainAccounts[] memory chainAccountsList,
