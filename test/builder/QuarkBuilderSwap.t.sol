@@ -172,11 +172,11 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
                     chainId: 1,
                     inputToken: USDC_1,
                     inputTokenPrice: 1e8,
-                    inputTokenSymbol: "USDC",
+                    inputAssetSymbol: "USDC",
                     inputAmount: 3000e6,
                     outputToken: WETH_1,
                     outputTokenPrice: 3000e8,
-                    outputTokenSymbol: "WETH",
+                    outputAssetSymbol: "WETH",
                     outputAmount: 1e18
                 })
             ),
@@ -244,11 +244,11 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
                     chainId: 1,
                     inputToken: USDC_1,
                     inputTokenPrice: 1e8,
-                    inputTokenSymbol: "USDC",
+                    inputAssetSymbol: "USDC",
                     inputAmount: 3000e6,
                     outputToken: WETH_1,
                     outputTokenPrice: 3000e8,
-                    outputTokenSymbol: "WETH",
+                    outputAssetSymbol: "WETH",
                     outputAmount: 1e18
                 })
             ),
@@ -379,11 +379,11 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
                     chainId: 8453,
                     inputToken: USDC_8453,
                     inputTokenPrice: 1e8,
-                    inputTokenSymbol: "USDC",
+                    inputAssetSymbol: "USDC",
                     inputAmount: 3000e6,
                     outputToken: WETH_8453,
                     outputTokenPrice: 3000e8,
-                    outputTokenSymbol: "WETH",
+                    outputAssetSymbol: "WETH",
                     outputAmount: 1e18
                 })
             ),
@@ -511,11 +511,11 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
                     chainId: 8453,
                     inputToken: USDC_8453,
                     inputTokenPrice: 1e8,
-                    inputTokenSymbol: "USDC",
+                    inputAssetSymbol: "USDC",
                     inputAmount: 3000e6,
                     outputToken: WETH_8453,
                     outputTokenPrice: 3000e8,
-                    outputTokenSymbol: "WETH",
+                    outputAssetSymbol: "WETH",
                     outputAmount: 1e18
                 })
             ),
@@ -643,11 +643,11 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
                     chainId: 8453,
                     inputToken: USDT_8453,
                     inputTokenPrice: 1e8,
-                    inputTokenSymbol: "USDT",
+                    inputAssetSymbol: "USDT",
                     inputAmount: 3000e6,
                     outputToken: WETH_8453,
                     outputTokenPrice: 3000e8,
-                    outputTokenSymbol: "WETH",
+                    outputAssetSymbol: "WETH",
                     outputAmount: 1e18
                 })
             ),

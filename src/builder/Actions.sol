@@ -97,10 +97,10 @@ library Actions {
         address entryPoint;
         bytes swapData;
         address sellToken;
-        string sellTokenSymbol;
+        string sellAssetSymbol;
         uint256 sellAmount;
         address buyToken;
-        string buyTokenSymbol;
+        string buyAssetSymbol;
         uint256 expectedBuyAmount;
         uint256 chainId;
         address sender;
@@ -191,13 +191,13 @@ library Actions {
     struct SwapActionContext {
         uint256 chainId;
         uint256 inputAmount;
+        string inputAssetSymbol;
         address inputToken;
         uint256 inputTokenPrice;
-        string inputTokenSymbol;
         uint256 outputAmount;
+        string outputAssetSymbol;
         address outputToken;
         uint256 outputTokenPrice;
-        string outputTokenSymbol;
     }
 
     struct TransferActionContext {
@@ -702,10 +702,10 @@ library Actions {
         Accounts.ChainAccounts memory accounts = Accounts.findChainAccounts(swap.chainId, swap.chainAccountsList);
 
         Accounts.AssetPositions memory sellTokenAssetPositions =
-            Accounts.findAssetPositions(swap.sellTokenSymbol, accounts.assetPositionsList);
+            Accounts.findAssetPositions(swap.sellAssetSymbol, accounts.assetPositionsList);
 
         Accounts.AssetPositions memory buyTokenAssetPositions =
-            Accounts.findAssetPositions(swap.buyTokenSymbol, accounts.assetPositionsList);
+            Accounts.findAssetPositions(swap.buyAssetSymbol, accounts.assetPositionsList);
 
         Accounts.QuarkState memory accountState = Accounts.findQuarkState(swap.sender, accounts.quarkStates);
 
@@ -745,11 +745,11 @@ library Actions {
             chainId: swap.chainId,
             inputToken: swap.sellToken,
             inputTokenPrice: sellTokenAssetPositions.usdPrice,
-            inputTokenSymbol: swap.sellTokenSymbol,
+            inputAssetSymbol: swap.sellAssetSymbol,
             inputAmount: swap.sellAmount,
             outputToken: swap.buyToken,
             outputTokenPrice: buyTokenAssetPositions.usdPrice,
-            outputTokenSymbol: swap.buyTokenSymbol,
+            outputAssetSymbol: swap.buyAssetSymbol,
             outputAmount: swap.expectedBuyAmount
         });
         string memory paymentMethod;
