@@ -10,11 +10,12 @@ import {EIP712Helper} from "./EIP712Helper.sol";
 import {Math} from "src/lib/Math.sol";
 import {Strings} from "./Strings.sol";
 import {PaycallWrapper} from "./PaycallWrapper.sol";
+import {QuarkBuilderMath} from "./QuarkBuilderMath.sol";
 import {QuotecallWrapper} from "./QuotecallWrapper.sol";
 import {PaymentInfo} from "./PaymentInfo.sol";
 import {TokenWrapper} from "./TokenWrapper.sol";
 
-contract QuarkBuilder {
+contract QuarkBuilder is QuarkBuilderMath {
     /* ===== Constants ===== */
 
     string constant VERSION = "1.0.0";
@@ -180,14 +181,6 @@ contract QuarkBuilder {
         uint256 chainId;
         address comet;
         address withdrawer;
-    }
-
-    function subtractUnsigned(uint256 a, uint256 b) internal pure returns (uint256) {
-        if (b < a) {
-            return a - b;
-        } else {
-            return 0;
-        }
     }
 
     // XXX support withdraw max
