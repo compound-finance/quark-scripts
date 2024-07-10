@@ -94,7 +94,7 @@ library TokenWrapper {
         return Strings.stringEqIgnoreCase(tokenSymbol, getKnownWrapperTokenPair(chainId, tokenSymbol).wrappedSymbol);
     }
 
-    function encodeActionToTransformToCounterpart(uint256 chainId, string memory tokenSymbol, uint256 amount)
+    function encodeActionToWrapOrUnwrap(uint256 chainId, string memory tokenSymbol, uint256 amount)
         internal
         pure
         returns (bytes memory)

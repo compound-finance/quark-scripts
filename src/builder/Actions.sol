@@ -612,7 +612,7 @@ library Actions {
         return (quarkOperation, action);
     }
 
-    function transformToConterpartAsset(
+    function wrapOrUnwrapAsset(
         WrapOrUnwrapAsset memory wrapOrUnwrap,
         PaymentInfo.Payment memory payment,
         bool useQuotecall
@@ -631,7 +631,7 @@ library Actions {
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
             nonce: accountState.quarkNextNonce,
             scriptAddress: CodeJarHelper.getCodeAddress(type(WrapperActions).creationCode),
-            scriptCalldata: TokenWrapper.encodeActionToTransformToCounterpart(
+            scriptCalldata: TokenWrapper.encodeActionToWrapOrUnwrap(
                 wrapOrUnwrap.chainId, wrapOrUnwrap.assetSymbol, wrapOrUnwrap.amount
                 ),
             scriptSources: scriptSources,

@@ -295,7 +295,7 @@ contract QuarkBuilder {
                 TokenWrapper.getWrapperCounterpartSymbol(transferIntent.chainId, transferIntent.assetSymbol);
 
             // Wrap/unwrap the token to cover the transferIntent amount
-            (quarkOperations[actionIndex], actions[actionIndex]) = Actions.transformToConterpartAsset(
+            (quarkOperations[actionIndex], actions[actionIndex]) = Actions.wrapOrUnwrapAsset(
                 Actions.WrapOrUnwrapAsset({
                     chainAccountsList: chainAccountsList,
                     assetSymbol: counterpartSymbol,
@@ -574,7 +574,7 @@ contract QuarkBuilder {
                 // If the user opts for paying with payment token and the payment token is also the action token's counterpart
                 // reduce the available balance by the max cost
                 if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, counterpartSymbol)) {
-                    counterpartBalance = Math.substractOrZero(
+                    counterpartBalance = Math.subtractFlooredAtZero(
                         counterpartBalance, PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId)
                     );
                 }
@@ -628,7 +628,8 @@ contract QuarkBuilder {
                 )
         ) {
             // 0 if account can't afford to wrap/unwrap == can't use that balance
-            counterpartBalance = Math.substractOrZero(counterpartBalance, PaymentInfo.findMaxCost(payment, chainId));
+            counterpartBalance =
+                Math.subtractFlooredAtZero(counterpartBalance, PaymentInfo.findMaxCost(payment, chainId));
         }
         balanceOnChain += counterpartBalance;
 

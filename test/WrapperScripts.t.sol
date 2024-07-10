@@ -58,6 +58,7 @@ contract WrapperScriptsTest is Test {
             ScriptType.ScriptSource
         );
         (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+
         assertEq(IERC20(WETH).balanceOf(address(wallet)), 0 ether);
         assertEq(address(wallet).balance, 10 ether);
         vm.resumeGasMetering();
@@ -66,7 +67,7 @@ contract WrapperScriptsTest is Test {
         assertEq(address(wallet).balance, 0 ether);
     }
 
-    function testUnwraWETH() public {
+    function testUnwrapWETH() public {
         vm.pauseGasMetering();
         QuarkWallet wallet = QuarkWallet(factory.create(alice, address(0)));
 
@@ -79,6 +80,7 @@ contract WrapperScriptsTest is Test {
             ScriptType.ScriptSource
         );
         (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+
         assertEq(IERC20(WETH).balanceOf(address(wallet)), 10 ether);
         assertEq(address(wallet).balance, 0 ether);
         vm.resumeGasMetering();
@@ -105,6 +107,7 @@ contract WrapperScriptsTest is Test {
             ScriptType.ScriptSource
         );
         (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 0 ether);
         assertApproxEqAbs(IERC20(stETH).balanceOf(address(wallet)), 10 ether, 0.01 ether);
         vm.resumeGasMetering();
@@ -126,6 +129,7 @@ contract WrapperScriptsTest is Test {
             ScriptType.ScriptSource
         );
         (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+
         assertEq(IERC20(stETH).balanceOf(address(wallet)), 0 ether);
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 10 ether);
         vm.resumeGasMetering();

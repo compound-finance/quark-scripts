@@ -159,16 +159,17 @@ library Accounts {
             // Account for max cost if the payment token is the transfer token
             // Simply offset the max cost from the available asset batch
             if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, tokenSymbol)) {
-                // Use substractOrZero to prevent errors from underflowing
-                balance = Math.substractOrZero(balance, PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId));
+                // Use subtractFlooredAtZero to prevent errors from underflowing
+                balance =
+                    Math.subtractFlooredAtZero(balance, PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId));
             }
 
             // If the wrapper contract exists in the chain, add the balance of the wrapped/unwrapped token here as well
             // Offset with another max cost for wrapping/unwrapping action when the counter part is payment token
-            uint256 counterPartBalance = 0;
+            uint256 counterpartBalance = 0;
             if (TokenWrapper.hasWrapperContract(chainAccountsList[i].chainId, tokenSymbol)) {
                 // Add the balance of the wrapped token
-                counterPartBalance += Accounts.sumBalances(
+                counterpartBalance += Accounts.sumBalances(
                     Accounts.findAssetPositions(
                         TokenWrapper.getWrapperCounterpartSymbol(chainAccountsList[i].chainId, tokenSymbol),
                         chainAccountsList[i].chainId,
@@ -183,13 +184,13 @@ library Accounts {
                             TokenWrapper.getWrapperCounterpartSymbol(chainAccountsList[i].chainId, tokenSymbol)
                         )
                 ) {
-                    counterPartBalance = Math.substractOrZero(
-                        counterPartBalance, PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId)
+                    counterpartBalance = Math.subtractFlooredAtZero(
+                        counterpartBalance, PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId)
                     );
                 }
             }
 
-            total += balance + counterPartBalance;
+            total += balance + counterpartBalance;
         }
         return total;
     }
