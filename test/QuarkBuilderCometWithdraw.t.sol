@@ -35,7 +35,7 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
     function testCometWithdraw() public {
         QuarkBuilder builder = new QuarkBuilder();
         QuarkBuilder.BuilderResult memory result = builder.cometWithdraw(
-            cometWithdraw_(1, 1e6, "LINK"),
+            cometWithdraw_(1, 1e18, "LINK"),
             chainAccountsList_(2e6), // holding 2 USDC in total across 1, 8453
             paymentUsd_()
         );
@@ -67,8 +67,8 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
         );
         assertEq(
             result.quarkOperations[0].scriptCalldata,
-            abi.encodeCall(CometWithdrawActions.withdraw, (COMET, link_(1), 1e6)),
-            "calldata is CometWithdrawActions.withdraw(COMET, link, 1e6);"
+            abi.encodeCall(CometWithdrawActions.withdraw, (COMET, link_(1), 1e18)),
+            "calldata is CometWithdrawActions.withdraw(COMET, LINK_1, 1e18);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
@@ -86,7 +86,7 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
             result.actions[0].actionContext,
             abi.encode(
                 Actions.WithdrawActionContext({
-                    amount: 1e6,
+                    amount: 1e18,
                     // assetSymbol: "USDC",
                     chainId: 1,
                     comet: COMET,
@@ -108,7 +108,7 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
         maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 0.1e6});
         QuarkBuilder.BuilderResult memory result = builder.cometWithdraw(
-            cometWithdraw_(1, 1e6, "LINK"),
+            cometWithdraw_(1, 1e18, "LINK"),
             chainAccountsList_(3e6), // holding 3 USDC in total across chains 1, 8453
             paymentUsdc_(maxCosts)
         );
@@ -131,10 +131,10 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
             abi.encodeWithSelector(
                 Paycall.run.selector,
                 cometWithdrawActionsAddress,
-                abi.encodeWithSelector(CometWithdrawActions.withdraw.selector, COMET, link_(1), 1e6),
+                abi.encodeWithSelector(CometWithdrawActions.withdraw.selector, COMET, link_(1), 1e18),
                 0.1e6
             ),
-            "calldata is Paycall.run(CometWithdrawActions.supply(COMET, LINK, 1e6), 0.1e6);"
+            "calldata is Paycall.run(CometWithdrawActions.supply(COMET, LINK_1, 1e18), 0.1e6);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
@@ -152,7 +152,7 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
             result.actions[0].actionContext,
             abi.encode(
                 Actions.WithdrawActionContext({
-                    amount: 1e6,
+                    amount: 1e18,
                     // assetSymbol: "USDC", ?
                     chainId: 1,
                     comet: COMET,
@@ -200,7 +200,7 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
                 abi.encodeWithSelector(CometWithdrawActions.withdraw.selector, COMET, usdc_(1), 1e6),
                 0.5e6
             ),
-            "calldata is Paycall.run(CometWithdrawActions.supply(COMET, USDC, 1e6), 0.5e6);"
+            "calldata is Paycall.run(CometWithdrawActions.supply(COMET, USDC_1, 1e6), 0.5e6);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
@@ -268,7 +268,7 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
         });
 
         QuarkBuilder.BuilderResult memory result =
-            builder.cometWithdraw(cometWithdraw_(8453, 5e6, "LINK"), chainAccountsList, paymentUsdc_(maxCosts));
+            builder.cometWithdraw(cometWithdraw_(8453, 5e18, "LINK"), chainAccountsList, paymentUsdc_(maxCosts));
 
         address paycallAddress = paycall_(1);
         address paycallAddressBase = paycall_(8453);
@@ -300,7 +300,7 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
                 ),
                 0.1e6
             ),
-            "calldata is Paycall.run(CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 2.1e6, 6, bytes32(uint256(uint160(0xa11ce))), usdc_(1))), 0.5e6);"
+            "calldata is Paycall.run(CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 2.1e6, 6, bytes32(uint256(uint160(0xa11ce))), USDC_1)), 0.5e6);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
@@ -317,10 +317,10 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
             abi.encodeWithSelector(
                 Paycall.run.selector,
                 CodeJarHelper.getCodeAddress(type(CometWithdrawActions).creationCode),
-                abi.encodeCall(CometWithdrawActions.withdraw, (COMET, link_(8453), 5e6)),
+                abi.encodeCall(CometWithdrawActions.withdraw, (COMET, link_(8453), 5e18)),
                 1e6
             ),
-            "calldata is Paycall.run(CometWithdrawActions.withdraw(COMET, link(8453), 5e6), 1e6);"
+            "calldata is Paycall.run(CometWithdrawActions.withdraw(COMET, LINK_8453, 5e18), 1e6);"
         );
         assertEq(
             result.quarkOperations[1].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
@@ -362,7 +362,7 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
             result.actions[1].actionContext,
             abi.encode(
                 Actions.WithdrawActionContext({
-                    amount: 5e6,
+                    amount: 5e18,
                     // assetSymbol: "USDC",
                     chainId: 8453,
                     comet: COMET,
