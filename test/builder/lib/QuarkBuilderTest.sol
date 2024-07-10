@@ -142,6 +142,10 @@ contract QuarkBuilderTest {
         revert("no mock usdt for that chain id bye");
     }
 
+    function eth_() internal pure returns (address) {
+        return 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    }
+
     function weth_(uint256 chainId) internal pure returns (address) {
         if (chainId == 1) return WETH_1;
         if (chainId == 8453) return WETH_8453;

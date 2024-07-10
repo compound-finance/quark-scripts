@@ -7,10 +7,12 @@ import {Actions} from "./Actions.sol";
 import {Accounts} from "./Accounts.sol";
 import {BridgeRoutes} from "./BridgeRoutes.sol";
 import {EIP712Helper} from "./EIP712Helper.sol";
+import {Math} from "src/lib/Math.sol";
 import {Strings} from "./Strings.sol";
 import {PaycallWrapper} from "./PaycallWrapper.sol";
 import {QuotecallWrapper} from "./QuotecallWrapper.sol";
 import {PaymentInfo} from "./PaymentInfo.sol";
+import {TokenWrapper} from "./TokenWrapper.sol";
 
 contract QuarkBuilder {
     /* ===== Constants ===== */
@@ -25,6 +27,7 @@ contract QuarkBuilder {
     error InvalidActionType();
     error InvalidInput();
     error MaxCostTooHigh();
+    error MissingWrapperCounterpart();
 
     /* ===== Input Types ===== */
 
@@ -210,7 +213,7 @@ contract QuarkBuilder {
 
         // TransferMax will always use quotecall to avoid leaving dust in wallet
         bool useQuotecall = isMaxTransfer;
-        Actions.Action[] memory actions = new Actions.Action[](chainAccountsList.length);
+        Actions.Action[] memory actions = new Actions.Action[](chainAccountsList.length * 2);
         IQuarkWallet.QuarkOperation[] memory quarkOperations =
             new IQuarkWallet.QuarkOperation[](2 * chainAccountsList.length);
 
@@ -276,6 +279,37 @@ contract QuarkBuilder {
                     actionIndex++;
                 }
             }
+        }
+
+        // Check if need to wrap/unwrap token to cover the transferIntent amount
+        // If the existing balance is not enough to cover the transferIntent amount, wrap/unwrap the counterpart token here
+        // NOTE: We prioritize unwrap/wrap in the dst chain over bridging, bridging logic checks for counterpart tokens when calculating the amounts to bridge.
+        // TODO: Will also implement this logics in comet supply scenario
+        uint256 existingBalance =
+            Accounts.getBalanceOnChain(transferIntent.assetSymbol, transferIntent.chainId, chainAccountsList);
+        if (
+            existingBalance < transferIntent.amount
+                && TokenWrapper.hasWrapperContract(transferIntent.chainId, transferIntent.assetSymbol)
+        ) {
+            // If the asset has a wrapper counterpart, wrap/unwrap the token to cover the transferIntent amount
+            string memory counterpartSymbol =
+                TokenWrapper.getWrapperCounterpartSymbol(transferIntent.chainId, transferIntent.assetSymbol);
+
+            // Wrap/unwrap the token to cover the transferIntent amount
+            (quarkOperations[actionIndex], actions[actionIndex]) = Actions.wrapOrUnwrapAsset(
+                Actions.WrapOrUnwrapAsset({
+                    chainAccountsList: chainAccountsList,
+                    assetSymbol: counterpartSymbol,
+                    // NOTE: Wrap/unwrap the amount needed to cover the transferIntent amount
+                    amount: transferIntent.amount - existingBalance,
+                    chainId: transferIntent.chainId,
+                    sender: transferIntent.sender,
+                    blockTimestamp: transferIntent.blockTimestamp
+                }),
+                payment,
+                useQuotecall
+            );
+            actionIndex++;
         }
 
         // Then, transfer `amount` of `assetSymbol` to `recipient`
@@ -516,7 +550,6 @@ contract QuarkBuilder {
         for (uint256 i = 0; i < chainAccountsList.length; ++i) {
             Accounts.AssetPositions memory positions =
                 Accounts.findAssetPositions(assetSymbol, chainAccountsList[i].assetPositionsList);
-
             if (
                 chainAccountsList[i].chainId == chainId
                     || BridgeRoutes.canBridge(chainAccountsList[i].chainId, chainId, assetSymbol)
@@ -528,6 +561,26 @@ contract QuarkBuilder {
                     aggregateMaxCosts += PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId);
                 }
             }
+
+            // If the asset has wrapper counterpart and can locally wrap/unwrap, accumulate the balance of the the counterpart
+            // NOTE: Currently only at dst chain, and will ignore all the counterpart balance in other chains
+            if (
+                chainAccountsList[i].chainId == chainId
+                    && TokenWrapper.hasWrapperContract(chainAccountsList[i].chainId, assetSymbol)
+            ) {
+                uint256 counterpartBalance =
+                    getWrapperCounterpartBalance(assetSymbol, chainAccountsList[i].chainId, chainAccountsList);
+                string memory counterpartSymbol =
+                    TokenWrapper.getWrapperCounterpartSymbol(chainAccountsList[i].chainId, assetSymbol);
+                // If the user opts for paying with payment token and the payment token is also the action token's counterpart
+                // reduce the available balance by the max cost
+                if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, counterpartSymbol)) {
+                    counterpartBalance = Math.subtractFlooredAtZero(
+                        counterpartBalance, PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId)
+                    );
+                }
+                aggregateAssetBalance += counterpartBalance;
+            }
         }
 
         uint256 aggregateAvailableAssetBalance =
@@ -537,6 +590,21 @@ contract QuarkBuilder {
         }
     }
 
+    function getWrapperCounterpartBalance(
+        string memory assetSymbol,
+        uint256 chainId,
+        Accounts.ChainAccounts[] memory chainAccountsList
+    ) internal pure returns (uint256) {
+        if (TokenWrapper.hasWrapperContract(chainId, assetSymbol)) {
+            // Add counterpart balance to balanceOnChain
+            return Accounts.getBalanceOnChain(
+                TokenWrapper.getWrapperCounterpartSymbol(chainId, assetSymbol), chainId, chainAccountsList
+            );
+        }
+
+        revert MissingWrapperCounterpart();
+    }
+
     function needsBridgedFunds(
         string memory assetSymbol,
         uint256 amount,
@@ -544,12 +612,31 @@ contract QuarkBuilder {
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
     ) internal pure returns (bool) {
+        uint256 balanceOnChain = Accounts.getBalanceOnChain(assetSymbol, chainId, chainAccountsList);
         // If action is paid for with tokens and the payment token is the transfer token, then add the payment max cost for the target chain to the amount needed
         uint256 amountNeededOnDstChain = amount;
         if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, assetSymbol)) {
             amountNeededOnDstChain += PaymentInfo.findMaxCost(payment, chainId);
         }
-        return Accounts.getBalanceOnChain(assetSymbol, chainId, chainAccountsList) < amountNeededOnDstChain;
+
+        // If there exists a counterpart token, try to wrap/unwrap first before attempting to bridge
+        if (TokenWrapper.hasWrapperContract(chainId, assetSymbol)) {
+            uint256 counterpartBalance = getWrapperCounterpartBalance(assetSymbol, chainId, chainAccountsList);
+            // Subtract max cost if the counterpart token is the payment token
+            if (
+                payment.isToken
+                    && Strings.stringEqIgnoreCase(
+                        payment.currency, TokenWrapper.getWrapperCounterpartSymbol(chainId, assetSymbol)
+                    )
+            ) {
+                // 0 if account can't afford to wrap/unwrap == can't use that balance
+                counterpartBalance =
+                    Math.subtractFlooredAtZero(counterpartBalance, PaymentInfo.findMaxCost(payment, chainId));
+            }
+            balanceOnChain += counterpartBalance;
+        }
+
+        return balanceOnChain < amountNeededOnDstChain;
     }
 
     // Assert that each chain with a bridge action has enough payment token to
@@ -613,6 +700,15 @@ contract QuarkBuilder {
                     abi.decode(nonBridgeAction.actionContext, (Actions.SupplyActionContext));
                 if (Strings.stringEqIgnoreCase(cometSupplyActionContext.assetSymbol, paymentTokenSymbol)) {
                     paymentTokenCost += cometSupplyActionContext.amount;
+                }
+            } else if (
+                Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_UNWRAP)
+                    || Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_WRAP)
+            ) {
+                Actions.WrapOrUnwrapActionContext memory wrapOrUnwrapActionContext =
+                    abi.decode(nonBridgeAction.actionContext, (Actions.WrapOrUnwrapActionContext));
+                if (Strings.stringEqIgnoreCase(wrapOrUnwrapActionContext.fromAssetSymbol, paymentTokenSymbol)) {
+                    paymentTokenCost += wrapOrUnwrapActionContext.amount;
                 }
             } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_SWAP)) {
                 Actions.SwapActionContext memory swapActionContext =
