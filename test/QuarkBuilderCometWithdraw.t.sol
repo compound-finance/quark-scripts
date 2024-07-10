@@ -87,13 +87,13 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.WithdrawActionContext({
                     amount: 1e18,
-                    // assetSymbol: "USDC",
+                    assetSymbol: "LINK",
                     chainId: 1,
                     comet: COMET,
-                    price: 14e8
+                    price: 14e8,
+                    token: link_(1)
                 })
             ),
-            // token: USDC_1 XXX ?
             "action context encoded from WithdrawActionContext"
         );
 
@@ -153,13 +153,13 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.WithdrawActionContext({
                     amount: 1e18,
-                    // assetSymbol: "USDC", ?
+                    assetSymbol: "LINK",
                     chainId: 1,
                     comet: COMET,
-                    price: 14e8
+                    price: 14e8,
+                    token: link_(1)
                 })
             ),
-            // token: USDC_1 ?
             "action context encoded from WithdrawActionContext"
         );
 
@@ -219,13 +219,13 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.WithdrawActionContext({
                     amount: 1e6,
-                    // assetSymbol: "USDC", ?
+                    assetSymbol: "USDC",
                     chainId: 1,
                     comet: COMET,
-                    price: 1e8
+                    price: 1e8,
+                    token: usdc_(1)
                 })
             ),
-            // token: USDC_1 ?
             "action context encoded from WithdrawActionContext"
         );
 
@@ -363,11 +363,11 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.WithdrawActionContext({
                     amount: 5e18,
-                    // assetSymbol: "USDC",
+                    assetSymbol: "LINK",
                     chainId: 8453,
                     comet: COMET,
-                    price: 14e8 // LINK price
-                        // token: USDC_8453
+                    price: 14e8,
+                    token: link_(8453)
                 })
             ),
             "action context encoded from WithdrawActionContext"

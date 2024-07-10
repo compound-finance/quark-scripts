@@ -220,10 +220,12 @@ library Actions {
     }
 
     struct WithdrawActionContext {
-        uint256 chainId;
         uint256 amount;
+        string assetSymbol;
+        uint256 chainId;
         address comet;
         uint256 price;
+        address token;
     }
 
     struct WithdrawAndBorrowActionContext {
@@ -589,9 +591,11 @@ library Actions {
         // Construct Action
         WithdrawActionContext memory cometWithdrawActionContext = WithdrawActionContext({
             amount: cometWithdraw.amount,
+            assetSymbol: cometWithdraw.assetSymbol,
             chainId: cometWithdraw.chainId,
             comet: cometWithdraw.comet,
-            price: assetPositions.usdPrice
+            price: assetPositions.usdPrice,
+            token: assetPositions.asset
         });
         Action memory action = Actions.Action({
             chainId: cometWithdraw.chainId,
