@@ -114,7 +114,7 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
         );
 
         address cometWithdrawActionsAddress = CodeJarHelper.getCodeAddress(type(CometWithdrawActions).creationCode);
-        address paycallAddress = paycall_(1);
+        address paycallAddress = paycallUsdc_(1);
 
         assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
@@ -180,7 +180,7 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
         );
 
         address cometWithdrawActionsAddress = CodeJarHelper.getCodeAddress(type(CometWithdrawActions).creationCode);
-        address paycallAddress = paycall_(1);
+        address paycallAddress = paycallUsdc_(1);
 
         assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
@@ -270,8 +270,8 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
         QuarkBuilder.BuilderResult memory result =
             builder.cometWithdraw(cometWithdraw_(8453, 5e18, "LINK"), chainAccountsList, paymentUsdc_(maxCosts));
 
-        address paycallAddress = paycall_(1);
-        address paycallAddressBase = paycall_(8453);
+        address paycallAddress = paycallUsdc_(1);
+        address paycallAddressBase = paycallUsdc_(8453);
         address cctpBridgeActionsAddress = CodeJarHelper.getCodeAddress(type(CCTPBridgeActions).creationCode);
 
         assertEq(result.version, "1.0.0", "version 1");

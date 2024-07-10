@@ -145,7 +145,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         );
 
         address cometSupplyActionsAddress = CodeJarHelper.getCodeAddress(type(CometSupplyActions).creationCode);
-        address paycallAddress = paycall_(1);
+        address paycallAddress = paycallUsdc_(1);
 
         assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
@@ -349,8 +349,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
             paymentUsdc_(maxCosts)
         );
 
-        address paycallAddress = paycall_(1);
-        address paycallAddressBase = paycall_(8453);
+        address paycallAddress = paycallUsdc_(1);
+        address paycallAddressBase = paycallUsdc_(8453);
         address cctpBridgeActionsAddress = CodeJarHelper.getCodeAddress(type(CCTPBridgeActions).creationCode);
 
         assertEq(result.version, "1.0.0", "version 1");

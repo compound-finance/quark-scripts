@@ -176,7 +176,7 @@ contract QuarkBuilderTest {
         revert("no mock weth for that chain id bye");
     }
 
-    function paycall_(uint256 chainId) internal pure returns (address) {
+    function paycallUsdc_(uint256 chainId) internal pure returns (address) {
         if (chainId == 1) {
             return CodeJarHelper.getCodeAddress(
                 abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
