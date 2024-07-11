@@ -20,7 +20,7 @@ library TokenWrapper {
     }
 
     function knownWrapperTokenPairs() internal pure returns (KnownWrapperTokenPair[] memory) {
-        KnownWrapperTokenPair[] memory pairs = new KnownWrapperTokenPair[](2);
+        KnownWrapperTokenPair[] memory pairs = new KnownWrapperTokenPair[](3);
         pairs[0] = KnownWrapperTokenPair({
             chainId: 1,
             wrapper: 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2,
@@ -31,6 +31,13 @@ library TokenWrapper {
         pairs[1] = KnownWrapperTokenPair({
             chainId: 8453,
             wrapper: 0x4200000000000000000000000000000000000006,
+            underlyingSymbol: "ETH",
+            underlyingToken: 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE,
+            wrappedSymbol: "WETH"
+        });
+        pairs[2] = KnownWrapperTokenPair({
+            chainId: 11155111,
+            wrapper: 0x98cec103AE046A31420508eaBe1494E71C3EE7a3,
             underlyingSymbol: "ETH",
             underlyingToken: 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE,
             wrappedSymbol: "WETH"
