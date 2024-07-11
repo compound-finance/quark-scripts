@@ -13,6 +13,7 @@ import {PaycallWrapper} from "./PaycallWrapper.sol";
 import {QuotecallWrapper} from "./QuotecallWrapper.sol";
 import {PaymentInfo} from "./PaymentInfo.sol";
 import {TokenWrapper} from "./TokenWrapper.sol";
+import {QuarkOperationHelper} from "./QuarkOperationHelper.sol";
 import {List} from "./List.sol";
 
 contract QuarkBuilder {
@@ -445,6 +446,9 @@ contract QuarkBuilder {
         if (payment.isToken) {
             assertSufficientPaymentTokenBalances(actionsArray, chainAccountsList, transferIntent.chainId);
         }
+
+        // TODO: Don't wrap paycall/quotecall until at the end
+        (quarkOperations, actions) = QuarkOperationHelper.mergeSameChainOperations(quarkOperationsArray, actionsArray);
 
         // Construct EIP712 digests
         EIP712Helper.EIP712Data memory eip712Data;

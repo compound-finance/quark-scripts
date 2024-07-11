@@ -649,6 +649,8 @@ library Actions {
             expiry: transfer.blockTimestamp + TRANSFER_EXPIRY_BUFFER
         });
 
+        // TODO: take script address and calldata and combine from each quark operation and combine them
+
         if (payment.isToken) {
             // Wrap operation with paycall
             quarkOperation = useQuotecall
