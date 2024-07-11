@@ -268,8 +268,8 @@ library Actions {
          *
          * therefore the upper bound is chainAccountsList.length.
          */
-        List.ListStuct memory actions = List.newList();
-        List.ListStuct memory quarkOperations = List.newList();
+        List.DynamicArray memory actions = List.newList();
+        List.DynamicArray memory quarkOperations = List.newList();
 
         // Note: Assumes that the asset uses the same # of decimals on each chain
         uint256 balanceOnDstChain = Accounts.getBalanceOnChain(

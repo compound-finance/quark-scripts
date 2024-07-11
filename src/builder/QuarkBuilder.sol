@@ -87,8 +87,8 @@ contract QuarkBuilder {
             payment
         );
 
-        List.ListStuct memory actions = List.newList();
-        List.ListStuct memory quarkOperations = List.newList();
+        List.DynamicArray memory actions = List.newList();
+        List.DynamicArray memory quarkOperations = List.newList();
 
         if (
             needsBridgedFunds(
@@ -421,8 +421,8 @@ contract QuarkBuilder {
 
         // TransferMax will always use quotecall to avoid leaving dust in wallet
         bool useQuotecall = isMaxTransfer;
-        List.ListStuct memory actions = List.newList();
-        List.ListStuct memory quarkOperations = List.newList();
+        List.DynamicArray memory actions = List.newList();
+        List.DynamicArray memory quarkOperations = List.newList();
         if (
             needsBridgedFunds(
                 transferIntent.assetSymbol,
@@ -692,8 +692,8 @@ contract QuarkBuilder {
         );
 
         // TODO: When should we use quotecall?
-        List.ListStuct memory actions = List.newList();
-        List.ListStuct memory quarkOperations = List.newList();
+        List.DynamicArray memory actions = List.newList();
+        List.DynamicArray memory quarkOperations = List.newList();
 
         if (
             needsBridgedFunds(
