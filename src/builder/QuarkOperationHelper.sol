@@ -11,13 +11,19 @@ import {PaycallWrapper} from "./PaycallWrapper.sol";
 import {PaymentInfo} from "./PaymentInfo.sol";
 import {QuotecallWrapper} from "./QuotecallWrapper.sol";
 
-// Helper library to merge QuarkOperations on the same chain
+// Helper library to for transforming Quark Operations
 library QuarkOperationHelper {
+    /* ===== Custom Errors ===== */
+
+    error BadData();
+
+    /* ===== Main Implementation ===== */
+
     function mergeSameChainOperations(
         IQuarkWallet.QuarkOperation[] memory quarkOperations,
         Actions.Action[] memory actions
     ) internal pure returns (IQuarkWallet.QuarkOperation[] memory, Actions.Action[] memory) {
-        // Note: Assumes quarkOperations and actions have the same length
+        if (quarkOperations.length != actions.length) revert BadData();
 
         // Arrays to keep track of unique chain IDs and their operations
         uint256[] memory uniqueChainIds = new uint256[](quarkOperations.length);
@@ -54,14 +60,14 @@ library QuarkOperationHelper {
         }
 
         // Group operations by chain
-        uint256[] memory currentIndex = new uint256[](uniqueChainCount);
+        uint256[] memory currentIndices = new uint256[](uniqueChainCount);
         for (uint256 i = 0; i < quarkOperations.length; ++i) {
             uint256 chainId = actions[i].chainId;
             for (uint256 j = 0; j < uniqueChainCount; j++) {
                 if (uniqueChainIds[j] == chainId) {
-                    groupedQuarkOperations[j][currentIndex[j]] = quarkOperations[i];
-                    groupedActions[j][currentIndex[j]] = actions[i];
-                    currentIndex[j]++;
+                    groupedQuarkOperations[j][currentIndices[j]] = quarkOperations[i];
+                    groupedActions[j][currentIndices[j]] = actions[i];
+                    currentIndices[j]++;
                     break;
                 }
             }
@@ -95,6 +101,7 @@ library QuarkOperationHelper {
     {
         address[] memory callContracts = new address[](quarkOperations.length);
         bytes[] memory callDatas = new bytes[](quarkOperations.length);
+        // We add an extra space for the Multicall script source
         bytes[] memory scriptSources = new bytes[](quarkOperations.length + 1);
 
         for (uint256 i = 0; i < quarkOperations.length; ++i) {
@@ -107,7 +114,7 @@ library QuarkOperationHelper {
 
         bytes memory multicallCalldata = abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas);
 
-        // Construct QuarkOperation and Action
+        // Construct Quark Operation and Action
         // Note: We give precedence to the last operation and action for now because any earlier operations
         // are auxiliary (e.g. wrapping an asset)
         IQuarkWallet.QuarkOperation memory lastQuarkOperation = quarkOperations[quarkOperations.length - 1];
