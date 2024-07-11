@@ -476,7 +476,7 @@ library Actions {
         address borrower;
         uint256 chainId;
         uint256[] collateralAmounts;
-        string[] collateralTokenSymbols; // collateralAssetSymbols?
+        string[] collateralTokenSymbols;
         address comet;
     }
 
@@ -509,10 +509,10 @@ library Actions {
         // XXX handle wrapping ETH?
         bytes memory scriptCalldata = abi.encodeWithSelector(
             CometSupplyMultipleAssetsAndBorrow.run.selector,
-            borrowInput.comet, // comet,
-            collateralTokens, // assets,
-            borrowInput.collateralAmounts, // amounts,
-            borrowAssetPositions.asset, // baseAsset,
+            borrowInput.comet,
+            collateralTokens,
+            borrowInput.collateralAmounts,
+            borrowAssetPositions.asset,
             borrowInput.amount
         );
 

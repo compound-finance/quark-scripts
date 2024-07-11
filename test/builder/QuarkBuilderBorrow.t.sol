@@ -485,7 +485,7 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].actionType, "BORROW", "action type is 'BORROW'");
         assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
-        assertEq(result.actions[0].paymentMaxCost, 0.5e6, "payment max is set to .1e6 in this test case");
+        assertEq(result.actions[0].paymentMaxCost, 0.5e6, "payment max is set to .5e6 in this test case");
 
         uint256[] memory collateralTokenPrices = new uint256[](1);
         collateralTokenPrices[0] = 14e8;
@@ -623,7 +623,7 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
                 ),
                 1e6
             ),
-            "calldata is Paycall.run(CometSupplyMultipleAssetsAndBorrow.run(COMET, [LINK_8453], [1e18], USDT_1, 1e6), 1e6);"
+            "calldata is Paycall.run(CometSupplyMultipleAssetsAndBorrow.run(COMET, [LINK_8453], [1e18], USDT_8453, 1e6), 1e6);"
         );
         assertEq(result.quarkOperations[1].scriptSources.length, 2);
         assertEq(result.quarkOperations[1].scriptSources[0], type(CometSupplyMultipleAssetsAndBorrow).creationCode);
@@ -713,7 +713,7 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
             account: address(0xa11ce),
             nextNonce: 12,
             assetSymbols: stringArray("USDC", "USDT", "LINK", "WETH"),
-            assetBalances: uintArray(4e6, 0, 0, 0) // 3 USDC on mainnet
+            assetBalances: uintArray(4e6, 0, 0, 0) // 4 USDC on mainnet
         });
         chainPortfolios[1] = ChainPortfolio({
             chainId: 8453,
@@ -767,7 +767,7 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
                 ),
                 0.1e6
             ),
-            "calldata is Paycall.run(CCTPBridgeActions.bridgeUSDC(0xBd3fa81B58Ba92a82136038B25aDec7066af3155, 1e6, 6, 0xa11ce, USDC_1)), 0.1e6);"
+            "calldata is Paycall.run(CCTPBridgeActions.bridgeUSDC(0xBd3fa81B58Ba92a82136038B25aDec7066af3155, 2.2e6, 6, 0xa11ce, USDC_1)), 0.1e6);"
         );
         assertEq(result.quarkOperations[0].scriptSources.length, 2);
         assertEq(result.quarkOperations[0].scriptSources[0], type(CCTPBridgeActions).creationCode);

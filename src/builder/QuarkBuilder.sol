@@ -129,10 +129,7 @@ contract QuarkBuilder {
             // borrowed amount to cover the cost
 
             if (Strings.stringEqIgnoreCase(payment.currency, borrowIntent.assetSymbol)) {
-                // unnecessary variable to avoid compiler error :(
-                // https://github.com/ethereum/solidity/issues/14358
-                uint256 newMax = subtractUnsigned(maxCostOnDstChain, borrowIntent.amount);
-                maxCostOnDstChain = newMax;
+                maxCostOnDstChain = Math.subtractFlooredAtZero(maxCostOnDstChain, borrowIntent.amount);
             }
 
             if (
@@ -1042,7 +1039,6 @@ contract QuarkBuilder {
             } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_WITHDRAW)) {
                 continue;
             } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_BORROW)) {
-                // ????
                 continue;
             } else {
                 revert InvalidActionType();
