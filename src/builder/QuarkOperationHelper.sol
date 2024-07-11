@@ -1,10 +1,15 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.23;
 
-import {CodeJarHelper} from "./CodeJarHelper.sol";
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
+
 import {Multicall} from "../Multicall.sol";
+
 import {Actions} from "./Actions.sol";
+import {CodeJarHelper} from "./CodeJarHelper.sol";
+import {PaycallWrapper} from "./PaycallWrapper.sol";
+import {PaymentInfo} from "./PaymentInfo.sol";
+import {QuotecallWrapper} from "./QuotecallWrapper.sol";
 
 // Helper library to merge QuarkOperations on the same chain
 library QuarkOperationHelper {
@@ -115,5 +120,31 @@ library QuarkOperationHelper {
         });
 
         return (mergedQuarkOperation, actions[actions.length - 1]);
+    }
+
+    function wrapOperationsWithTokenPayment(
+        IQuarkWallet.QuarkOperation[] memory quarkOperations,
+        Actions.Action[] memory actions,
+        PaymentInfo.Payment memory payment,
+        bool useQuotecall
+    ) internal pure returns (IQuarkWallet.QuarkOperation[] memory) {
+        IQuarkWallet.QuarkOperation[] memory wrappedQuarkOperations =
+            new IQuarkWallet.QuarkOperation[](quarkOperations.length);
+        for (uint256 i = 0; i < quarkOperations.length; ++i) {
+            wrappedQuarkOperations[i] = useQuotecall
+                ? QuotecallWrapper.wrap(
+                    quarkOperations[i],
+                    actions[i].chainId,
+                    payment.currency,
+                    PaymentInfo.findMaxCost(payment, actions[i].chainId)
+                )
+                : PaycallWrapper.wrap(
+                    quarkOperations[i],
+                    actions[i].chainId,
+                    payment.currency,
+                    PaymentInfo.findMaxCost(payment, actions[i].chainId)
+                );
+        }
+        return wrappedQuarkOperations;
     }
 }

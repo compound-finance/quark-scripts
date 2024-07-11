@@ -10,8 +10,6 @@ import {ApproveAndSwap, CometSupplyActions, CometWithdrawActions, TransferAction
 import {WrapperActions} from "../WrapperScripts.sol";
 
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
-import {PaycallWrapper} from "./PaycallWrapper.sol";
-import {QuotecallWrapper} from "./QuotecallWrapper.sol";
 import {PaymentInfo} from "./PaymentInfo.sol";
 import {TokenWrapper} from "./TokenWrapper.sol";
 import {List} from "./List.sol";
@@ -429,17 +427,6 @@ library Actions {
             expiry: bridge.blockTimestamp + BRIDGE_EXPIRY_BUFFER
         });
 
-        if (payment.isToken) {
-            // Wrap operation with paycall
-            quarkOperation = useQuotecall
-                ? QuotecallWrapper.wrap(
-                    quarkOperation, bridge.srcChainId, payment.currency, PaymentInfo.findMaxCost(payment, bridge.srcChainId)
-                )
-                : PaycallWrapper.wrap(
-                    quarkOperation, bridge.srcChainId, payment.currency, PaymentInfo.findMaxCost(payment, bridge.srcChainId)
-                );
-        }
-
         // Construct Action
         BridgeActionContext memory bridgeActionContext = BridgeActionContext({
             amount: bridge.amount,
@@ -507,16 +494,6 @@ library Actions {
             scriptSources: scriptSources,
             expiry: cometSupply.blockTimestamp + STANDARD_EXPIRY_BUFFER
         });
-
-        if (payment.isToken) {
-            // Wrap operation with paycall
-            quarkOperation = PaycallWrapper.wrap(
-                quarkOperation,
-                cometSupply.chainId,
-                payment.currency,
-                PaymentInfo.findMaxCost(payment, cometSupply.chainId)
-            );
-        }
 
         // Construct Action
         SupplyActionContext memory cometSupplyActionContext = SupplyActionContext({
@@ -649,19 +626,6 @@ library Actions {
             expiry: transfer.blockTimestamp + TRANSFER_EXPIRY_BUFFER
         });
 
-        // TODO: take script address and calldata and combine from each quark operation and combine them
-
-        if (payment.isToken) {
-            // Wrap operation with paycall
-            quarkOperation = useQuotecall
-                ? QuotecallWrapper.wrap(
-                    quarkOperation, transfer.chainId, payment.currency, PaymentInfo.findMaxCost(payment, transfer.chainId)
-                )
-                : PaycallWrapper.wrap(
-                    quarkOperation, transfer.chainId, payment.currency, PaymentInfo.findMaxCost(payment, transfer.chainId)
-                );
-        }
-
         // Construct Action
         TransferActionContext memory transferActionContext = TransferActionContext({
             amount: transfer.amount,
@@ -719,23 +683,6 @@ library Actions {
             scriptSources: scriptSources,
             expiry: wrapOrUnwrap.blockTimestamp + STANDARD_EXPIRY_BUFFER
         });
-
-        if (payment.isToken) {
-            // Wrap operation with paycall
-            quarkOperation = useQuotecall
-                ? QuotecallWrapper.wrap(
-                    quarkOperation,
-                    wrapOrUnwrap.chainId,
-                    payment.currency,
-                    PaymentInfo.findMaxCost(payment, wrapOrUnwrap.chainId)
-                )
-                : PaycallWrapper.wrap(
-                    quarkOperation,
-                    wrapOrUnwrap.chainId,
-                    payment.currency,
-                    PaymentInfo.findMaxCost(payment, wrapOrUnwrap.chainId)
-                );
-        }
 
         // Construct Action
         WrapOrUnwrapActionContext memory wrapOrUnwrapActionContext = WrapOrUnwrapActionContext({
@@ -810,17 +757,6 @@ library Actions {
             scriptSources: scriptSources,
             expiry: swap.blockTimestamp + SWAP_EXPIRY_BUFFER
         });
-
-        if (payment.isToken) {
-            // Wrap operation with paycall
-            quarkOperation = useQuotecall
-                ? QuotecallWrapper.wrap(
-                    quarkOperation, swap.chainId, payment.currency, PaymentInfo.findMaxCost(payment, swap.chainId)
-                )
-                : PaycallWrapper.wrap(
-                    quarkOperation, swap.chainId, payment.currency, PaymentInfo.findMaxCost(payment, swap.chainId)
-                );
-        }
 
         // Construct Action
         SwapActionContext memory swapActionContext = SwapActionContext({

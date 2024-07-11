@@ -81,6 +81,8 @@ contract QuarkBuilder {
             payment
         );
 
+        // TODO: set this properly
+        bool useQuotecall = false;
         List.DynamicArray memory actions = List.newList();
         List.DynamicArray memory quarkOperations = List.newList();
 
@@ -107,7 +109,7 @@ contract QuarkBuilder {
                     dstChainId: cometSupplyIntent.chainId,
                     recipient: cometSupplyIntent.sender,
                     blockTimestamp: cometSupplyIntent.blockTimestamp,
-                    useQuotecall: false // TODO: pass in an actual value for useQuoteCall
+                    useQuotecall: useQuotecall
                 }),
                 chainAccountsList,
                 payment
@@ -144,6 +146,16 @@ contract QuarkBuilder {
         // Validate generated actions for affordability
         if (payment.isToken) {
             assertSufficientPaymentTokenBalances(actionsArray, chainAccountsList, cometSupplyIntent.chainId);
+        }
+
+        // Merge operations that are from the same chain into one Multicall operation
+        (quarkOperations, actions) = QuarkOperationHelper.mergeSameChainOperations(quarkOperationsArray, actionsArray);
+
+        // Wrap operations around Paycall/Quotecall if payment is with token
+        if (payment.isToken) {
+            quarkOperations = QuarkOperationHelper.wrapOperationsWithTokenPayment(
+                quarkOperationsArray, actionsArray, payment, useQuotecall
+            );
         }
 
         // Construct EIP712 digests
@@ -436,8 +448,6 @@ contract QuarkBuilder {
         List.addQuarkOperation(quarkOperations, operation);
         List.addAction(actions, action);
 
-        // TODO: Merge transactions on same chain into Multicall. Maybe do that separately at the end via a helper function.
-
         // Convert actions and quark operations to arrays
         Actions.Action[] memory actionsArray = List.toActionArray(actions);
         IQuarkWallet.QuarkOperation[] memory quarkOperationsArray = List.toQuarkOperationArray(quarkOperations);
@@ -447,8 +457,15 @@ contract QuarkBuilder {
             assertSufficientPaymentTokenBalances(actionsArray, chainAccountsList, transferIntent.chainId);
         }
 
-        // TODO: Don't wrap paycall/quotecall until at the end
+        // Merge operations that are from the same chain into one Multicall operation
         (quarkOperations, actions) = QuarkOperationHelper.mergeSameChainOperations(quarkOperationsArray, actionsArray);
+
+        // Wrap operations around Paycall/Quotecall if payment is with token
+        if (payment.isToken) {
+            quarkOperations = QuarkOperationHelper.wrapOperationsWithTokenPayment(
+                quarkOperationsArray, actionsArray, payment, useQuotecall
+            );
+        }
 
         // Construct EIP712 digests
         EIP712Helper.EIP712Data memory eip712Data;
@@ -506,6 +523,7 @@ contract QuarkBuilder {
         assertFundsAvailable(swapIntent.chainId, sellAssetSymbol, swapIntent.sellAmount, chainAccountsList, payment);
 
         // TODO: When should we use quotecall?
+        bool useQuotecall = false;
         List.DynamicArray memory actions = List.newList();
         List.DynamicArray memory quarkOperations = List.newList();
 
@@ -524,8 +542,7 @@ contract QuarkBuilder {
                     dstChainId: swapIntent.chainId,
                     recipient: swapIntent.sender,
                     blockTimestamp: swapIntent.blockTimestamp,
-                    // TODO: set
-                    useQuotecall: false
+                    useQuotecall: useQuotecall
                 }),
                 chainAccountsList,
                 payment
@@ -552,8 +569,7 @@ contract QuarkBuilder {
                         dstChainId: swapIntent.chainId,
                         recipient: swapIntent.sender,
                         blockTimestamp: swapIntent.blockTimestamp,
-                        // TODO: set
-                        useQuotecall: false
+                        useQuotecall: useQuotecall
                     }),
                     chainAccountsList,
                     payment
@@ -583,13 +599,10 @@ contract QuarkBuilder {
                 blockTimestamp: swapIntent.blockTimestamp
             }),
             payment,
-            // TODO: Set this
-            false
+            useQuotecall
         );
         List.addAction(actions, action);
         List.addQuarkOperation(quarkOperations, operation);
-
-        // TODO: Merge transactions on same chain into Multicall. Maybe do that separately at the end via a helper function.
 
         // Convert actions and quark operations to arrays
         Actions.Action[] memory actionsArray = List.toActionArray(actions);
@@ -597,6 +610,16 @@ contract QuarkBuilder {
         // Validate generated actions for affordability
         if (payment.isToken) {
             assertSufficientPaymentTokenBalances(actionsArray, chainAccountsList, swapIntent.chainId);
+        }
+
+        // Merge operations that are from the same chain into one Multicall operation
+        (quarkOperations, actions) = QuarkOperationHelper.mergeSameChainOperations(quarkOperationsArray, actionsArray);
+
+        // Wrap operations around Paycall/Quotecall if payment is with token
+        if (payment.isToken) {
+            quarkOperations = QuarkOperationHelper.wrapOperationsWithTokenPayment(
+                quarkOperationsArray, actionsArray, payment, useQuotecall
+            );
         }
 
         // Construct EIP712 digests
