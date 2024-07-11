@@ -49,11 +49,7 @@ library Actions {
     error BridgingUnsupportedForAsset();
     error InvalidAssetForBridge();
     error InvalidAssetForWrappingAction();
-    error NotEnoughFundsToBridge(
-        string assetSymbol,
-        uint256 requiredAmount,
-        uint256 amountLeftToBridge
-    );
+    error NotEnoughFundsToBridge(string assetSymbol, uint256 requiredAmount, uint256 amountLeftToBridge);
 
     /* ===== Input Types ===== */
 
@@ -257,11 +253,7 @@ library Actions {
         BridgeOperationInfo memory bridgeInfo,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    )
-        internal
-        pure
-        returns (IQuarkWallet.QuarkOperation[] memory, Action[] memory)
-    {
+    ) internal pure returns (IQuarkWallet.QuarkOperation[] memory, Action[] memory) {
         /*
          * at most one bridge operation per non-destination chain,
          * and at most one transferIntent operation on the destination chain.
@@ -272,49 +264,29 @@ library Actions {
         List.DynamicArray memory quarkOperations = List.newList();
 
         // Note: Assumes that the asset uses the same # of decimals on each chain
-        uint256 balanceOnDstChain = Accounts.getBalanceOnChain(
-            bridgeInfo.assetSymbol,
-            bridgeInfo.dstChainId,
-            chainAccountsList
-        );
-        uint256 amountLeftToBridge = bridgeInfo.amountNeededOnDst -
-            balanceOnDstChain;
+        uint256 balanceOnDstChain =
+            Accounts.getBalanceOnChain(bridgeInfo.assetSymbol, bridgeInfo.dstChainId, chainAccountsList);
+        uint256 amountLeftToBridge = bridgeInfo.amountNeededOnDst - balanceOnDstChain;
 
         // Check to see if there are counterpart tokens on the destination chain that can be used. If there are, subtract the balance from `amountLeftToBridge`
-        if (
-            TokenWrapper.hasWrapperContract(
-                bridgeInfo.dstChainId,
-                bridgeInfo.assetSymbol
-            )
-        ) {
-            string memory counterpartSymbol = TokenWrapper
-                .getWrapperCounterpartSymbol(
-                    bridgeInfo.dstChainId,
-                    bridgeInfo.assetSymbol
-                );
-            uint256 counterpartBalanceOnDstChain = Accounts.getBalanceOnChain(
-                counterpartSymbol,
-                bridgeInfo.dstChainId,
-                chainAccountsList
-            );
+        if (TokenWrapper.hasWrapperContract(bridgeInfo.dstChainId, bridgeInfo.assetSymbol)) {
+            string memory counterpartSymbol =
+                TokenWrapper.getWrapperCounterpartSymbol(bridgeInfo.dstChainId, bridgeInfo.assetSymbol);
+            uint256 counterpartBalanceOnDstChain =
+                Accounts.getBalanceOnChain(counterpartSymbol, bridgeInfo.dstChainId, chainAccountsList);
             uint256 counterpartTokenAmountToUse;
             // In case if the counterpart token is the payment token, we need to leave enough payment token on the source chain to cover the payment max cost
-            if (
-                payment.isToken &&
-                Strings.stringEqIgnoreCase(payment.currency, counterpartSymbol)
-            ) {
+            if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, counterpartSymbol)) {
                 if (
-                    counterpartBalanceOnDstChain >=
-                    amountLeftToBridge +
-                        PaymentInfo.findMaxCost(payment, bridgeInfo.dstChainId)
+                    counterpartBalanceOnDstChain
+                        >= amountLeftToBridge + PaymentInfo.findMaxCost(payment, bridgeInfo.dstChainId)
                 ) {
                     counterpartTokenAmountToUse = amountLeftToBridge;
                 } else {
                     // NOTE: This logic only works when the user has only a single account on each chain. If there are multiple,
                     // then we need to re-adjust this.
                     counterpartTokenAmountToUse =
-                        counterpartBalanceOnDstChain -
-                        PaymentInfo.findMaxCost(payment, bridgeInfo.dstChainId);
+                        counterpartBalanceOnDstChain - PaymentInfo.findMaxCost(payment, bridgeInfo.dstChainId);
                 }
             } else {
                 if (counterpartBalanceOnDstChain >= amountLeftToBridge) {
@@ -340,62 +312,36 @@ library Actions {
                 break;
             }
 
-            Accounts.ChainAccounts memory srcChainAccounts = chainAccountsList[
-                i
-            ];
+            Accounts.ChainAccounts memory srcChainAccounts = chainAccountsList[i];
             // Skip if the current chain is the target chain, since bridging is not possible
             if (srcChainAccounts.chainId == bridgeInfo.dstChainId) {
                 continue;
             }
 
             // Skip if there is no bridge route for the current chain to the target chain
-            if (
-                !BridgeRoutes.canBridge(
-                    srcChainAccounts.chainId,
-                    bridgeInfo.dstChainId,
-                    bridgeInfo.assetSymbol
-                )
-            ) {
+            if (!BridgeRoutes.canBridge(srcChainAccounts.chainId, bridgeInfo.dstChainId, bridgeInfo.assetSymbol)) {
                 continue;
             }
 
-            Accounts.AssetPositions memory srcAssetPositions = Accounts
-                .findAssetPositions(
-                    bridgeInfo.assetSymbol,
-                    srcChainAccounts.assetPositionsList
-                );
-            Accounts.AccountBalance[]
-                memory srcAccountBalances = srcAssetPositions.accountBalances;
+            Accounts.AssetPositions memory srcAssetPositions =
+                Accounts.findAssetPositions(bridgeInfo.assetSymbol, srcChainAccounts.assetPositionsList);
+            Accounts.AccountBalance[] memory srcAccountBalances = srcAssetPositions.accountBalances;
             // TODO: Make logic smarter. Currently, this uses a greedy algorithm.
             // e.g. Optimize by trying to bridge with the least amount of bridge operations
             for (uint256 j = 0; j < srcAccountBalances.length; ++j) {
                 uint256 amountToBridge;
                 // If the intent token is the payment token, we need to leave enough payment token on the source chain to cover the payment max cost
-                if (
-                    payment.isToken &&
-                    Strings.stringEqIgnoreCase(
-                        payment.currency,
-                        bridgeInfo.assetSymbol
-                    )
-                ) {
+                if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, bridgeInfo.assetSymbol)) {
                     if (
-                        srcAccountBalances[j].balance >=
-                        amountLeftToBridge +
-                            PaymentInfo.findMaxCost(
-                                payment,
-                                srcChainAccounts.chainId
-                            )
+                        srcAccountBalances[j].balance
+                            >= amountLeftToBridge + PaymentInfo.findMaxCost(payment, srcChainAccounts.chainId)
                     ) {
                         amountToBridge = amountLeftToBridge;
                     } else {
                         // NOTE: This logic only works when the user has only a single account on each chain. If there are multiple,
                         // then we need to re-adjust this.
                         amountToBridge =
-                            srcAccountBalances[j].balance -
-                            PaymentInfo.findMaxCost(
-                                payment,
-                                srcChainAccounts.chainId
-                            );
+                            srcAccountBalances[j].balance - PaymentInfo.findMaxCost(payment, srcChainAccounts.chainId);
                     }
                 } else {
                     if (srcAccountBalances[j].balance >= amountLeftToBridge) {
@@ -407,25 +353,22 @@ library Actions {
 
                 amountLeftToBridge -= amountToBridge;
 
-                (
-                    IQuarkWallet.QuarkOperation memory operation,
-                    Actions.Action memory action
-                ) = bridgeAsset(
-                        BridgeAsset({
-                            chainAccountsList: chainAccountsList,
-                            assetSymbol: bridgeInfo.assetSymbol,
-                            amount: amountToBridge,
-                            // where it comes from
-                            srcChainId: srcChainAccounts.chainId,
-                            sender: srcAccountBalances[j].account,
-                            // where it goes
-                            destinationChainId: bridgeInfo.dstChainId,
-                            recipient: bridgeInfo.recipient,
-                            blockTimestamp: bridgeInfo.blockTimestamp
-                        }),
-                        payment,
-                        bridgeInfo.useQuotecall
-                    );
+                (IQuarkWallet.QuarkOperation memory operation, Actions.Action memory action) = bridgeAsset(
+                    BridgeAsset({
+                        chainAccountsList: chainAccountsList,
+                        assetSymbol: bridgeInfo.assetSymbol,
+                        amount: amountToBridge,
+                        // where it comes from
+                        srcChainId: srcChainAccounts.chainId,
+                        sender: srcAccountBalances[j].account,
+                        // where it goes
+                        destinationChainId: bridgeInfo.dstChainId,
+                        recipient: bridgeInfo.recipient,
+                        blockTimestamp: bridgeInfo.blockTimestamp
+                    }),
+                    payment,
+                    bridgeInfo.useQuotecall
+                );
 
                 List.addAction(actions, action);
                 List.addQuarkOperation(quarkOperations, operation);
@@ -435,24 +378,15 @@ library Actions {
 
         if (amountLeftToBridge > 0) {
             revert NotEnoughFundsToBridge(
-                bridgeInfo.assetSymbol,
-                bridgeInfo.amountNeededOnDst - balanceOnDstChain,
-                amountLeftToBridge
+                bridgeInfo.assetSymbol, bridgeInfo.amountNeededOnDst - balanceOnDstChain, amountLeftToBridge
             );
         }
 
         // Convert actions and quark operations to arrays
-        return (
-            List.toQuarkOperationArray(quarkOperations),
-            List.toActionArray(actions)
-        );
+        return (List.toQuarkOperationArray(quarkOperations), List.toActionArray(actions));
     }
 
-    function bridgeAsset(
-        BridgeAsset memory bridge,
-        PaymentInfo.Payment memory payment,
-        bool useQuotecall
-    )
+    function bridgeAsset(BridgeAsset memory bridge, PaymentInfo.Payment memory payment, bool useQuotecall)
         internal
         pure
         returns (IQuarkWallet.QuarkOperation memory, Action memory)
@@ -464,11 +398,7 @@ library Actions {
         }
     }
 
-    function bridgeUSDC(
-        BridgeAsset memory bridge,
-        PaymentInfo.Payment memory payment,
-        bool useQuotecall
-    )
+    function bridgeUSDC(BridgeAsset memory bridge, PaymentInfo.Payment memory payment, bool useQuotecall)
         internal
         pure
         returns (IQuarkWallet.QuarkOperation memory, Action memory)
@@ -477,50 +407,36 @@ library Actions {
             revert InvalidAssetForBridge();
         }
 
-        Accounts.ChainAccounts memory srcChainAccounts = Accounts
-            .findChainAccounts(bridge.srcChainId, bridge.chainAccountsList);
+        Accounts.ChainAccounts memory srcChainAccounts =
+            Accounts.findChainAccounts(bridge.srcChainId, bridge.chainAccountsList);
 
-        Accounts.AssetPositions memory srcUSDCPositions = Accounts
-            .findAssetPositions("USDC", srcChainAccounts.assetPositionsList);
+        Accounts.AssetPositions memory srcUSDCPositions =
+            Accounts.findAssetPositions("USDC", srcChainAccounts.assetPositionsList);
 
-        Accounts.QuarkState memory accountState = Accounts.findQuarkState(
-            bridge.sender,
-            srcChainAccounts.quarkStates
-        );
+        Accounts.QuarkState memory accountState = Accounts.findQuarkState(bridge.sender, srcChainAccounts.quarkStates);
 
         bytes[] memory scriptSources = new bytes[](1);
         scriptSources[0] = CCTP.bridgeScriptSource();
 
         // Construct QuarkOperation
-        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet
-            .QuarkOperation({
-                nonce: accountState.quarkNextNonce,
-                scriptAddress: CodeJarHelper.getCodeAddress(scriptSources[0]),
-                scriptCalldata: CCTP.encodeBridgeUSDC(
-                    bridge.srcChainId,
-                    bridge.destinationChainId,
-                    bridge.amount,
-                    bridge.recipient,
-                    srcUSDCPositions.asset
+        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
+            nonce: accountState.quarkNextNonce,
+            scriptAddress: CodeJarHelper.getCodeAddress(scriptSources[0]),
+            scriptCalldata: CCTP.encodeBridgeUSDC(
+                bridge.srcChainId, bridge.destinationChainId, bridge.amount, bridge.recipient, srcUSDCPositions.asset
                 ),
-                scriptSources: scriptSources,
-                expiry: bridge.blockTimestamp + BRIDGE_EXPIRY_BUFFER
-            });
+            scriptSources: scriptSources,
+            expiry: bridge.blockTimestamp + BRIDGE_EXPIRY_BUFFER
+        });
 
         if (payment.isToken) {
             // Wrap operation with paycall
             quarkOperation = useQuotecall
                 ? QuotecallWrapper.wrap(
-                    quarkOperation,
-                    bridge.srcChainId,
-                    payment.currency,
-                    PaymentInfo.findMaxCost(payment, bridge.srcChainId)
+                    quarkOperation, bridge.srcChainId, payment.currency, PaymentInfo.findMaxCost(payment, bridge.srcChainId)
                 )
                 : PaycallWrapper.wrap(
-                    quarkOperation,
-                    bridge.srcChainId,
-                    payment.currency,
-                    PaymentInfo.findMaxCost(payment, bridge.srcChainId)
+                    quarkOperation, bridge.srcChainId, payment.currency, PaymentInfo.findMaxCost(payment, bridge.srcChainId)
                 );
         }
 
@@ -539,9 +455,7 @@ library Actions {
         string memory paymentMethod;
         if (payment.isToken) {
             // To pay with token, it has to be a paycall or quotecall.
-            paymentMethod = useQuotecall
-                ? PAYMENT_METHOD_QUOTECALL
-                : PAYMENT_METHOD_PAYCALL;
+            paymentMethod = useQuotecall ? PAYMENT_METHOD_QUOTECALL : PAYMENT_METHOD_PAYCALL;
         } else {
             paymentMethod = PAYMENT_METHOD_OFFCHAIN;
         }
@@ -553,24 +467,15 @@ library Actions {
             actionContext: abi.encode(bridgeActionContext),
             paymentMethod: paymentMethod,
             // Null address for OFFCHAIN payment.
-            paymentToken: payment.isToken
-                ? PaymentInfo
-                    .knownToken(payment.currency, bridge.srcChainId)
-                    .token
-                : address(0),
+            paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, bridge.srcChainId).token : address(0),
             paymentTokenSymbol: payment.currency,
-            paymentMaxCost: payment.isToken
-                ? PaymentInfo.findMaxCost(payment, bridge.srcChainId)
-                : 0
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, bridge.srcChainId) : 0
         });
 
         return (quarkOperation, action);
     }
 
-    function cometSupplyAsset(
-        CometSupply memory cometSupply,
-        PaymentInfo.Payment memory payment
-    )
+    function cometSupplyAsset(CometSupply memory cometSupply, PaymentInfo.Payment memory payment)
         internal
         pure
         returns (IQuarkWallet.QuarkOperation memory, Action memory)
@@ -578,44 +483,30 @@ library Actions {
         bytes[] memory scriptSources = new bytes[](1);
         scriptSources[0] = type(CometSupplyActions).creationCode;
 
-        Accounts.ChainAccounts memory accounts = Accounts.findChainAccounts(
-            cometSupply.chainId,
-            cometSupply.chainAccountsList
-        );
+        Accounts.ChainAccounts memory accounts =
+            Accounts.findChainAccounts(cometSupply.chainId, cometSupply.chainAccountsList);
 
-        Accounts.AssetPositions memory assetPositions = Accounts
-            .findAssetPositions(
-                cometSupply.assetSymbol,
-                accounts.assetPositionsList
-            );
+        Accounts.AssetPositions memory assetPositions =
+            Accounts.findAssetPositions(cometSupply.assetSymbol, accounts.assetPositionsList);
 
-        Accounts.QuarkState memory accountState = Accounts.findQuarkState(
-            cometSupply.sender,
-            accounts.quarkStates
-        );
+        Accounts.QuarkState memory accountState = Accounts.findQuarkState(cometSupply.sender, accounts.quarkStates);
 
         bytes memory scriptCalldata;
         if (Strings.stringEqIgnoreCase(cometSupply.assetSymbol, "ETH")) {
             // XXX handle wrapping ETH
         } else {
             scriptCalldata = abi.encodeWithSelector(
-                CometSupplyActions.supply.selector,
-                cometSupply.comet,
-                assetPositions.asset,
-                cometSupply.amount
+                CometSupplyActions.supply.selector, cometSupply.comet, assetPositions.asset, cometSupply.amount
             );
         }
         // Construct QuarkOperation
-        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet
-            .QuarkOperation({
-                nonce: accountState.quarkNextNonce,
-                scriptAddress: CodeJarHelper.getCodeAddress(
-                    type(CometSupplyActions).creationCode
-                ),
-                scriptCalldata: scriptCalldata,
-                scriptSources: scriptSources,
-                expiry: cometSupply.blockTimestamp + STANDARD_EXPIRY_BUFFER
-            });
+        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
+            nonce: accountState.quarkNextNonce,
+            scriptAddress: CodeJarHelper.getCodeAddress(type(CometSupplyActions).creationCode),
+            scriptCalldata: scriptCalldata,
+            scriptSources: scriptSources,
+            expiry: cometSupply.blockTimestamp + STANDARD_EXPIRY_BUFFER
+        });
 
         if (payment.isToken) {
             // Wrap operation with paycall
@@ -628,42 +519,30 @@ library Actions {
         }
 
         // Construct Action
-        SupplyActionContext
-            memory cometSupplyActionContext = SupplyActionContext({
-                amount: cometSupply.amount,
-                chainId: cometSupply.chainId,
-                comet: cometSupply.comet,
-                price: assetPositions.usdPrice,
-                token: assetPositions.asset,
-                assetSymbol: assetPositions.symbol
-            });
+        SupplyActionContext memory cometSupplyActionContext = SupplyActionContext({
+            amount: cometSupply.amount,
+            chainId: cometSupply.chainId,
+            comet: cometSupply.comet,
+            price: assetPositions.usdPrice,
+            token: assetPositions.asset,
+            assetSymbol: assetPositions.symbol
+        });
         Action memory action = Actions.Action({
             chainId: cometSupply.chainId,
             quarkAccount: cometSupply.sender,
             actionType: ACTION_TYPE_SUPPLY,
             actionContext: abi.encode(cometSupplyActionContext),
-            paymentMethod: payment.isToken
-                ? PAYMENT_METHOD_PAYCALL
-                : PAYMENT_METHOD_OFFCHAIN,
+            paymentMethod: payment.isToken ? PAYMENT_METHOD_PAYCALL : PAYMENT_METHOD_OFFCHAIN,
             // Null address for OFFCHAIN payment.
-            paymentToken: payment.isToken
-                ? PaymentInfo
-                    .knownToken(payment.currency, cometSupply.chainId)
-                    .token
-                : address(0),
+            paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, cometSupply.chainId).token : address(0),
             paymentTokenSymbol: payment.currency,
-            paymentMaxCost: payment.isToken
-                ? PaymentInfo.findMaxCost(payment, cometSupply.chainId)
-                : 0
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, cometSupply.chainId) : 0
         });
 
         return (quarkOperation, action);
     }
 
-    function cometWithdrawAsset(
-        CometWithdraw memory cometWithdraw,
-        PaymentInfo.Payment memory payment
-    )
+    function cometWithdrawAsset(CometWithdraw memory cometWithdraw, PaymentInfo.Payment memory payment)
         internal
         pure
         returns (IQuarkWallet.QuarkOperation memory, Action memory)
@@ -671,44 +550,31 @@ library Actions {
         bytes[] memory scriptSources = new bytes[](1);
         scriptSources[0] = type(CometWithdrawActions).creationCode;
 
-        Accounts.ChainAccounts memory accounts = Accounts.findChainAccounts(
-            cometWithdraw.chainId,
-            cometWithdraw.chainAccountsList
-        );
+        Accounts.ChainAccounts memory accounts =
+            Accounts.findChainAccounts(cometWithdraw.chainId, cometWithdraw.chainAccountsList);
 
-        Accounts.AssetPositions memory assetPositions = Accounts
-            .findAssetPositions(
-                cometWithdraw.assetSymbol,
-                accounts.assetPositionsList
-            );
+        Accounts.AssetPositions memory assetPositions =
+            Accounts.findAssetPositions(cometWithdraw.assetSymbol, accounts.assetPositionsList);
 
-        Accounts.QuarkState memory accountState = Accounts.findQuarkState(
-            cometWithdraw.withdrawer,
-            accounts.quarkStates
-        );
+        Accounts.QuarkState memory accountState =
+            Accounts.findQuarkState(cometWithdraw.withdrawer, accounts.quarkStates);
 
         bytes memory scriptCalldata;
         if (Strings.stringEqIgnoreCase(cometWithdraw.assetSymbol, "ETH")) {
             // XXX handle unwrapping ETH
         } else {
             scriptCalldata = abi.encodeWithSelector(
-                CometWithdrawActions.withdraw.selector,
-                cometWithdraw.comet,
-                assetPositions.asset,
-                cometWithdraw.amount
+                CometWithdrawActions.withdraw.selector, cometWithdraw.comet, assetPositions.asset, cometWithdraw.amount
             );
         }
         // Construct QuarkOperation
-        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet
-            .QuarkOperation({
-                nonce: accountState.quarkNextNonce,
-                scriptAddress: CodeJarHelper.getCodeAddress(
-                    type(CometWithdrawActions).creationCode
-                ),
-                scriptCalldata: scriptCalldata,
-                scriptSources: scriptSources,
-                expiry: cometWithdraw.blockTimestamp + STANDARD_EXPIRY_BUFFER
-            });
+        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
+            nonce: accountState.quarkNextNonce,
+            scriptAddress: CodeJarHelper.getCodeAddress(type(CometWithdrawActions).creationCode),
+            scriptCalldata: scriptCalldata,
+            scriptSources: scriptSources,
+            expiry: cometWithdraw.blockTimestamp + STANDARD_EXPIRY_BUFFER
+        });
 
         if (payment.isToken) {
             // Wrap operation with paycall
@@ -721,43 +587,32 @@ library Actions {
         }
 
         // Construct Action
-        WithdrawActionContext
-            memory cometWithdrawActionContext = WithdrawActionContext({
-                amount: cometWithdraw.amount,
-                assetSymbol: cometWithdraw.assetSymbol,
-                chainId: cometWithdraw.chainId,
-                comet: cometWithdraw.comet,
-                price: assetPositions.usdPrice,
-                token: assetPositions.asset
-            });
+        WithdrawActionContext memory cometWithdrawActionContext = WithdrawActionContext({
+            amount: cometWithdraw.amount,
+            assetSymbol: cometWithdraw.assetSymbol,
+            chainId: cometWithdraw.chainId,
+            comet: cometWithdraw.comet,
+            price: assetPositions.usdPrice,
+            token: assetPositions.asset
+        });
         Action memory action = Actions.Action({
             chainId: cometWithdraw.chainId,
             quarkAccount: cometWithdraw.withdrawer,
             actionType: ACTION_TYPE_WITHDRAW,
             actionContext: abi.encode(cometWithdrawActionContext),
-            paymentMethod: payment.isToken
-                ? PAYMENT_METHOD_PAYCALL
-                : PAYMENT_METHOD_OFFCHAIN,
+            paymentMethod: payment.isToken ? PAYMENT_METHOD_PAYCALL : PAYMENT_METHOD_OFFCHAIN,
             // Null address for OFFCHAIN payment.
             paymentToken: payment.isToken
-                ? PaymentInfo
-                    .knownToken(payment.currency, cometWithdraw.chainId)
-                    .token
+                ? PaymentInfo.knownToken(payment.currency, cometWithdraw.chainId).token
                 : address(0),
             paymentTokenSymbol: payment.currency,
-            paymentMaxCost: payment.isToken
-                ? PaymentInfo.findMaxCost(payment, cometWithdraw.chainId)
-                : 0
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, cometWithdraw.chainId) : 0
         });
 
         return (quarkOperation, action);
     }
 
-    function transferAsset(
-        TransferAsset memory transfer,
-        PaymentInfo.Payment memory payment,
-        bool useQuotecall
-    )
+    function transferAsset(TransferAsset memory transfer, PaymentInfo.Payment memory payment, bool useQuotecall)
         internal
         pure
         returns (IQuarkWallet.QuarkOperation memory, Action memory)
@@ -765,84 +620,59 @@ library Actions {
         bytes[] memory scriptSources = new bytes[](1);
         scriptSources[0] = type(TransferActions).creationCode;
 
-        Accounts.ChainAccounts memory accounts = Accounts.findChainAccounts(
-            transfer.chainId,
-            transfer.chainAccountsList
-        );
+        Accounts.ChainAccounts memory accounts =
+            Accounts.findChainAccounts(transfer.chainId, transfer.chainAccountsList);
 
-        Accounts.AssetPositions memory assetPositions = Accounts
-            .findAssetPositions(
-                transfer.assetSymbol,
-                accounts.assetPositionsList
-            );
+        Accounts.AssetPositions memory assetPositions =
+            Accounts.findAssetPositions(transfer.assetSymbol, accounts.assetPositionsList);
 
-        Accounts.QuarkState memory accountState = Accounts.findQuarkState(
-            transfer.sender,
-            accounts.quarkStates
-        );
+        Accounts.QuarkState memory accountState = Accounts.findQuarkState(transfer.sender, accounts.quarkStates);
 
         bytes memory scriptCalldata;
         if (Strings.stringEqIgnoreCase(transfer.assetSymbol, "ETH")) {
             // Native token transfer
             scriptCalldata = abi.encodeWithSelector(
-                TransferActions.transferNativeToken.selector,
-                transfer.recipient,
-                transfer.amount
+                TransferActions.transferNativeToken.selector, transfer.recipient, transfer.amount
             );
         } else {
             // ERC20 transfer
             scriptCalldata = abi.encodeWithSelector(
-                TransferActions.transferERC20Token.selector,
-                assetPositions.asset,
-                transfer.recipient,
-                transfer.amount
+                TransferActions.transferERC20Token.selector, assetPositions.asset, transfer.recipient, transfer.amount
             );
         }
         // Construct QuarkOperation
-        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet
-            .QuarkOperation({
-                nonce: accountState.quarkNextNonce,
-                scriptAddress: CodeJarHelper.getCodeAddress(
-                    type(TransferActions).creationCode
-                ),
-                scriptCalldata: scriptCalldata,
-                scriptSources: scriptSources,
-                expiry: transfer.blockTimestamp + TRANSFER_EXPIRY_BUFFER
-            });
+        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
+            nonce: accountState.quarkNextNonce,
+            scriptAddress: CodeJarHelper.getCodeAddress(type(TransferActions).creationCode),
+            scriptCalldata: scriptCalldata,
+            scriptSources: scriptSources,
+            expiry: transfer.blockTimestamp + TRANSFER_EXPIRY_BUFFER
+        });
 
         if (payment.isToken) {
             // Wrap operation with paycall
             quarkOperation = useQuotecall
                 ? QuotecallWrapper.wrap(
-                    quarkOperation,
-                    transfer.chainId,
-                    payment.currency,
-                    PaymentInfo.findMaxCost(payment, transfer.chainId)
+                    quarkOperation, transfer.chainId, payment.currency, PaymentInfo.findMaxCost(payment, transfer.chainId)
                 )
                 : PaycallWrapper.wrap(
-                    quarkOperation,
-                    transfer.chainId,
-                    payment.currency,
-                    PaymentInfo.findMaxCost(payment, transfer.chainId)
+                    quarkOperation, transfer.chainId, payment.currency, PaymentInfo.findMaxCost(payment, transfer.chainId)
                 );
         }
 
         // Construct Action
-        TransferActionContext
-            memory transferActionContext = TransferActionContext({
-                amount: transfer.amount,
-                price: assetPositions.usdPrice,
-                token: assetPositions.asset,
-                assetSymbol: assetPositions.symbol,
-                chainId: transfer.chainId,
-                recipient: transfer.recipient
-            });
+        TransferActionContext memory transferActionContext = TransferActionContext({
+            amount: transfer.amount,
+            price: assetPositions.usdPrice,
+            token: assetPositions.asset,
+            assetSymbol: assetPositions.symbol,
+            chainId: transfer.chainId,
+            recipient: transfer.recipient
+        });
         string memory paymentMethod;
         if (payment.isToken) {
             // To pay with token, it has to be a paycall or quotecall.
-            paymentMethod = useQuotecall
-                ? PAYMENT_METHOD_QUOTECALL
-                : PAYMENT_METHOD_PAYCALL;
+            paymentMethod = useQuotecall ? PAYMENT_METHOD_QUOTECALL : PAYMENT_METHOD_PAYCALL;
         } else {
             paymentMethod = PAYMENT_METHOD_OFFCHAIN;
         }
@@ -854,15 +684,9 @@ library Actions {
             actionContext: abi.encode(transferActionContext),
             paymentMethod: paymentMethod,
             // Null address for OFFCHAIN payment.
-            paymentToken: payment.isToken
-                ? PaymentInfo
-                    .knownToken(payment.currency, transfer.chainId)
-                    .token
-                : address(0),
+            paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, transfer.chainId).token : address(0),
             paymentTokenSymbol: payment.currency,
-            paymentMaxCost: payment.isToken
-                ? PaymentInfo.findMaxCost(payment, transfer.chainId)
-                : 0
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, transfer.chainId) : 0
         });
 
         return (quarkOperation, action);
@@ -872,44 +696,27 @@ library Actions {
         WrapOrUnwrapAsset memory wrapOrUnwrap,
         PaymentInfo.Payment memory payment,
         bool useQuotecall
-    )
-        internal
-        pure
-        returns (IQuarkWallet.QuarkOperation memory, Action memory)
-    {
+    ) internal pure returns (IQuarkWallet.QuarkOperation memory, Action memory) {
         bytes[] memory scriptSources = new bytes[](1);
         scriptSources[0] = type(WrapperActions).creationCode;
 
-        Accounts.ChainAccounts memory accounts = Accounts.findChainAccounts(
-            wrapOrUnwrap.chainId,
-            wrapOrUnwrap.chainAccountsList
-        );
+        Accounts.ChainAccounts memory accounts =
+            Accounts.findChainAccounts(wrapOrUnwrap.chainId, wrapOrUnwrap.chainAccountsList);
 
-        Accounts.AssetPositions memory assetPositions = Accounts
-            .findAssetPositions(
-                wrapOrUnwrap.assetSymbol,
-                accounts.assetPositionsList
-            );
+        Accounts.AssetPositions memory assetPositions =
+            Accounts.findAssetPositions(wrapOrUnwrap.assetSymbol, accounts.assetPositionsList);
 
-        Accounts.QuarkState memory accountState = Accounts.findQuarkState(
-            wrapOrUnwrap.sender,
-            accounts.quarkStates
-        );
+        Accounts.QuarkState memory accountState = Accounts.findQuarkState(wrapOrUnwrap.sender, accounts.quarkStates);
         // Construct QuarkOperation
-        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet
-            .QuarkOperation({
-                nonce: accountState.quarkNextNonce,
-                scriptAddress: CodeJarHelper.getCodeAddress(
-                    type(WrapperActions).creationCode
+        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
+            nonce: accountState.quarkNextNonce,
+            scriptAddress: CodeJarHelper.getCodeAddress(type(WrapperActions).creationCode),
+            scriptCalldata: TokenWrapper.encodeActionToWrapOrUnwrap(
+                wrapOrUnwrap.chainId, wrapOrUnwrap.assetSymbol, wrapOrUnwrap.amount
                 ),
-                scriptCalldata: TokenWrapper.encodeActionToWrapOrUnwrap(
-                    wrapOrUnwrap.chainId,
-                    wrapOrUnwrap.assetSymbol,
-                    wrapOrUnwrap.amount
-                ),
-                scriptSources: scriptSources,
-                expiry: wrapOrUnwrap.blockTimestamp + STANDARD_EXPIRY_BUFFER
-            });
+            scriptSources: scriptSources,
+            expiry: wrapOrUnwrap.blockTimestamp + STANDARD_EXPIRY_BUFFER
+        });
 
         if (payment.isToken) {
             // Wrap operation with paycall
@@ -929,24 +736,18 @@ library Actions {
         }
 
         // Construct Action
-        WrapOrUnwrapActionContext
-            memory wrapOrUnwrapActionContext = WrapOrUnwrapActionContext({
-                chainId: wrapOrUnwrap.chainId,
-                amount: wrapOrUnwrap.amount,
-                token: assetPositions.asset,
-                fromAssetSymbol: assetPositions.symbol,
-                toAssetSymbol: TokenWrapper.getWrapperCounterpartSymbol(
-                    wrapOrUnwrap.chainId,
-                    assetPositions.symbol
-                )
-            });
+        WrapOrUnwrapActionContext memory wrapOrUnwrapActionContext = WrapOrUnwrapActionContext({
+            chainId: wrapOrUnwrap.chainId,
+            amount: wrapOrUnwrap.amount,
+            token: assetPositions.asset,
+            fromAssetSymbol: assetPositions.symbol,
+            toAssetSymbol: TokenWrapper.getWrapperCounterpartSymbol(wrapOrUnwrap.chainId, assetPositions.symbol)
+        });
 
         string memory paymentMethod;
         if (payment.isToken) {
             // To pay with token, it has to be a paycall or quotecall.
-            paymentMethod = useQuotecall
-                ? PAYMENT_METHOD_QUOTECALL
-                : PAYMENT_METHOD_PAYCALL;
+            paymentMethod = useQuotecall ? PAYMENT_METHOD_QUOTECALL : PAYMENT_METHOD_PAYCALL;
         } else {
             paymentMethod = PAYMENT_METHOD_OFFCHAIN;
         }
@@ -954,34 +755,23 @@ library Actions {
         Action memory action = Actions.Action({
             chainId: wrapOrUnwrap.chainId,
             quarkAccount: wrapOrUnwrap.sender,
-            actionType: TokenWrapper.isWrappedToken(
-                wrapOrUnwrap.chainId,
-                assetPositions.symbol
-            )
+            actionType: TokenWrapper.isWrappedToken(wrapOrUnwrap.chainId, assetPositions.symbol)
                 ? ACTION_TYPE_UNWRAP
                 : ACTION_TYPE_WRAP,
             actionContext: abi.encode(wrapOrUnwrapActionContext),
             paymentMethod: paymentMethod,
             // Null address for OFFCHAIN payment.
             paymentToken: payment.isToken
-                ? PaymentInfo
-                    .knownToken(payment.currency, wrapOrUnwrap.chainId)
-                    .token
+                ? PaymentInfo.knownToken(payment.currency, wrapOrUnwrap.chainId).token
                 : address(0),
             paymentTokenSymbol: payment.currency,
-            paymentMaxCost: payment.isToken
-                ? PaymentInfo.findMaxCost(payment, wrapOrUnwrap.chainId)
-                : 0
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, wrapOrUnwrap.chainId) : 0
         });
 
         return (quarkOperation, action);
     }
 
-    function matchaSwap(
-        MatchaSwap memory swap,
-        PaymentInfo.Payment memory payment,
-        bool useQuotecall
-    )
+    function matchaSwap(MatchaSwap memory swap, PaymentInfo.Payment memory payment, bool useQuotecall)
         internal
         pure
         returns (IQuarkWallet.QuarkOperation memory, Action memory)
@@ -989,27 +779,15 @@ library Actions {
         bytes[] memory scriptSources = new bytes[](1);
         scriptSources[0] = type(TransferActions).creationCode;
 
-        Accounts.ChainAccounts memory accounts = Accounts.findChainAccounts(
-            swap.chainId,
-            swap.chainAccountsList
-        );
+        Accounts.ChainAccounts memory accounts = Accounts.findChainAccounts(swap.chainId, swap.chainAccountsList);
 
-        Accounts.AssetPositions memory sellTokenAssetPositions = Accounts
-            .findAssetPositions(
-                swap.sellAssetSymbol,
-                accounts.assetPositionsList
-            );
+        Accounts.AssetPositions memory sellTokenAssetPositions =
+            Accounts.findAssetPositions(swap.sellAssetSymbol, accounts.assetPositionsList);
 
-        Accounts.AssetPositions memory buyTokenAssetPositions = Accounts
-            .findAssetPositions(
-                swap.buyAssetSymbol,
-                accounts.assetPositionsList
-            );
+        Accounts.AssetPositions memory buyTokenAssetPositions =
+            Accounts.findAssetPositions(swap.buyAssetSymbol, accounts.assetPositionsList);
 
-        Accounts.QuarkState memory accountState = Accounts.findQuarkState(
-            swap.sender,
-            accounts.quarkStates
-        );
+        Accounts.QuarkState memory accountState = Accounts.findQuarkState(swap.sender, accounts.quarkStates);
 
         // TODO: Handle wrapping ETH? Do we need to?
         bytes memory scriptCalldata = abi.encodeWithSelector(
@@ -1023,31 +801,22 @@ library Actions {
         );
 
         // Construct QuarkOperation
-        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet
-            .QuarkOperation({
-                nonce: accountState.quarkNextNonce,
-                scriptAddress: CodeJarHelper.getCodeAddress(
-                    type(ApproveAndSwap).creationCode
-                ),
-                scriptCalldata: scriptCalldata,
-                scriptSources: scriptSources,
-                expiry: swap.blockTimestamp + SWAP_EXPIRY_BUFFER
-            });
+        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
+            nonce: accountState.quarkNextNonce,
+            scriptAddress: CodeJarHelper.getCodeAddress(type(ApproveAndSwap).creationCode),
+            scriptCalldata: scriptCalldata,
+            scriptSources: scriptSources,
+            expiry: swap.blockTimestamp + SWAP_EXPIRY_BUFFER
+        });
 
         if (payment.isToken) {
             // Wrap operation with paycall
             quarkOperation = useQuotecall
                 ? QuotecallWrapper.wrap(
-                    quarkOperation,
-                    swap.chainId,
-                    payment.currency,
-                    PaymentInfo.findMaxCost(payment, swap.chainId)
+                    quarkOperation, swap.chainId, payment.currency, PaymentInfo.findMaxCost(payment, swap.chainId)
                 )
                 : PaycallWrapper.wrap(
-                    quarkOperation,
-                    swap.chainId,
-                    payment.currency,
-                    PaymentInfo.findMaxCost(payment, swap.chainId)
+                    quarkOperation, swap.chainId, payment.currency, PaymentInfo.findMaxCost(payment, swap.chainId)
                 );
         }
 
@@ -1066,9 +835,7 @@ library Actions {
         string memory paymentMethod;
         if (payment.isToken) {
             // To pay with token, it has to be a paycall or quotecall.
-            paymentMethod = useQuotecall
-                ? PAYMENT_METHOD_QUOTECALL
-                : PAYMENT_METHOD_PAYCALL;
+            paymentMethod = useQuotecall ? PAYMENT_METHOD_QUOTECALL : PAYMENT_METHOD_PAYCALL;
         } else {
             paymentMethod = PAYMENT_METHOD_OFFCHAIN;
         }
@@ -1080,22 +847,19 @@ library Actions {
             actionContext: abi.encode(swapActionContext),
             paymentMethod: paymentMethod,
             // Null address for OFFCHAIN payment.
-            paymentToken: payment.isToken
-                ? PaymentInfo.knownToken(payment.currency, swap.chainId).token
-                : address(0),
+            paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, swap.chainId).token : address(0),
             paymentTokenSymbol: payment.currency,
-            paymentMaxCost: payment.isToken
-                ? PaymentInfo.findMaxCost(payment, swap.chainId)
-                : 0
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, swap.chainId) : 0
         });
 
         return (quarkOperation, action);
     }
 
-    function findActionsOfType(
-        Action[] memory actions,
-        string memory actionType
-    ) internal pure returns (Action[] memory) {
+    function findActionsOfType(Action[] memory actions, string memory actionType)
+        internal
+        pure
+        returns (Action[] memory)
+    {
         uint256 count = 0;
         Action[] memory result = new Action[](actions.length);
         for (uint256 i = 0; i < actions.length; ++i) {
@@ -1107,16 +871,15 @@ library Actions {
         return truncate(result, count);
     }
 
-    function findActionsNotOfType(
-        Actions.Action[] memory actions,
-        string memory actionType
-    ) internal pure returns (Actions.Action[] memory) {
+    function findActionsNotOfType(Actions.Action[] memory actions, string memory actionType)
+        internal
+        pure
+        returns (Actions.Action[] memory)
+    {
         uint256 count = 0;
         Actions.Action[] memory result = new Actions.Action[](actions.length);
         for (uint256 i = 0; i < actions.length; ++i) {
-            if (
-                !Strings.stringEqIgnoreCase(actions[i].actionType, actionType)
-            ) {
+            if (!Strings.stringEqIgnoreCase(actions[i].actionType, actionType)) {
                 result[count++] = actions[i];
             }
         }
@@ -1124,10 +887,7 @@ library Actions {
         return truncate(result, count);
     }
 
-    function truncate(
-        Action[] memory actions,
-        uint256 length
-    ) internal pure returns (Action[] memory) {
+    function truncate(Action[] memory actions, uint256 length) internal pure returns (Action[] memory) {
         Action[] memory result = new Action[](length);
         for (uint256 i = 0; i < length; ++i) {
             result[i] = actions[i];
@@ -1135,12 +895,12 @@ library Actions {
         return result;
     }
 
-    function truncate(
-        IQuarkWallet.QuarkOperation[] memory operations,
-        uint256 length
-    ) internal pure returns (IQuarkWallet.QuarkOperation[] memory) {
-        IQuarkWallet.QuarkOperation[]
-            memory result = new IQuarkWallet.QuarkOperation[](length);
+    function truncate(IQuarkWallet.QuarkOperation[] memory operations, uint256 length)
+        internal
+        pure
+        returns (IQuarkWallet.QuarkOperation[] memory)
+    {
+        IQuarkWallet.QuarkOperation[] memory result = new IQuarkWallet.QuarkOperation[](length);
         for (uint256 i = 0; i < length; ++i) {
             result[i] = operations[i];
         }
@@ -1150,96 +910,53 @@ library Actions {
     // These structs are mostly used internally and returned in serialized format as bytes: actionContext
     // The caller can then decode them back into their struct form.
     // These empty husk functions exist so that the structs make it into the abi so the clients can know how to decode them.
-    function emptyBorrowActionContext()
-        external
-        pure
-        returns (BorrowActionContext memory)
-    {
+    function emptyBorrowActionContext() external pure returns (BorrowActionContext memory) {
         BorrowActionContext[] memory bs = new BorrowActionContext[](1);
         return bs[0];
     }
 
-    function emptyBridgeActionContext()
-        external
-        pure
-        returns (BridgeActionContext memory)
-    {
+    function emptyBridgeActionContext() external pure returns (BridgeActionContext memory) {
         BridgeActionContext[] memory bs = new BridgeActionContext[](1);
         return bs[0];
     }
 
-    function emptyClaimRewardsActionContext()
-        external
-        pure
-        returns (ClaimRewardsActionContext memory)
-    {
-        ClaimRewardsActionContext[] memory cs = new ClaimRewardsActionContext[](
-            1
-        );
+    function emptyClaimRewardsActionContext() external pure returns (ClaimRewardsActionContext memory) {
+        ClaimRewardsActionContext[] memory cs = new ClaimRewardsActionContext[](1);
         return cs[0];
     }
 
-    function emptyDripTokensActionContext()
-        external
-        pure
-        returns (DripTokensActionContext memory)
-    {
+    function emptyDripTokensActionContext() external pure returns (DripTokensActionContext memory) {
         DripTokensActionContext[] memory ds = new DripTokensActionContext[](1);
         return ds[0];
     }
 
-    function emptyRepayActionContext()
-        external
-        pure
-        returns (RepayActionContext memory)
-    {
+    function emptyRepayActionContext() external pure returns (RepayActionContext memory) {
         RepayActionContext[] memory rs = new RepayActionContext[](1);
         return rs[0];
     }
 
-    function emptySupplyActionContext()
-        external
-        pure
-        returns (SupplyActionContext memory)
-    {
+    function emptySupplyActionContext() external pure returns (SupplyActionContext memory) {
         SupplyActionContext[] memory ss = new SupplyActionContext[](1);
         return ss[0];
     }
 
-    function emptySwapActionContext()
-        external
-        pure
-        returns (SwapActionContext memory)
-    {
+    function emptySwapActionContext() external pure returns (SwapActionContext memory) {
         SwapActionContext[] memory ss = new SwapActionContext[](1);
         return ss[0];
     }
 
-    function emptyTransferActionContext()
-        external
-        pure
-        returns (TransferActionContext memory)
-    {
+    function emptyTransferActionContext() external pure returns (TransferActionContext memory) {
         TransferActionContext[] memory ts = new TransferActionContext[](1);
         return ts[0];
     }
 
-    function emptyWithdrawActionContext()
-        external
-        pure
-        returns (WithdrawActionContext memory)
-    {
+    function emptyWithdrawActionContext() external pure returns (WithdrawActionContext memory) {
         WithdrawActionContext[] memory ws = new WithdrawActionContext[](1);
         return ws[0];
     }
 
-    function emptyWithdrawAndBorrowActionContext()
-        external
-        pure
-        returns (WithdrawAndBorrowActionContext memory)
-    {
-        WithdrawAndBorrowActionContext[]
-            memory ws = new WithdrawAndBorrowActionContext[](1);
+    function emptyWithdrawAndBorrowActionContext() external pure returns (WithdrawAndBorrowActionContext memory) {
+        WithdrawAndBorrowActionContext[] memory ws = new WithdrawAndBorrowActionContext[](1);
         return ws[0];
     }
 }
