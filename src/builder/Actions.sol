@@ -14,6 +14,7 @@ import {PaycallWrapper} from "./PaycallWrapper.sol";
 import {QuotecallWrapper} from "./QuotecallWrapper.sol";
 import {PaymentInfo} from "./PaymentInfo.sol";
 import {TokenWrapper} from "./TokenWrapper.sol";
+import {List} from "./List.sol";
 
 library Actions {
     /* ===== Constants ===== */
@@ -259,10 +260,8 @@ library Actions {
          *
          * therefore the upper bound is chainAccountsList.length.
          */
-        uint256 actionIndex = 0;
-        Action[] memory actions = new Action[](chainAccountsList.length);
-        IQuarkWallet.QuarkOperation[] memory quarkOperations =
-            new IQuarkWallet.QuarkOperation[](chainAccountsList.length);
+        List.DynamicArray memory actions = List.newList();
+        List.DynamicArray memory quarkOperations = List.newList();
 
         // Note: Assumes that the asset uses the same # of decimals on each chain
         uint256 balanceOnDstChain =
@@ -354,7 +353,7 @@ library Actions {
 
                 amountLeftToBridge -= amountToBridge;
 
-                (quarkOperations[actionIndex], actions[actionIndex]) = bridgeAsset(
+                (IQuarkWallet.QuarkOperation memory operation, Actions.Action memory action) = bridgeAsset(
                     BridgeAsset({
                         chainAccountsList: chainAccountsList,
                         assetSymbol: bridgeInfo.assetSymbol,
@@ -371,7 +370,8 @@ library Actions {
                     bridgeInfo.useQuotecall
                 );
 
-                actionIndex++;
+                List.addAction(actions, action);
+                List.addQuarkOperation(quarkOperations, operation);
                 bridgeActionCount++;
             }
         }
@@ -382,10 +382,8 @@ library Actions {
             );
         }
 
-        // Truncate actions and quark operations
-        actions = truncate(actions, actionIndex);
-        quarkOperations = truncate(quarkOperations, actionIndex);
-        return (quarkOperations, actions);
+        // Convert actions and quark operations to arrays
+        return (List.toQuarkOperationArray(quarkOperations), List.toActionArray(actions));
     }
 
     function bridgeAsset(BridgeAsset memory bridge, PaymentInfo.Payment memory payment, bool useQuotecall)

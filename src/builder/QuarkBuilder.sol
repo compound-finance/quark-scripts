@@ -13,6 +13,7 @@ import {PaycallWrapper} from "./PaycallWrapper.sol";
 import {QuotecallWrapper} from "./QuotecallWrapper.sol";
 import {PaymentInfo} from "./PaymentInfo.sol";
 import {TokenWrapper} from "./TokenWrapper.sol";
+import {List} from "./List.sol";
 
 contract QuarkBuilder {
     /* ===== Constants ===== */
@@ -79,10 +80,8 @@ contract QuarkBuilder {
             payment
         );
 
-        uint256 actionIndex = 0;
-        Actions.Action[] memory actions = new Actions.Action[](chainAccountsList.length);
-        IQuarkWallet.QuarkOperation[] memory quarkOperations =
-            new IQuarkWallet.QuarkOperation[](chainAccountsList.length);
+        List.DynamicArray memory actions = List.newList();
+        List.DynamicArray memory quarkOperations = List.newList();
 
         if (
             needsBridgedFunds(
@@ -114,13 +113,13 @@ contract QuarkBuilder {
             );
 
             for (uint256 i = 0; i < bridgeQuarkOperations.length; ++i) {
-                quarkOperations[actionIndex] = bridgeQuarkOperations[i];
-                actions[actionIndex] = bridgeActions[i];
-                actionIndex++;
+                List.addAction(actions, bridgeActions[i]);
+                List.addQuarkOperation(quarkOperations, bridgeQuarkOperations[i]);
             }
         }
 
-        (quarkOperations[actionIndex], actions[actionIndex]) = Actions.cometSupplyAsset(
+        (IQuarkWallet.QuarkOperation memory supplyQuarkOperation, Actions.Action memory supplyAction) = Actions
+            .cometSupplyAsset(
             Actions.CometSupply({
                 chainAccountsList: chainAccountsList,
                 assetSymbol: cometSupplyIntent.assetSymbol,
@@ -133,41 +132,41 @@ contract QuarkBuilder {
             payment
         );
 
+        List.addQuarkOperation(quarkOperations, supplyQuarkOperation);
+        List.addAction(actions, supplyAction);
+
         // TODO: Bridge payment token
-
-        actionIndex++;
-
-        // Truncate actions and quark operations
-        actions = Actions.truncate(actions, actionIndex);
-        quarkOperations = Actions.truncate(quarkOperations, actionIndex);
+        // Convert actions and quark operations to array
+        Actions.Action[] memory actionsArray = List.toActionArray(actions);
+        IQuarkWallet.QuarkOperation[] memory quarkOperationsArray = List.toQuarkOperationArray(quarkOperations);
 
         // Validate generated actions for affordability
         if (payment.isToken) {
-            assertSufficientPaymentTokenBalances(actions, chainAccountsList, cometSupplyIntent.chainId);
+            assertSufficientPaymentTokenBalances(actionsArray, chainAccountsList, cometSupplyIntent.chainId);
         }
 
         // Construct EIP712 digests
         EIP712Helper.EIP712Data memory eip712Data;
-        if (quarkOperations.length == 1) {
+        if (quarkOperationsArray.length == 1) {
             eip712Data = EIP712Helper.EIP712Data({
                 digest: EIP712Helper.getDigestForQuarkOperation(
-                    quarkOperations[0], actions[0].quarkAccount, actions[0].chainId
+                    quarkOperationsArray[0], actionsArray[0].quarkAccount, actionsArray[0].chainId
                     ),
-                domainSeparator: EIP712Helper.getDomainSeparator(actions[0].quarkAccount, actions[0].chainId),
-                hashStruct: EIP712Helper.getHashStructForQuarkOperation(quarkOperations[0])
+                domainSeparator: EIP712Helper.getDomainSeparator(actionsArray[0].quarkAccount, actionsArray[0].chainId),
+                hashStruct: EIP712Helper.getHashStructForQuarkOperation(quarkOperationsArray[0])
             });
-        } else if (quarkOperations.length > 1) {
+        } else if (quarkOperationsArray.length > 1) {
             eip712Data = EIP712Helper.EIP712Data({
-                digest: EIP712Helper.getDigestForMultiQuarkOperation(quarkOperations, actions),
+                digest: EIP712Helper.getDigestForMultiQuarkOperation(quarkOperationsArray, actionsArray),
                 domainSeparator: EIP712Helper.MULTI_QUARK_OPERATION_DOMAIN_SEPARATOR,
-                hashStruct: EIP712Helper.getHashStructForMultiQuarkOperation(quarkOperations, actions)
+                hashStruct: EIP712Helper.getHashStructForMultiQuarkOperation(quarkOperationsArray, actionsArray)
             });
         }
 
         return BuilderResult({
             version: VERSION,
-            actions: actions,
-            quarkOperations: quarkOperations,
+            actions: actionsArray,
+            quarkOperations: quarkOperationsArray,
             paymentCurrency: payment.currency,
             eip712Data: eip712Data
         });
@@ -191,10 +190,8 @@ contract QuarkBuilder {
     ) external pure returns (BuilderResult memory) {
         // XXX confirm that you actually have the amount to withdraw
 
-        uint256 actionIndex = 0;
-        Actions.Action[] memory actions = new Actions.Action[](chainAccountsList.length);
-        IQuarkWallet.QuarkOperation[] memory quarkOperations =
-            new IQuarkWallet.QuarkOperation[](chainAccountsList.length);
+        List.DynamicArray memory actions = List.newList();
+        List.DynamicArray memory quarkOperations = List.newList();
 
         // when paying with tokens, you may need to bridge the payment token to cover the cost
         if (payment.isToken) {
@@ -225,14 +222,14 @@ contract QuarkBuilder {
                 );
 
                 for (uint256 i = 0; i < bridgeQuarkOperations.length; ++i) {
-                    quarkOperations[actionIndex] = bridgeQuarkOperations[i];
-                    actions[actionIndex] = bridgeActions[i];
-                    actionIndex++;
+                    List.addQuarkOperation(quarkOperations, bridgeQuarkOperations[i]);
+                    List.addAction(actions, bridgeActions[i]);
                 }
             }
         }
 
-        (quarkOperations[actionIndex], actions[actionIndex]) = Actions.cometWithdrawAsset(
+        (IQuarkWallet.QuarkOperation memory cometWithdrawQuarkOperation, Actions.Action memory cometWithdrawAction) =
+        Actions.cometWithdrawAsset(
             Actions.CometWithdraw({
                 chainAccountsList: chainAccountsList,
                 assetSymbol: cometWithdrawIntent.assetSymbol,
@@ -244,12 +241,12 @@ contract QuarkBuilder {
             }),
             payment
         );
+        List.addAction(actions, cometWithdrawAction);
+        List.addQuarkOperation(quarkOperations, cometWithdrawQuarkOperation);
 
-        actionIndex++;
-
-        // Truncate actions and quark operations
-        actions = Actions.truncate(actions, actionIndex);
-        quarkOperations = Actions.truncate(quarkOperations, actionIndex);
+        // Convert actions and quark operations to arrays
+        Actions.Action[] memory actionsArray = List.toActionArray(actions);
+        IQuarkWallet.QuarkOperation[] memory quarkOperationsArray = List.toQuarkOperationArray(quarkOperations);
 
         // Validate generated actions for affordability
         if (payment.isToken) {
@@ -260,32 +257,32 @@ contract QuarkBuilder {
             }
 
             assertSufficientPaymentTokenBalances(
-                actions, chainAccountsList, cometWithdrawIntent.chainId, supplementalPaymentTokenBalance
+                actionsArray, chainAccountsList, cometWithdrawIntent.chainId, supplementalPaymentTokenBalance
             );
         }
 
         // Construct EIP712 digests
         EIP712Helper.EIP712Data memory eip712Data;
-        if (quarkOperations.length == 1) {
+        if (quarkOperationsArray.length == 1) {
             eip712Data = EIP712Helper.EIP712Data({
                 digest: EIP712Helper.getDigestForQuarkOperation(
-                    quarkOperations[0], actions[0].quarkAccount, actions[0].chainId
+                    quarkOperationsArray[0], actionsArray[0].quarkAccount, actionsArray[0].chainId
                     ),
-                domainSeparator: EIP712Helper.getDomainSeparator(actions[0].quarkAccount, actions[0].chainId),
-                hashStruct: EIP712Helper.getHashStructForQuarkOperation(quarkOperations[0])
+                domainSeparator: EIP712Helper.getDomainSeparator(actionsArray[0].quarkAccount, actionsArray[0].chainId),
+                hashStruct: EIP712Helper.getHashStructForQuarkOperation(quarkOperationsArray[0])
             });
-        } else if (quarkOperations.length > 1) {
+        } else if (quarkOperationsArray.length > 1) {
             eip712Data = EIP712Helper.EIP712Data({
-                digest: EIP712Helper.getDigestForMultiQuarkOperation(quarkOperations, actions),
+                digest: EIP712Helper.getDigestForMultiQuarkOperation(quarkOperationsArray, actionsArray),
                 domainSeparator: EIP712Helper.MULTI_QUARK_OPERATION_DOMAIN_SEPARATOR,
-                hashStruct: EIP712Helper.getHashStructForMultiQuarkOperation(quarkOperations, actions)
+                hashStruct: EIP712Helper.getHashStructForMultiQuarkOperation(quarkOperationsArray, actionsArray)
             });
         }
 
         return BuilderResult({
             version: VERSION,
-            actions: actions,
-            quarkOperations: quarkOperations,
+            actions: actionsArray,
+            quarkOperations: quarkOperationsArray,
             paymentCurrency: payment.currency,
             eip712Data: eip712Data
         });
@@ -321,20 +318,10 @@ contract QuarkBuilder {
             transferIntent.chainId, transferIntent.assetSymbol, transferIntent.amount, chainAccountsList, payment
         );
 
-        /*
-         * at most two bridge operation per non-destination chain (transfer and payment tokens),
-         * and at most one transferIntent operation on the destination chain.
-         *
-         * therefore the upper bound is 2 * chainAccountsList.length.
-         */
-        uint256 actionIndex = 0;
-
         // TransferMax will always use quotecall to avoid leaving dust in wallet
         bool useQuotecall = isMaxTransfer;
-        Actions.Action[] memory actions = new Actions.Action[](chainAccountsList.length * 2);
-        IQuarkWallet.QuarkOperation[] memory quarkOperations =
-            new IQuarkWallet.QuarkOperation[](2 * chainAccountsList.length);
-
+        List.DynamicArray memory actions = List.newList();
+        List.DynamicArray memory quarkOperations = List.newList();
         if (
             needsBridgedFunds(
                 transferIntent.assetSymbol, transferIntent.amount, transferIntent.chainId, chainAccountsList, payment
@@ -361,9 +348,8 @@ contract QuarkBuilder {
             );
 
             for (uint256 i = 0; i < bridgeQuarkOperations.length; ++i) {
-                quarkOperations[actionIndex] = bridgeQuarkOperations[i];
-                actions[actionIndex] = bridgeActions[i];
-                actionIndex++;
+                List.addAction(actions, bridgeActions[i]);
+                List.addQuarkOperation(quarkOperations, bridgeQuarkOperations[i]);
             }
         }
 
@@ -392,9 +378,8 @@ contract QuarkBuilder {
                 );
 
                 for (uint256 i = 0; i < bridgeQuarkOperations.length; ++i) {
-                    quarkOperations[actionIndex] = bridgeQuarkOperations[i];
-                    actions[actionIndex] = bridgeActions[i];
-                    actionIndex++;
+                    List.addAction(actions, bridgeActions[i]);
+                    List.addQuarkOperation(quarkOperations, bridgeQuarkOperations[i]);
                 }
             }
         }
@@ -414,7 +399,8 @@ contract QuarkBuilder {
                 TokenWrapper.getWrapperCounterpartSymbol(transferIntent.chainId, transferIntent.assetSymbol);
 
             // Wrap/unwrap the token to cover the transferIntent amount
-            (quarkOperations[actionIndex], actions[actionIndex]) = Actions.wrapOrUnwrapAsset(
+            (IQuarkWallet.QuarkOperation memory wrapOrUnwrapOperation, Actions.Action memory wrapOrUnwrapAction) =
+            Actions.wrapOrUnwrapAsset(
                 Actions.WrapOrUnwrapAsset({
                     chainAccountsList: chainAccountsList,
                     assetSymbol: counterpartSymbol,
@@ -427,11 +413,12 @@ contract QuarkBuilder {
                 payment,
                 useQuotecall
             );
-            actionIndex++;
+            List.addQuarkOperation(quarkOperations, wrapOrUnwrapOperation);
+            List.addAction(actions, wrapOrUnwrapAction);
         }
 
         // Then, transfer `amount` of `assetSymbol` to `recipient`
-        (quarkOperations[actionIndex], actions[actionIndex]) = Actions.transferAsset(
+        (IQuarkWallet.QuarkOperation memory operation, Actions.Action memory action) = Actions.transferAsset(
             Actions.TransferAsset({
                 chainAccountsList: chainAccountsList,
                 assetSymbol: transferIntent.assetSymbol,
@@ -444,41 +431,43 @@ contract QuarkBuilder {
             payment,
             useQuotecall
         );
-        actionIndex++;
+
+        List.addQuarkOperation(quarkOperations, operation);
+        List.addAction(actions, action);
 
         // TODO: Merge transactions on same chain into Multicall. Maybe do that separately at the end via a helper function.
 
-        // Truncate actions and quark operations
-        actions = Actions.truncate(actions, actionIndex);
-        quarkOperations = Actions.truncate(quarkOperations, actionIndex);
+        // Convert actions and quark operations to arrays
+        Actions.Action[] memory actionsArray = List.toActionArray(actions);
+        IQuarkWallet.QuarkOperation[] memory quarkOperationsArray = List.toQuarkOperationArray(quarkOperations);
 
         // Validate generated actions for affordability
         if (payment.isToken) {
-            assertSufficientPaymentTokenBalances(actions, chainAccountsList, transferIntent.chainId);
+            assertSufficientPaymentTokenBalances(actionsArray, chainAccountsList, transferIntent.chainId);
         }
 
         // Construct EIP712 digests
         EIP712Helper.EIP712Data memory eip712Data;
-        if (quarkOperations.length == 1) {
+        if (quarkOperationsArray.length == 1) {
             eip712Data = EIP712Helper.EIP712Data({
                 digest: EIP712Helper.getDigestForQuarkOperation(
-                    quarkOperations[0], actions[0].quarkAccount, actions[0].chainId
+                    quarkOperationsArray[0], actionsArray[0].quarkAccount, actionsArray[0].chainId
                     ),
-                domainSeparator: EIP712Helper.getDomainSeparator(actions[0].quarkAccount, actions[0].chainId),
-                hashStruct: EIP712Helper.getHashStructForQuarkOperation(quarkOperations[0])
+                domainSeparator: EIP712Helper.getDomainSeparator(actionsArray[0].quarkAccount, actionsArray[0].chainId),
+                hashStruct: EIP712Helper.getHashStructForQuarkOperation(quarkOperationsArray[0])
             });
-        } else if (quarkOperations.length > 1) {
+        } else if (quarkOperationsArray.length > 1) {
             eip712Data = EIP712Helper.EIP712Data({
-                digest: EIP712Helper.getDigestForMultiQuarkOperation(quarkOperations, actions),
+                digest: EIP712Helper.getDigestForMultiQuarkOperation(quarkOperationsArray, actionsArray),
                 domainSeparator: EIP712Helper.MULTI_QUARK_OPERATION_DOMAIN_SEPARATOR,
-                hashStruct: EIP712Helper.getHashStructForMultiQuarkOperation(quarkOperations, actions)
+                hashStruct: EIP712Helper.getHashStructForMultiQuarkOperation(quarkOperationsArray, actionsArray)
             });
         }
 
         return BuilderResult({
             version: VERSION,
-            actions: actions,
-            quarkOperations: quarkOperations,
+            actions: actionsArray,
+            quarkOperations: quarkOperationsArray,
             paymentCurrency: payment.currency,
             eip712Data: eip712Data
         });
@@ -512,18 +501,9 @@ contract QuarkBuilder {
             Accounts.findAssetPositions(swapIntent.buyToken, swapIntent.chainId, chainAccountsList).symbol;
         assertFundsAvailable(swapIntent.chainId, sellAssetSymbol, swapIntent.sellAmount, chainAccountsList, payment);
 
-        /*
-         * at most two bridge operation per non-destination chain (transfer and payment tokens),
-         * and at most one transferIntent operation on the destination chain.
-         *
-         * therefore the upper bound is 2 * chainAccountsList.length.
-         */
-        uint256 actionIndex = 0;
-
         // TODO: When should we use quotecall?
-        Actions.Action[] memory actions = new Actions.Action[](chainAccountsList.length);
-        IQuarkWallet.QuarkOperation[] memory quarkOperations =
-            new IQuarkWallet.QuarkOperation[](2 * chainAccountsList.length);
+        List.DynamicArray memory actions = List.newList();
+        List.DynamicArray memory quarkOperations = List.newList();
 
         if (needsBridgedFunds(sellAssetSymbol, swapIntent.sellAmount, swapIntent.chainId, chainAccountsList, payment)) {
             // Note: Assumes that the asset uses the same # of decimals on each chain
@@ -548,9 +528,8 @@ contract QuarkBuilder {
             );
 
             for (uint256 i = 0; i < bridgeQuarkOperations.length; ++i) {
-                quarkOperations[actionIndex] = bridgeQuarkOperations[i];
-                actions[actionIndex] = bridgeActions[i];
-                actionIndex++;
+                List.addAction(actions, bridgeActions[i]);
+                List.addQuarkOperation(quarkOperations, bridgeQuarkOperations[i]);
             }
         }
 
@@ -577,15 +556,14 @@ contract QuarkBuilder {
                 );
 
                 for (uint256 i = 0; i < bridgeQuarkOperations.length; ++i) {
-                    quarkOperations[actionIndex] = bridgeQuarkOperations[i];
-                    actions[actionIndex] = bridgeActions[i];
-                    actionIndex++;
+                    List.addAction(actions, bridgeActions[i]);
+                    List.addQuarkOperation(quarkOperations, bridgeQuarkOperations[i]);
                 }
             }
         }
 
         // Then, swap `amount` of `assetSymbol` to `recipient`
-        (quarkOperations[actionIndex], actions[actionIndex]) = Actions.matchaSwap(
+        (IQuarkWallet.QuarkOperation memory operation, Actions.Action memory action) = Actions.matchaSwap(
             Actions.MatchaSwap({
                 chainAccountsList: chainAccountsList,
                 entryPoint: swapIntent.entryPoint,
@@ -604,41 +582,41 @@ contract QuarkBuilder {
             // TODO: Set this
             false
         );
-        actionIndex++;
+        List.addAction(actions, action);
+        List.addQuarkOperation(quarkOperations, operation);
 
         // TODO: Merge transactions on same chain into Multicall. Maybe do that separately at the end via a helper function.
 
-        // Truncate actions and quark operations
-        actions = Actions.truncate(actions, actionIndex);
-        quarkOperations = Actions.truncate(quarkOperations, actionIndex);
-
+        // Convert actions and quark operations to arrays
+        Actions.Action[] memory actionsArray = List.toActionArray(actions);
+        IQuarkWallet.QuarkOperation[] memory quarkOperationsArray = List.toQuarkOperationArray(quarkOperations);
         // Validate generated actions for affordability
         if (payment.isToken) {
-            assertSufficientPaymentTokenBalances(actions, chainAccountsList, swapIntent.chainId);
+            assertSufficientPaymentTokenBalances(actionsArray, chainAccountsList, swapIntent.chainId);
         }
 
         // Construct EIP712 digests
         EIP712Helper.EIP712Data memory eip712Data;
-        if (quarkOperations.length == 1) {
+        if (quarkOperationsArray.length == 1) {
             eip712Data = EIP712Helper.EIP712Data({
                 digest: EIP712Helper.getDigestForQuarkOperation(
-                    quarkOperations[0], actions[0].quarkAccount, actions[0].chainId
+                    quarkOperationsArray[0], actionsArray[0].quarkAccount, actionsArray[0].chainId
                     ),
-                domainSeparator: EIP712Helper.getDomainSeparator(actions[0].quarkAccount, actions[0].chainId),
-                hashStruct: EIP712Helper.getHashStructForQuarkOperation(quarkOperations[0])
+                domainSeparator: EIP712Helper.getDomainSeparator(actionsArray[0].quarkAccount, actionsArray[0].chainId),
+                hashStruct: EIP712Helper.getHashStructForQuarkOperation(quarkOperationsArray[0])
             });
-        } else if (quarkOperations.length > 1) {
+        } else if (quarkOperationsArray.length > 1) {
             eip712Data = EIP712Helper.EIP712Data({
-                digest: EIP712Helper.getDigestForMultiQuarkOperation(quarkOperations, actions),
+                digest: EIP712Helper.getDigestForMultiQuarkOperation(quarkOperationsArray, actionsArray),
                 domainSeparator: EIP712Helper.MULTI_QUARK_OPERATION_DOMAIN_SEPARATOR,
-                hashStruct: EIP712Helper.getHashStructForMultiQuarkOperation(quarkOperations, actions)
+                hashStruct: EIP712Helper.getHashStructForMultiQuarkOperation(quarkOperationsArray, actionsArray)
             });
         }
 
         return BuilderResult({
             version: VERSION,
-            actions: actions,
-            quarkOperations: quarkOperations,
+            actions: actionsArray,
+            quarkOperations: quarkOperationsArray,
             paymentCurrency: payment.currency,
             eip712Data: eip712Data
         });
