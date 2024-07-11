@@ -8,6 +8,7 @@ import {QuarkBuilderTest} from "test/builder/lib/QuarkBuilderTest.sol";
 
 import {TransferActions} from "src/DeFiScripts.sol";
 import {CCTPBridgeActions} from "src/BridgeScripts.sol";
+import {Multicall} from "src/Multicall.sol";
 import {WrapperActions} from "src/WrapperScripts.sol";
 
 import {Actions} from "src/builder/Actions.sol";
@@ -928,67 +929,44 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
 
         address transferActionsAddress = CodeJarHelper.getCodeAddress(type(TransferActions).creationCode);
         address wrapperActionsAddress = CodeJarHelper.getCodeAddress(type(WrapperActions).creationCode);
+        address multicallAddress = CodeJarHelper.getCodeAddress(type(Multicall).creationCode);
 
         assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usd", "usd currency");
 
         // Check the quark operations
-        assertEq(result.quarkOperations.length, 2, "two operations");
+        assertEq(result.quarkOperations.length, 1, "one merged operation");
         assertEq(
             result.quarkOperations[0].scriptAddress,
-            wrapperActionsAddress,
+            multicallAddress,
             "script address is correct given the code jar address on mainnet"
         );
+        address[] memory callContracts = new address[](2);
+        callContracts[0] = wrapperActionsAddress;
+        callContracts[1] = transferActionsAddress;
+        bytes[] memory callDatas = new bytes[](2);
+        callDatas[0] = abi.encodeWithSelector(
+            WrapperActions.unwrapWETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 0.5e18
+        );
+        callDatas[1] = abi.encodeWithSelector(TransferActions.transferNativeToken.selector, address(0xceecee), 1.5e18);
         assertEq(
             result.quarkOperations[0].scriptCalldata,
-            abi.encodeWithSelector(
-                WrapperActions.unwrapWETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 0.5e18
-            ),
-            "calldata is WrapperActions.unwrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 0.5e18);"
-        );
-        assertEq(
-            result.quarkOperations[1].scriptAddress,
-            transferActionsAddress,
-            "script address is correct given the code jar address on mainnet"
-        );
-        assertEq(
-            result.quarkOperations[1].scriptCalldata,
-            abi.encodeWithSelector(TransferActions.transferNativeToken.selector, address(0xceecee), 1.5e18),
-            "calldata is TransferActions.transferNativeToken(address(0xceecee), 1.5e18);"
+            abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
+            "calldata is Multicall.run([wrapperActionsAddress, transferActionsAddress], [WrapperActions.unwrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 0.5e18), TransferActions.transferNativeToken(address(0xceecee), 1.5e18)]);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
-        assertEq(
-            result.quarkOperations[1].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
-        );
+
         // check the actions
-        assertEq(result.actions.length, 2, "2 actions");
+        assertEq(result.actions.length, 1, "1 action");
         assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
-        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce unwraps the WETH");
-        assertEq(result.actions[0].actionType, "UNWRAP", "action type is 'UNWRAP'");
+        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[0].actionType, "TRANSFER", "action type is 'TRANSFER'");
         assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
         assertEq(result.actions[0].paymentToken, address(0), "payment token is USD");
         assertEq(
             result.actions[0].actionContext,
-            abi.encode(
-                Actions.WrapOrUnwrapActionContext({
-                    chainId: 1,
-                    amount: 0.5e18,
-                    token: weth_(1),
-                    fromAssetSymbol: "WETH",
-                    toAssetSymbol: "ETH"
-                })
-            ),
-            "action context encoded from WrapOrUnwrapActionContext"
-        );
-        assertEq(result.actions[1].chainId, 1, "operation is on chainid 1");
-        assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.actions[1].actionType, "TRANSFER", "action type is 'TRANSFER'");
-        assertEq(result.actions[1].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
-        assertEq(result.actions[1].paymentToken, address(0), "payment token is USD");
-        assertEq(
-            result.actions[1].actionContext,
             abi.encode(
                 Actions.TransferActionContext({
                     amount: 1.5e18,
@@ -1008,7 +986,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
     }
 
-    function testTransferWithAutoUnwrapppingWithPaycallSucceeds() public {
+    function testTransferWithAutoUnwrappingWithPaycallSucceeds() public {
         QuarkBuilder builder = new QuarkBuilder();
         address account = address(0xa11ce);
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
@@ -1055,77 +1033,49 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         address paycallAddress = CodeJarHelper.getCodeAddress(
             abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
         );
+        address multicallAddress = CodeJarHelper.getCodeAddress(type(Multicall).creationCode);
 
         assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
 
         // Check the quark operations
-        assertEq(result.quarkOperations.length, 2, "two operations");
+        assertEq(result.quarkOperations.length, 1, "one merged operation");
         assertEq(
             result.quarkOperations[0].scriptAddress,
             paycallAddress,
             "script address is correct given the code jar address on mainnet"
         );
+        address[] memory callContracts = new address[](2);
+        callContracts[0] = wrapperActionsAddress;
+        callContracts[1] = transferActionsAddress;
+        bytes[] memory callDatas = new bytes[](2);
+        callDatas[0] = abi.encodeWithSelector(
+            WrapperActions.unwrapWETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 0.5e18
+        );
+        callDatas[1] = abi.encodeWithSelector(TransferActions.transferNativeToken.selector, address(0xceecee), 1.5e18);
         assertEq(
             result.quarkOperations[0].scriptCalldata,
             abi.encodeWithSelector(
                 Paycall.run.selector,
-                wrapperActionsAddress,
-                abi.encodeWithSelector(
-                    WrapperActions.unwrapWETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 0.5e18
-                ),
+                multicallAddress,
+                abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
                 1e5
             ),
-            "calldata is WrapperActions.unwrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 0.5e18);"
-        );
-        assertEq(
-            result.quarkOperations[1].scriptAddress,
-            paycallAddress,
-            "script address is correct given the code jar address on mainnet"
-        );
-        assertEq(
-            result.quarkOperations[1].scriptCalldata,
-            abi.encodeWithSelector(
-                Paycall.run.selector,
-                transferActionsAddress,
-                abi.encodeWithSelector(TransferActions.transferNativeToken.selector, address(0xceecee), 1.5e18),
-                1e5
-            ),
-            "calldata is TransferActions.transferNativeToken(address(0xceecee), 1.5e18);"
+            "calldata is Paycall.run(Multicall.run([wrapperActionsAddress, transferActionsAddress], [WrapperActions.unwrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 0.5e18), TransferActions.transferNativeToken(address(0xceecee), 1.5e18)]), 1e5);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
-        assertEq(
-            result.quarkOperations[1].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
-        );
+
         // check the actions
-        assertEq(result.actions.length, 2, "2 actions");
+        assertEq(result.actions.length, 1, "1 action");
         assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
-        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce unwraps the WETH");
-        assertEq(result.actions[0].actionType, "UNWRAP", "action type is 'UNWRAP'");
+        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[0].actionType, "TRANSFER", "action type is 'TRANSFER'");
         assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
         assertEq(
             result.actions[0].actionContext,
-            abi.encode(
-                Actions.WrapOrUnwrapActionContext({
-                    chainId: 1,
-                    amount: 0.5e18,
-                    token: weth_(1),
-                    fromAssetSymbol: "WETH",
-                    toAssetSymbol: "ETH"
-                })
-            ),
-            "action context encoded from WrapOrUnwrapActionContext"
-        );
-        assertEq(result.actions[1].chainId, 1, "operation is on chainid 1");
-        assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.actions[1].actionType, "TRANSFER", "action type is 'TRANSFER'");
-        assertEq(result.actions[1].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
-        assertEq(result.actions[1].paymentToken, USDC_1, "payment token is USDC");
-        assertEq(
-            result.actions[1].actionContext,
             abi.encode(
                 Actions.TransferActionContext({
                     amount: 1.5e18,
@@ -1145,7 +1095,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
     }
 
-    function testTranfserMaxWithAutoUnwrapping() public {
+    function testTransferMaxWithAutoUnwrapping() public {
         QuarkBuilder builder = new QuarkBuilder();
         address account = address(0xa11ce);
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
@@ -1194,77 +1144,48 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         address quotecallAddress = CodeJarHelper.getCodeAddress(
             abi.encodePacked(type(Quotecall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
         );
+        address multicallAddress = CodeJarHelper.getCodeAddress(type(Multicall).creationCode);
 
         assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
 
         // Check the quark operations
-        assertEq(result.quarkOperations.length, 2, "two operations");
+        assertEq(result.quarkOperations.length, 1, "one merged operation");
         assertEq(
             result.quarkOperations[0].scriptAddress,
             quotecallAddress,
             "script address is correct given the code jar address on mainnet"
         );
+        address[] memory callContracts = new address[](2);
+        callContracts[0] = wrapperActionsAddress;
+        callContracts[1] = transferActionsAddress;
+        bytes[] memory callDatas = new bytes[](2);
+        callDatas[0] =
+            abi.encodeWithSelector(WrapperActions.unwrapWETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18);
+        callDatas[1] = abi.encodeWithSelector(TransferActions.transferNativeToken.selector, address(0xceecee), 2e18);
         assertEq(
             result.quarkOperations[0].scriptCalldata,
             abi.encodeWithSelector(
                 Quotecall.run.selector,
-                wrapperActionsAddress,
-                abi.encodeWithSelector(
-                    WrapperActions.unwrapWETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18
-                ),
+                multicallAddress,
+                abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
                 1e5
             ),
-            "calldata is Quotecall.run(wrapperActionsAddress, WrapperActions.unwrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18));"
-        );
-        assertEq(
-            result.quarkOperations[1].scriptAddress,
-            quotecallAddress,
-            "script address is correct given the code jar address on mainnet"
-        );
-        assertEq(
-            result.quarkOperations[1].scriptCalldata,
-            abi.encodeWithSelector(
-                Quotecall.run.selector,
-                transferActionsAddress,
-                abi.encodeWithSelector(TransferActions.transferNativeToken.selector, address(0xceecee), 2e18),
-                1e5
-            ),
-            "calldata is Quotecall.run(transferActionAddress, TransferActions.transferNativeToken(address(0xceecee), 2e18));"
+            "calldata is Quotecall.run(Multicall.run([wrapperActionsAddress, transferActionsAddress], [WrapperActions.unwrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18), TransferActions.transferNativeToken(address(0xceecee), 2e18)]), 1e5);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
-        assertEq(
-            result.quarkOperations[1].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
-        );
+
         // check the actions
-        assertEq(result.actions.length, 2, "2 actions");
+        assertEq(result.actions.length, 1, "1 action");
         assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
-        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce unwraps the WETH");
-        assertEq(result.actions[0].actionType, "UNWRAP", "action type is 'UNWRAP'");
+        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[0].actionType, "TRANSFER", "action type is 'TRANSFER'");
         assertEq(result.actions[0].paymentMethod, "QUOTE_CALL", "payment method is 'QUOTE_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
         assertEq(
             result.actions[0].actionContext,
-            abi.encode(
-                Actions.WrapOrUnwrapActionContext({
-                    chainId: 1,
-                    amount: 1e18,
-                    token: weth_(1),
-                    fromAssetSymbol: "WETH",
-                    toAssetSymbol: "ETH"
-                })
-            ),
-            "action context encoded from WrapOrUnwrapActionContext"
-        );
-        assertEq(result.actions[1].chainId, 1, "operation is on chainid 1");
-        assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.actions[1].actionType, "TRANSFER", "action type is 'TRANSFER'");
-        assertEq(result.actions[1].paymentMethod, "QUOTE_CALL", "payment method is 'QUOTE_CALL'");
-        assertEq(result.actions[1].paymentToken, USDC_1, "payment token is USDC");
-        assertEq(
-            result.actions[1].actionContext,
             abi.encode(
                 Actions.TransferActionContext({
                     amount: 2e18,
@@ -1328,65 +1249,44 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
 
         address transferActionsAddress = CodeJarHelper.getCodeAddress(type(TransferActions).creationCode);
         address wrapperActionsAddress = CodeJarHelper.getCodeAddress(type(WrapperActions).creationCode);
+        address multicallAddress = CodeJarHelper.getCodeAddress(type(Multicall).creationCode);
 
         assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usd", "usd currency");
 
         // Check the quark operations
-        assertEq(result.quarkOperations.length, 2, "two operations");
+        assertEq(result.quarkOperations.length, 1, "one merged operation");
         assertEq(
             result.quarkOperations[0].scriptAddress,
-            wrapperActionsAddress,
+            multicallAddress,
             "script address is correct given the code jar address on mainnet"
         );
+        address[] memory callContracts = new address[](2);
+        callContracts[0] = wrapperActionsAddress;
+        callContracts[1] = transferActionsAddress;
+        bytes[] memory callDatas = new bytes[](2);
+        callDatas[0] =
+            abi.encodeWithSelector(WrapperActions.wrapETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 0.75e18);
+        callDatas[1] =
+            abi.encodeWithSelector(TransferActions.transferERC20Token.selector, WETH_1, address(0xceecee), 1.75e18);
         assertEq(
             result.quarkOperations[0].scriptCalldata,
-            abi.encodeWithSelector(WrapperActions.wrapETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 0.75e18),
-            "calldata is WrapperActions.wrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 0.75e18);"
-        );
-        assertEq(
-            result.quarkOperations[1].scriptAddress,
-            transferActionsAddress,
-            "script address is correct given the code jar address on mainnet"
-        );
-        assertEq(
-            result.quarkOperations[1].scriptCalldata,
-            abi.encodeWithSelector(TransferActions.transferERC20Token.selector, WETH_1, address(0xceecee), 1.75e18),
-            "calldata is TransferActions.transferERC20Token(WETH_1, address(0xceecee), 1.75e18);"
+            abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
+            "calldata is Multicall.run([wrapperActionsAddress, transferActionsAddress], [WrapperActions.wrapETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 0.75e18), TransferActions.transferERC20Token(WETH_1, address(0xceecee), 1.75e18)]);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
-        assertEq(
-            result.quarkOperations[1].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
-        );
+
         // check the actions
-        assertEq(result.actions.length, 2, "2 actions");
+        assertEq(result.actions.length, 1, "1 action");
         assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
-        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce wrap the ETH");
-        assertEq(result.actions[0].actionType, "WRAP", "action type is 'WRAP'");
+        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[0].actionType, "TRANSFER", "action type is 'TRANSFER'");
         assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
         assertEq(result.actions[0].paymentToken, address(0), "payment token is USD");
         assertEq(
             result.actions[0].actionContext,
-            abi.encode(
-                Actions.WrapOrUnwrapActionContext({
-                    chainId: 1,
-                    amount: 0.75e18,
-                    token: eth_(),
-                    fromAssetSymbol: "ETH",
-                    toAssetSymbol: "WETH"
-                })
-            ),
-            "action context encoded from WrapOrUnwrapActionContext"
-        );
-        assertEq(result.actions[1].chainId, 1, "operation is on chainid 1");
-        assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.actions[1].actionType, "TRANSFER", "action type is 'TRANSFER'");
-        assertEq(result.actions[1].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
-        assertEq(result.actions[1].paymentToken, address(0), "payment token is USD");
-        assertEq(
-            result.actions[1].actionContext,
             abi.encode(
                 Actions.TransferActionContext({
                     amount: 1.75e18,
