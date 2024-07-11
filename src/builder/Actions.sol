@@ -553,16 +553,6 @@ library Actions {
             expiry: cometWithdraw.blockTimestamp + STANDARD_EXPIRY_BUFFER
         });
 
-        if (payment.isToken) {
-            // Wrap operation with paycall
-            quarkOperation = PaycallWrapper.wrap(
-                quarkOperation,
-                cometWithdraw.chainId,
-                payment.currency,
-                PaymentInfo.findMaxCost(payment, cometWithdraw.chainId)
-            );
-        }
-
         // Construct Action
         WithdrawActionContext memory cometWithdrawActionContext = WithdrawActionContext({
             amount: cometWithdraw.amount,

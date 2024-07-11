@@ -203,6 +203,8 @@ contract QuarkBuilder {
     ) external pure returns (BuilderResult memory) {
         // XXX confirm that you actually have the amount to withdraw
 
+        // TODO: set this properly
+        bool useQuotecall = false;
         List.DynamicArray memory actions = List.newList();
         List.DynamicArray memory quarkOperations = List.newList();
 
@@ -228,7 +230,7 @@ contract QuarkBuilder {
                         dstChainId: cometWithdrawIntent.chainId,
                         recipient: cometWithdrawIntent.withdrawer,
                         blockTimestamp: cometWithdrawIntent.blockTimestamp,
-                        useQuotecall: false // XXX support Quotecall
+                        useQuotecall: useQuotecall
                     }),
                     chainAccountsList,
                     payment
@@ -271,6 +273,16 @@ contract QuarkBuilder {
 
             assertSufficientPaymentTokenBalances(
                 actionsArray, chainAccountsList, cometWithdrawIntent.chainId, supplementalPaymentTokenBalance
+            );
+        }
+
+        // Merge operations that are from the same chain into one Multicall operation
+        (quarkOperations, actions) = QuarkOperationHelper.mergeSameChainOperations(quarkOperationsArray, actions);
+
+        // Wrap operations around Paycall/Quotecall if payment is with token
+        if (payment.isToken) {
+            quarkOperations = QuarkOperationHelper.wrapOperationsWithTokenPayment(
+                quarkOperationsArray, actions, payment, useQuotecall
             );
         }
 
