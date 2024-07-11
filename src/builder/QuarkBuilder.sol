@@ -79,7 +79,7 @@ contract QuarkBuilder {
         IQuarkWallet.QuarkOperation[] memory quarkOperations =
             new IQuarkWallet.QuarkOperation[](chainAccountsList.length);
 
-        bool paymentTokenIsCollateralAsset;
+        bool paymentTokenIsCollateralAsset = false;
 
         for (uint256 i = 0; i < borrowIntent.collateralTokenSymbols.length; ++i) {
             string memory assetSymbol = borrowIntent.collateralTokenSymbols[i];
