@@ -10,12 +10,11 @@ import {EIP712Helper} from "./EIP712Helper.sol";
 import {Math} from "src/lib/Math.sol";
 import {Strings} from "./Strings.sol";
 import {PaycallWrapper} from "./PaycallWrapper.sol";
-import {QuarkBuilderMath} from "./QuarkBuilderMath.sol";
 import {QuotecallWrapper} from "./QuotecallWrapper.sol";
 import {PaymentInfo} from "./PaymentInfo.sol";
 import {TokenWrapper} from "./TokenWrapper.sol";
 
-contract QuarkBuilder is QuarkBuilderMath {
+contract QuarkBuilder {
     /* ===== Constants ===== */
 
     string constant VERSION = "1.0.0";
@@ -203,7 +202,7 @@ contract QuarkBuilder is QuarkBuilderMath {
             // if you're withdrawing the payment token, you can use the withdrawn amount to cover the cost
             if (Strings.stringEqIgnoreCase(payment.currency, cometWithdrawIntent.assetSymbol)) {
                 // XXX in the withdrawMax case, use the Comet balance
-                maxCostOnDstChain = subtractUnsigned(maxCostOnDstChain, cometWithdrawIntent.amount);
+                maxCostOnDstChain = Math.subtractFlooredAtZero(maxCostOnDstChain, cometWithdrawIntent.amount);
             }
 
             if (
