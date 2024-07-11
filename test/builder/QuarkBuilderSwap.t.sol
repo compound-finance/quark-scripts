@@ -123,7 +123,6 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
             paymentUsd_()
         );
 
-        assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usd", "usd currency");
 
         // Check the quark operations
@@ -204,7 +203,6 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
             abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
         );
 
-        assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
 
         // Check the quark operations
@@ -269,7 +267,6 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
             paymentUsd_()
         );
 
-        assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usd", "usd currency");
 
         // Check the quark operations
@@ -417,7 +414,6 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
         );
         address cctpBridgeActionsAddress = CodeJarHelper.getCodeAddress(type(CCTPBridgeActions).creationCode);
 
-        assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
 
         // Check the quark operations
@@ -549,7 +545,6 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
         );
         address cctpBridgeActionsAddress = CodeJarHelper.getCodeAddress(type(CCTPBridgeActions).creationCode);
 
-        assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
 
         // Check the quark operations

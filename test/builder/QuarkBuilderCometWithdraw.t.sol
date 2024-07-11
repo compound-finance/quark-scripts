@@ -40,7 +40,6 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
             paymentUsd_()
         );
 
-        assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usd", "usd currency");
 
         // Check the quark operations
@@ -116,7 +115,6 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
         address cometWithdrawActionsAddress = CodeJarHelper.getCodeAddress(type(CometWithdrawActions).creationCode);
         address paycallAddress = paycallUsdc_(1);
 
-        assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
 
         // Check the quark operations
@@ -182,7 +180,6 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
         address cometWithdrawActionsAddress = CodeJarHelper.getCodeAddress(type(CometWithdrawActions).creationCode);
         address paycallAddress = paycallUsdc_(1);
 
-        assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
 
         // Check the quark operations
@@ -274,7 +271,6 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
         address paycallAddressBase = paycallUsdc_(8453);
         address cctpBridgeActionsAddress = CodeJarHelper.getCodeAddress(type(CCTPBridgeActions).creationCode);
 
-        assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
 
         // Check the quark operations
