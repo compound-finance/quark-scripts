@@ -149,11 +149,12 @@ contract QuarkBuilder {
         }
 
         // Merge operations that are from the same chain into one Multicall operation
-        (quarkOperations, actions) = QuarkOperationHelper.mergeSameChainOperations(quarkOperationsArray, actionsArray);
+        (quarkOperationsArray, actionsArray) =
+            QuarkOperationHelper.mergeSameChainOperations(quarkOperationsArray, actionsArray);
 
         // Wrap operations around Paycall/Quotecall if payment is with token
         if (payment.isToken) {
-            quarkOperations = QuarkOperationHelper.wrapOperationsWithTokenPayment(
+            quarkOperationsArray = QuarkOperationHelper.wrapOperationsWithTokenPayment(
                 quarkOperationsArray, actionsArray, payment, useQuotecall
             );
         }
@@ -277,12 +278,13 @@ contract QuarkBuilder {
         }
 
         // Merge operations that are from the same chain into one Multicall operation
-        (quarkOperations, actions) = QuarkOperationHelper.mergeSameChainOperations(quarkOperationsArray, actions);
+        (quarkOperationsArray, actionsArray) =
+            QuarkOperationHelper.mergeSameChainOperations(quarkOperationsArray, actionsArray);
 
         // Wrap operations around Paycall/Quotecall if payment is with token
         if (payment.isToken) {
-            quarkOperations = QuarkOperationHelper.wrapOperationsWithTokenPayment(
-                quarkOperationsArray, actions, payment, useQuotecall
+            quarkOperationsArray = QuarkOperationHelper.wrapOperationsWithTokenPayment(
+                quarkOperationsArray, actionsArray, payment, useQuotecall
             );
         }
 
@@ -470,11 +472,12 @@ contract QuarkBuilder {
         }
 
         // Merge operations that are from the same chain into one Multicall operation
-        (quarkOperations, actions) = QuarkOperationHelper.mergeSameChainOperations(quarkOperationsArray, actionsArray);
+        (quarkOperationsArray, actionsArray) =
+            QuarkOperationHelper.mergeSameChainOperations(quarkOperationsArray, actionsArray);
 
         // Wrap operations around Paycall/Quotecall if payment is with token
         if (payment.isToken) {
-            quarkOperations = QuarkOperationHelper.wrapOperationsWithTokenPayment(
+            quarkOperationsArray = QuarkOperationHelper.wrapOperationsWithTokenPayment(
                 quarkOperationsArray, actionsArray, payment, useQuotecall
             );
         }
@@ -625,11 +628,12 @@ contract QuarkBuilder {
         }
 
         // Merge operations that are from the same chain into one Multicall operation
-        (quarkOperations, actions) = QuarkOperationHelper.mergeSameChainOperations(quarkOperationsArray, actionsArray);
+        (quarkOperationsArray, actionsArray) =
+            QuarkOperationHelper.mergeSameChainOperations(quarkOperationsArray, actionsArray);
 
         // Wrap operations around Paycall/Quotecall if payment is with token
         if (payment.isToken) {
-            quarkOperations = QuarkOperationHelper.wrapOperationsWithTokenPayment(
+            quarkOperationsArray = QuarkOperationHelper.wrapOperationsWithTokenPayment(
                 quarkOperationsArray, actionsArray, payment, useQuotecall
             );
         }
