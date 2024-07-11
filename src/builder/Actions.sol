@@ -8,6 +8,7 @@ import {CodeJarHelper} from "./CodeJarHelper.sol";
 
 import {
     ApproveAndSwap,
+    CometRepayAndWithdrawMultipleAssets,
     CometSupplyActions,
     CometSupplyMultipleAssetsAndBorrow,
     CometWithdrawActions,
@@ -187,10 +188,11 @@ library Actions {
 
     struct RepayActionContext {
         uint256 amount;
+        string assetSymbol;
         uint256 chainId;
         uint256[] collateralAmounts;
-        uint256[] collateralTokenPrices;
-        address[] collateralTokens;
+        uint256[] collateralAssetPrices;
+        address[] collateralAssets;
         address comet;
         uint256 price;
         address token;
@@ -550,6 +552,100 @@ library Actions {
             paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, borrowInput.chainId).token : address(0),
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, borrowInput.chainId) : 0
+        });
+
+        return (quarkOperation, action);
+    }
+
+    struct CometRepayInput {
+        Accounts.ChainAccounts[] chainAccountsList;
+        uint256 amount;
+        string assetSymbol;
+        uint256 blockTimestamp;
+        uint256 chainId;
+        uint256[] collateralAmounts;
+        string[] collateralAssetSymbols;
+        address comet;
+        address repayer;
+    }
+
+    function cometRepay(CometRepayInput memory repayInput, PaymentInfo.Payment memory payment)
+        internal
+        pure
+        returns (IQuarkWallet.QuarkOperation memory, Action memory)
+    {
+        bytes[] memory scriptSources = new bytes[](1);
+        scriptSources[0] = type(CometRepayAndWithdrawMultipleAssets).creationCode;
+
+        Accounts.ChainAccounts memory accounts =
+            Accounts.findChainAccounts(repayInput.chainId, repayInput.chainAccountsList);
+
+        Accounts.QuarkState memory accountState = Accounts.findQuarkState(repayInput.repayer, accounts.quarkStates);
+
+        Accounts.AssetPositions memory repayAssetPositions =
+            Accounts.findAssetPositions(repayInput.assetSymbol, accounts.assetPositionsList);
+
+        uint256[] memory collateralAssetPrices = new uint256[](repayInput.collateralAssetSymbols.length);
+        address[] memory collateralAssets = new address[](repayInput.collateralAssetSymbols.length);
+
+        for (uint256 i = 0; i < repayInput.collateralAssetSymbols.length; ++i) {
+            Accounts.AssetPositions memory assetPositions =
+                Accounts.findAssetPositions(repayInput.collateralAssetSymbols[i], accounts.assetPositionsList);
+            collateralAssetPrices[i] = assetPositions.usdPrice;
+            collateralAssets[i] = assetPositions.asset;
+        }
+
+        // XXX handle wrapping ETH?
+        bytes memory scriptCalldata = abi.encodeWithSelector(
+            CometRepayAndWithdrawMultipleAssets.run.selector,
+            repayInput.comet,
+            collateralAssets,
+            repayInput.collateralAmounts,
+            repayAssetPositions.asset,
+            repayInput.amount
+        );
+
+        // Construct QuarkOperation
+        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
+            nonce: accountState.quarkNextNonce,
+            scriptAddress: CodeJarHelper.getCodeAddress(type(CometRepayAndWithdrawMultipleAssets).creationCode),
+            scriptCalldata: scriptCalldata,
+            scriptSources: scriptSources,
+            expiry: repayInput.blockTimestamp + STANDARD_EXPIRY_BUFFER
+        });
+
+        if (payment.isToken) {
+            // Wrap operation with paycall
+            quarkOperation = PaycallWrapper.wrap(
+                quarkOperation,
+                repayInput.chainId,
+                payment.currency,
+                PaymentInfo.findMaxCost(payment, repayInput.chainId)
+            );
+        }
+
+        // Construct Action
+        RepayActionContext memory repayActionContext = RepayActionContext({
+            amount: repayInput.amount,
+            assetSymbol: repayInput.assetSymbol,
+            chainId: repayInput.chainId,
+            collateralAmounts: repayInput.collateralAmounts,
+            collateralAssetPrices: collateralAssetPrices,
+            collateralAssets: collateralAssets,
+            comet: repayInput.comet,
+            price: repayAssetPositions.usdPrice,
+            token: repayAssetPositions.asset
+        });
+        Action memory action = Actions.Action({
+            chainId: repayInput.chainId,
+            quarkAccount: repayInput.repayer,
+            actionType: ACTION_TYPE_REPAY,
+            actionContext: abi.encode(repayActionContext),
+            paymentMethod: payment.isToken ? PAYMENT_METHOD_PAYCALL : PAYMENT_METHOD_OFFCHAIN,
+            // Null address for OFFCHAIN payment.
+            paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, repayInput.chainId).token : address(0),
+            paymentTokenSymbol: payment.currency,
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, repayInput.chainId) : 0
         });
 
         return (quarkOperation, action);

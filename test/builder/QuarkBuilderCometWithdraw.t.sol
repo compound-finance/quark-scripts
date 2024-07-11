@@ -12,7 +12,6 @@ import {CometWithdrawActions, TransferActions} from "src/DeFiScripts.sol";
 import {Paycall} from "src/Paycall.sol";
 
 contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
-    uint256 constant BLOCK_TIMESTAMP = 123_456_789;
     address constant COMET = address(0xc3);
 
     function cometWithdraw_(uint256 chainId, uint256 amount, string memory assetSymbol)

@@ -9,8 +9,11 @@ import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
 import {Paycall} from "src/Paycall.sol";
 import {PaymentInfo} from "src/builder/PaymentInfo.sol";
 import {QuarkBuilder} from "src/builder/QuarkBuilder.sol";
+import {Strings} from "src/builder/Strings.sol";
 
 contract QuarkBuilderTest {
+    uint256 constant BLOCK_TIMESTAMP = 123_456_789;
+
     address constant COMET_1 = address(0xc3);
 
     address constant LINK_1 = address(0xfeed01);
@@ -202,5 +205,98 @@ contract QuarkBuilderTest {
 
     function quarkState_(address account, uint96 nextNonce) internal pure returns (Accounts.QuarkState memory) {
         return Accounts.QuarkState({account: account, quarkNextNonce: nextNonce});
+    }
+
+    // XXX where should these functions live?
+    function stringArray(string memory string0, string memory string1, string memory string2, string memory string3)
+        internal
+        pure
+        returns (string[] memory)
+    {
+        string[] memory strings = new string[](4);
+        strings[0] = string0;
+        strings[1] = string1;
+        strings[2] = string2;
+        strings[3] = string3;
+        return strings;
+    }
+
+    function uintArray(uint256 uint0, uint256 uint1, uint256 uint2, uint256 uint3)
+        internal
+        pure
+        returns (uint256[] memory)
+    {
+        uint256[] memory uints = new uint256[](4);
+        uints[0] = uint0;
+        uints[1] = uint1;
+        uints[2] = uint2;
+        uints[3] = uint3;
+        return uints;
+    }
+
+    struct ChainPortfolio {
+        uint256 chainId;
+        address account;
+        uint96 nextNonce;
+        string[] assetSymbols;
+        uint256[] assetBalances;
+    }
+
+    function chainAccountsFromChainPortfolios(ChainPortfolio[] memory chainPortfolios)
+        internal
+        pure
+        returns (Accounts.ChainAccounts[] memory)
+    {
+        Accounts.ChainAccounts[] memory chainAccountsList = new Accounts.ChainAccounts[](chainPortfolios.length);
+        for (uint256 i = 0; i < chainPortfolios.length; ++i) {
+            chainAccountsList[i] = Accounts.ChainAccounts({
+                chainId: chainPortfolios[i].chainId,
+                quarkStates: quarkStates_(chainPortfolios[i].account, chainPortfolios[i].nextNonce),
+                assetPositionsList: assetPositionsForAssets(
+                    chainPortfolios[i].chainId,
+                    chainPortfolios[i].account,
+                    chainPortfolios[i].assetSymbols,
+                    chainPortfolios[i].assetBalances
+                    )
+            });
+        }
+
+        return chainAccountsList;
+    }
+
+    function assetPositionsForAssets(
+        uint256 chainId,
+        address account,
+        string[] memory assetSymbols,
+        uint256[] memory assetBalances
+    ) internal pure returns (Accounts.AssetPositions[] memory) {
+        Accounts.AssetPositions[] memory assetPositionsList = new Accounts.AssetPositions[](assetSymbols.length);
+
+        for (uint256 i = 0; i < assetSymbols.length; ++i) {
+            (address asset, uint256 decimals, uint256 price) = assetInfo(assetSymbols[i], chainId);
+            assetPositionsList[i] = Accounts.AssetPositions({
+                asset: asset,
+                symbol: assetSymbols[i],
+                decimals: decimals,
+                usdPrice: price,
+                accountBalances: accountBalances_(account, assetBalances[i])
+            });
+        }
+
+        return assetPositionsList;
+    }
+
+    function assetInfo(string memory assetSymbol, uint256 chainId) internal pure returns (address, uint256, uint256) {
+        if (Strings.stringEq(assetSymbol, "USDC")) {
+            return (usdc_(chainId), 6, 1e8);
+        } else if (Strings.stringEq(assetSymbol, "USDT")) {
+            return (usdt_(chainId), 6, 1e8);
+        } else if (Strings.stringEq(assetSymbol, "WETH")) {
+            return (weth_(chainId), 18, 3000e8);
+        } else if (Strings.stringEq(assetSymbol, "LINK")) {
+            return (link_(chainId), 18, 14e8);
+        } else {
+            revert("unknown assetSymbol");
+        }
     }
 }

@@ -21,8 +21,6 @@ import {PaycallWrapper} from "src/builder/PaycallWrapper.sol";
 import {PaymentInfo} from "src/builder/PaymentInfo.sol";
 
 contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
-    uint256 constant BLOCK_TIMESTAMP = 123_456_789;
-
     function transferUsdc_(uint256 chainId, uint256 amount, address recipient, uint256 blockTimestamp)
         internal
         pure
