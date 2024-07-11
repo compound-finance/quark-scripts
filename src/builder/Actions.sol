@@ -6,7 +6,7 @@ import {Strings} from "./Strings.sol";
 import {Accounts} from "./Accounts.sol";
 import {CodeJarHelper} from "./CodeJarHelper.sol";
 
-import {ApproveAndSwap, CometSupplyActions, TransferActions} from "../DeFiScripts.sol";
+import {ApproveAndSwap, CometSupplyActions, CometWithdrawActions, TransferActions} from "../DeFiScripts.sol";
 import {WrapperActions} from "../WrapperScripts.sol";
 
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
@@ -52,6 +52,17 @@ library Actions {
 
     /* ===== Input Types ===== */
 
+    struct BridgeAsset {
+        Accounts.ChainAccounts[] chainAccountsList;
+        string assetSymbol;
+        uint256 amount;
+        uint256 srcChainId;
+        address sender;
+        uint256 destinationChainId;
+        address recipient;
+        uint256 blockTimestamp;
+    }
+
     struct CometSupply {
         Accounts.ChainAccounts[] chainAccountsList;
         string assetSymbol;
@@ -62,24 +73,13 @@ library Actions {
         uint256 blockTimestamp;
     }
 
-    struct TransferAsset {
+    struct CometWithdraw {
         Accounts.ChainAccounts[] chainAccountsList;
         string assetSymbol;
         uint256 amount;
         uint256 chainId;
-        address sender;
-        address recipient;
-        uint256 blockTimestamp;
-    }
-
-    struct BridgeAsset {
-        Accounts.ChainAccounts[] chainAccountsList;
-        string assetSymbol;
-        uint256 amount;
-        uint256 srcChainId;
-        address sender;
-        uint256 destinationChainId;
-        address recipient;
+        address comet;
+        address withdrawer;
         uint256 blockTimestamp;
     }
 
@@ -104,6 +104,16 @@ library Actions {
         uint256 expectedBuyAmount;
         uint256 chainId;
         address sender;
+        uint256 blockTimestamp;
+    }
+
+    struct TransferAsset {
+        Accounts.ChainAccounts[] chainAccountsList;
+        string assetSymbol;
+        uint256 amount;
+        uint256 chainId;
+        address sender;
+        address recipient;
         uint256 blockTimestamp;
     }
 
@@ -210,10 +220,12 @@ library Actions {
     }
 
     struct WithdrawActionContext {
-        uint256 chainId;
         uint256 amount;
+        string assetSymbol;
+        uint256 chainId;
         address comet;
         uint256 price;
+        address token;
     }
 
     struct WithdrawAndBorrowActionContext {
@@ -527,6 +539,76 @@ library Actions {
             paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, cometSupply.chainId).token : address(0),
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, cometSupply.chainId) : 0
+        });
+
+        return (quarkOperation, action);
+    }
+
+    function cometWithdrawAsset(CometWithdraw memory cometWithdraw, PaymentInfo.Payment memory payment)
+        internal
+        pure
+        returns (IQuarkWallet.QuarkOperation memory, Action memory)
+    {
+        bytes[] memory scriptSources = new bytes[](1);
+        scriptSources[0] = type(CometWithdrawActions).creationCode;
+
+        Accounts.ChainAccounts memory accounts =
+            Accounts.findChainAccounts(cometWithdraw.chainId, cometWithdraw.chainAccountsList);
+
+        Accounts.AssetPositions memory assetPositions =
+            Accounts.findAssetPositions(cometWithdraw.assetSymbol, accounts.assetPositionsList);
+
+        Accounts.QuarkState memory accountState =
+            Accounts.findQuarkState(cometWithdraw.withdrawer, accounts.quarkStates);
+
+        bytes memory scriptCalldata;
+        if (Strings.stringEqIgnoreCase(cometWithdraw.assetSymbol, "ETH")) {
+            // XXX handle unwrapping ETH
+        } else {
+            scriptCalldata = abi.encodeWithSelector(
+                CometWithdrawActions.withdraw.selector, cometWithdraw.comet, assetPositions.asset, cometWithdraw.amount
+            );
+        }
+        // Construct QuarkOperation
+        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
+            nonce: accountState.quarkNextNonce,
+            scriptAddress: CodeJarHelper.getCodeAddress(type(CometWithdrawActions).creationCode),
+            scriptCalldata: scriptCalldata,
+            scriptSources: scriptSources,
+            expiry: cometWithdraw.blockTimestamp + STANDARD_EXPIRY_BUFFER
+        });
+
+        if (payment.isToken) {
+            // Wrap operation with paycall
+            quarkOperation = PaycallWrapper.wrap(
+                quarkOperation,
+                cometWithdraw.chainId,
+                payment.currency,
+                PaymentInfo.findMaxCost(payment, cometWithdraw.chainId)
+            );
+        }
+
+        // Construct Action
+        WithdrawActionContext memory cometWithdrawActionContext = WithdrawActionContext({
+            amount: cometWithdraw.amount,
+            assetSymbol: cometWithdraw.assetSymbol,
+            chainId: cometWithdraw.chainId,
+            comet: cometWithdraw.comet,
+            price: assetPositions.usdPrice,
+            token: assetPositions.asset
+        });
+        Action memory action = Actions.Action({
+            chainId: cometWithdraw.chainId,
+            quarkAccount: cometWithdraw.withdrawer,
+            actionType: ACTION_TYPE_WITHDRAW,
+            actionContext: abi.encode(cometWithdrawActionContext),
+            paymentMethod: payment.isToken ? PAYMENT_METHOD_PAYCALL : PAYMENT_METHOD_OFFCHAIN,
+            // Null address for OFFCHAIN payment.
+            paymentToken: payment.isToken
+                ? PaymentInfo.knownToken(payment.currency, cometWithdraw.chainId).token
+                : address(0),
+            paymentTokenSymbol: payment.currency,
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, cometWithdraw.chainId) : 0
         });
 
         return (quarkOperation, action);

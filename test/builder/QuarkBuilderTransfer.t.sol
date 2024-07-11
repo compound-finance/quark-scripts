@@ -190,9 +190,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         );
 
         address transferActionsAddress = CodeJarHelper.getCodeAddress(type(TransferActions).creationCode);
-        address paycallAddress = CodeJarHelper.getCodeAddress(
-            abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
-        );
+        address paycallAddress = paycallUsdc_(1);
 
         assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
@@ -389,12 +387,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             chainAccountsList_(6e6), // holding 6 USDC in total across chains 1, 8453
             paymentUsdc_(maxCosts)
         );
-        address paycallAddress = CodeJarHelper.getCodeAddress(
-            abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
-        );
-        address paycallAddressBase = CodeJarHelper.getCodeAddress(
-            abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_8453, USDC_8453))
-        );
+        address paycallAddress = paycallUsdc_(1);
+        address paycallAddressBase = paycallUsdc_(8453);
         address cctpBridgeActionsAddress = CodeJarHelper.getCodeAddress(type(CCTPBridgeActions).creationCode);
         assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
@@ -508,12 +502,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             chainAccountsList_(6e6), // holding 6 USDC and USDT in total across chains 1, 8453
             paymentUsdc_(maxCosts)
         );
-        address paycallAddress = CodeJarHelper.getCodeAddress(
-            abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
-        );
-        address paycallAddressBase = CodeJarHelper.getCodeAddress(
-            abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_8453, USDC_8453))
-        );
+        address paycallAddress = paycallUsdc_(1);
+        address paycallAddressBase = paycallUsdc_(8453);
         address cctpBridgeActionsAddress = CodeJarHelper.getCodeAddress(type(CCTPBridgeActions).creationCode);
         assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
