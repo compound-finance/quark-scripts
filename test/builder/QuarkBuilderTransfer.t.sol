@@ -117,7 +117,6 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             paymentUsd_()
         );
 
-        assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usd", "usd currency");
 
         // Check the quark operations
@@ -193,7 +192,6 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         address transferActionsAddress = CodeJarHelper.getCodeAddress(type(TransferActions).creationCode);
         address paycallAddress = paycallUsdc_(1);
 
-        assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
 
         // Check the quark operations
@@ -254,7 +252,6 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             paymentUsd_()
         );
 
-        assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usd", "usd currency");
 
         // Check the quark operations
@@ -391,7 +388,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         address paycallAddress = paycallUsdc_(1);
         address paycallAddressBase = paycallUsdc_(8453);
         address cctpBridgeActionsAddress = CodeJarHelper.getCodeAddress(type(CCTPBridgeActions).creationCode);
-        assertEq(result.version, "1.0.0", "version 1");
+
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
 
         // Check the quark operations
@@ -506,7 +503,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         address paycallAddress = paycallUsdc_(1);
         address paycallAddressBase = paycallUsdc_(8453);
         address cctpBridgeActionsAddress = CodeJarHelper.getCodeAddress(type(CCTPBridgeActions).creationCode);
-        assertEq(result.version, "1.0.0", "version 1");
+
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
 
         // Check the quark operations
@@ -627,7 +624,6 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             abi.encodePacked(type(Quotecall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
         );
 
-        assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
 
         // Check the quark operations
@@ -709,7 +705,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             abi.encodePacked(type(Quotecall).creationCode, abi.encode(ETH_USD_PRICE_FEED_8453, USDC_8453))
         );
         address cctpBridgeActionsAddress = CodeJarHelper.getCodeAddress(type(CCTPBridgeActions).creationCode);
-        assertEq(result.version, "1.0.0", "version 1");
+
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
 
         // Check the quark operations
@@ -931,7 +927,6 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         address wrapperActionsAddress = CodeJarHelper.getCodeAddress(type(WrapperActions).creationCode);
         address multicallAddress = CodeJarHelper.getCodeAddress(type(Multicall).creationCode);
 
-        assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usd", "usd currency");
 
         // Check the quark operations
@@ -1035,7 +1030,6 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         );
         address multicallAddress = CodeJarHelper.getCodeAddress(type(Multicall).creationCode);
 
-        assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
 
         // Check the quark operations
@@ -1146,7 +1140,6 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         );
         address multicallAddress = CodeJarHelper.getCodeAddress(type(Multicall).creationCode);
 
-        assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
 
         // Check the quark operations
@@ -1251,7 +1244,6 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         address wrapperActionsAddress = CodeJarHelper.getCodeAddress(type(WrapperActions).creationCode);
         address multicallAddress = CodeJarHelper.getCodeAddress(type(Multicall).creationCode);
 
-        assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usd", "usd currency");
 
         // Check the quark operations
