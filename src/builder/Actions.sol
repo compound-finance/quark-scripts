@@ -156,9 +156,9 @@ library Actions {
         string assetSymbol;
         uint256 chainId;
         uint256[] collateralAmounts;
+        string[] collateralAssetSymbols;
         uint256[] collateralTokenPrices;
         address[] collateralTokens;
-        string[] collateralAssetSymbols;
         address comet;
         uint256 price;
         address token;
@@ -191,8 +191,9 @@ library Actions {
         string assetSymbol;
         uint256 chainId;
         uint256[] collateralAmounts;
-        uint256[] collateralAssetPrices;
-        address[] collateralAssets;
+        string[] collateralAssetSymbols;
+        uint256[] collateralTokenPrices;
+        address[] collateralTokens;
         address comet;
         uint256 price;
         address token;
@@ -585,21 +586,21 @@ library Actions {
         Accounts.AssetPositions memory repayAssetPositions =
             Accounts.findAssetPositions(repayInput.assetSymbol, accounts.assetPositionsList);
 
-        uint256[] memory collateralAssetPrices = new uint256[](repayInput.collateralAssetSymbols.length);
-        address[] memory collateralAssets = new address[](repayInput.collateralAssetSymbols.length);
+        uint256[] memory collateralTokenPrices = new uint256[](repayInput.collateralAssetSymbols.length);
+        address[] memory collateralTokens = new address[](repayInput.collateralAssetSymbols.length);
 
         for (uint256 i = 0; i < repayInput.collateralAssetSymbols.length; ++i) {
             Accounts.AssetPositions memory assetPositions =
                 Accounts.findAssetPositions(repayInput.collateralAssetSymbols[i], accounts.assetPositionsList);
-            collateralAssetPrices[i] = assetPositions.usdPrice;
-            collateralAssets[i] = assetPositions.asset;
+            collateralTokenPrices[i] = assetPositions.usdPrice;
+            collateralTokens[i] = assetPositions.asset;
         }
 
         // XXX handle wrapping ETH?
         bytes memory scriptCalldata = abi.encodeWithSelector(
             CometRepayAndWithdrawMultipleAssets.run.selector,
             repayInput.comet,
-            collateralAssets,
+            collateralTokens,
             repayInput.collateralAmounts,
             repayAssetPositions.asset,
             repayInput.amount
@@ -620,8 +621,9 @@ library Actions {
             assetSymbol: repayInput.assetSymbol,
             chainId: repayInput.chainId,
             collateralAmounts: repayInput.collateralAmounts,
-            collateralAssetPrices: collateralAssetPrices,
-            collateralAssets: collateralAssets,
+            collateralAssetSymbols: repayInput.collateralAssetSymbols,
+            collateralTokenPrices: collateralTokenPrices,
+            collateralTokens: collateralTokens,
             comet: repayInput.comet,
             price: repayAssetPositions.usdPrice,
             token: repayAssetPositions.asset

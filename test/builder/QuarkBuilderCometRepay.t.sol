@@ -153,12 +153,12 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             ),
             "script address is correct given the code jar address on mainnet"
         );
-        address[] memory collateralAssets = new address[](1);
-        collateralAssets[0] = link_(1);
+        address[] memory collateralTokens = new address[](1);
+        collateralTokens[0] = link_(1);
         assertEq(
             result.quarkOperations[0].scriptCalldata,
             abi.encodeCall(
-                CometRepayAndWithdrawMultipleAssets.run, (COMET_1, collateralAssets, collateralAmounts, usdc_(1), 1e6)
+                CometRepayAndWithdrawMultipleAssets.run, (COMET_1, collateralTokens, collateralAmounts, usdc_(1), 1e6)
             ),
             "calldata is CometRepayAndWithdrawMultipleAssets.run(COMET_1, [LINK], [1e18], USDC, 1e6);"
         );
@@ -177,8 +177,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
         assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
 
-        uint256[] memory collateralAssetPrices = new uint256[](1);
-        collateralAssetPrices[0] = 14e8;
+        uint256[] memory collateralTokenPrices = new uint256[](1);
+        collateralTokenPrices[0] = 14e8;
 
         assertEq(
             result.actions[0].actionContext,
@@ -188,8 +188,9 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                     assetSymbol: "USDC",
                     chainId: 1,
                     collateralAmounts: collateralAmounts,
-                    collateralAssetPrices: collateralAssetPrices,
-                    collateralAssets: collateralAssets,
+                    collateralAssetSymbols: collateralAssetSymbols,
+                    collateralTokenPrices: collateralTokenPrices,
+                    collateralTokens: collateralTokens,
                     comet: COMET_1,
                     price: 1e8,
                     token: usdc_(1)
@@ -257,8 +258,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             "script address is correct given the code jar address on mainnet"
         );
 
-        address[] memory collateralAssets = new address[](1);
-        collateralAssets[0] = link_(1);
+        address[] memory collateralTokens = new address[](1);
+        collateralTokens[0] = link_(1);
 
         assertEq(
             result.quarkOperations[0].scriptCalldata,
@@ -268,7 +269,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                 abi.encodeWithSelector(
                     CometRepayAndWithdrawMultipleAssets.run.selector,
                     COMET_1,
-                    collateralAssets,
+                    collateralTokens,
                     collateralAmounts,
                     usdc_(1),
                     1e6
@@ -296,8 +297,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
         assertEq(result.actions[0].paymentMaxCost, 0.1e6, "payment max is set to .1e6 in this test case");
 
-        uint256[] memory collateralAssetPrices = new uint256[](1);
-        collateralAssetPrices[0] = 14e8;
+        uint256[] memory collateralTokenPrices = new uint256[](1);
+        collateralTokenPrices[0] = 14e8;
 
         assertEq(
             result.actions[0].actionContext,
@@ -307,8 +308,9 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                     assetSymbol: "USDC",
                     chainId: 1,
                     collateralAmounts: collateralAmounts,
-                    collateralAssetPrices: collateralAssetPrices,
-                    collateralAssets: collateralAssets,
+                    collateralAssetSymbols: collateralAssetSymbols,
+                    collateralTokenPrices: collateralTokenPrices,
+                    collateralTokens: collateralTokens,
                     comet: COMET_1,
                     price: 1e8,
                     token: usdc_(1)
@@ -369,8 +371,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
 
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
 
-        address[] memory collateralAssets = new address[](1);
-        collateralAssets[0] = usdc_(1);
+        address[] memory collateralTokens = new address[](1);
+        collateralTokens[0] = usdc_(1);
 
         // Check the quark operations
         assertEq(result.quarkOperations.length, 1, "one operation");
@@ -387,7 +389,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                 abi.encodeWithSelector(
                     CometRepayAndWithdrawMultipleAssets.run.selector,
                     COMET_1,
-                    collateralAssets,
+                    collateralTokens,
                     collateralAmounts,
                     weth_(1),
                     1e18
@@ -416,8 +418,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
         assertEq(result.actions[0].paymentMaxCost, 0.5e6, "payment max is set to .5e6 in this test case");
 
-        uint256[] memory collateralAssetPrices = new uint256[](1);
-        collateralAssetPrices[0] = 1e8;
+        uint256[] memory collateralTokenPrices = new uint256[](1);
+        collateralTokenPrices[0] = 1e8;
 
         assertEq(
             result.actions[0].actionContext,
@@ -427,8 +429,9 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                     assetSymbol: "WETH",
                     chainId: 1,
                     collateralAmounts: collateralAmounts,
-                    collateralAssetPrices: collateralAssetPrices,
-                    collateralAssets: collateralAssets,
+                    collateralAssetSymbols: collateralAssetSymbols,
+                    collateralTokenPrices: collateralTokenPrices,
+                    collateralTokens: collateralTokens,
                     comet: COMET_1,
                     price: 3000e8,
                     token: weth_(1)
@@ -534,8 +537,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             "script address[1] has been wrapped with paycall address"
         );
 
-        address[] memory collateralAssets = new address[](1);
-        collateralAssets[0] = link_(8453);
+        address[] memory collateralTokens = new address[](1);
+        collateralTokens[0] = link_(8453);
 
         assertEq(
             result.quarkOperations[1].scriptCalldata,
@@ -545,7 +548,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                 abi.encodeWithSelector(
                     CometRepayAndWithdrawMultipleAssets.run.selector,
                     COMET_1,
-                    collateralAssets,
+                    collateralTokens,
                     collateralAmounts,
                     usdc_(8453),
                     2e6
@@ -597,8 +600,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         assertEq(result.actions[1].paymentToken, USDC_8453, "payment token is USDC on Base");
         assertEq(result.actions[1].paymentMaxCost, 0.2e6, "payment should have max cost of 0.2e6");
 
-        uint256[] memory collateralAssetPrices = new uint256[](1);
-        collateralAssetPrices[0] = 14e8;
+        uint256[] memory collateralTokenPrices = new uint256[](1);
+        collateralTokenPrices[0] = 14e8;
 
         assertEq(
             result.actions[1].actionContext,
@@ -608,8 +611,9 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                     assetSymbol: "USDC",
                     chainId: 8453,
                     collateralAmounts: collateralAmounts,
-                    collateralAssetPrices: collateralAssetPrices,
-                    collateralAssets: collateralAssets,
+                    collateralAssetSymbols: collateralAssetSymbols,
+                    collateralTokenPrices: collateralTokenPrices,
+                    collateralTokens: collateralTokens,
                     comet: COMET_1,
                     price: 1e8,
                     token: usdc_(8453)
