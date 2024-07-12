@@ -79,6 +79,7 @@ contract QuarkBuilder {
         IQuarkWallet.QuarkOperation[] memory quarkOperations =
             new IQuarkWallet.QuarkOperation[](chainAccountsList.length);
 
+        bool useQuotecall = false; // TODO: calculate an actual value for useQuoteCall
         bool paymentTokenIsCollateralAsset = false;
 
         for (uint256 i = 0; i < borrowIntent.collateralTokenSymbols.length; ++i) {
@@ -108,7 +109,7 @@ contract QuarkBuilder {
                         dstChainId: borrowIntent.chainId,
                         recipient: borrowIntent.borrower,
                         blockTimestamp: borrowIntent.blockTimestamp,
-                        useQuotecall: false // TODO: pass in an actual value for useQuoteCall
+                        useQuotecall: useQuotecall
                     }),
                     chainAccountsList,
                     payment
@@ -143,7 +144,7 @@ contract QuarkBuilder {
                         dstChainId: borrowIntent.chainId,
                         recipient: borrowIntent.borrower,
                         blockTimestamp: borrowIntent.blockTimestamp,
-                        useQuotecall: false // XXX support Quotecall
+                        useQuotecall: useQuotecall
                     }),
                     chainAccountsList,
                     payment
@@ -187,6 +188,17 @@ contract QuarkBuilder {
 
             assertSufficientPaymentTokenBalances(
                 actions, chainAccountsList, borrowIntent.chainId, supplementalPaymentTokenBalance
+            );
+        }
+
+        // Merge operations that are from the same chain into one Multicall operation
+        (quarkOperations, actions) =
+            QuarkOperationHelper.mergeSameChainOperations(quarkOperations, actions);
+
+        // Wrap operations around Paycall/Quotecall if payment is with token
+        if (payment.isToken) {
+            quarkOperations = QuarkOperationHelper.wrapOperationsWithTokenPayment(
+                quarkOperations, actions, payment, useQuotecall
             );
         }
 
