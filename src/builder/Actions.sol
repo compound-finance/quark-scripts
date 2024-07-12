@@ -155,8 +155,8 @@ library Actions {
         string assetSymbol;
         uint256 chainId;
         uint256[] collateralAmounts;
-        uint256[] collateralAssetPrices;
-        address[] collateralAssets;
+        uint256[] collateralTokenPrices;
+        address[] collateralTokens;
         string[] collateralAssetSymbols;
         address comet;
         uint256 price;
@@ -498,21 +498,21 @@ library Actions {
         Accounts.AssetPositions memory borrowAssetPositions =
             Accounts.findAssetPositions(borrowInput.assetSymbol, accounts.assetPositionsList);
 
-        uint256[] memory collateralAssetPrices = new uint256[](borrowInput.collateralAssetSymbols.length);
-        address[] memory collateralAssets = new address[](borrowInput.collateralAssetSymbols.length);
+        uint256[] memory collateralTokenPrices = new uint256[](borrowInput.collateralAssetSymbols.length);
+        address[] memory collateralTokens = new address[](borrowInput.collateralAssetSymbols.length);
 
         for (uint256 i = 0; i < borrowInput.collateralAssetSymbols.length; ++i) {
             Accounts.AssetPositions memory assetPositions =
                 Accounts.findAssetPositions(borrowInput.collateralAssetSymbols[i], accounts.assetPositionsList);
-            collateralAssetPrices[i] = assetPositions.usdPrice;
-            collateralAssets[i] = assetPositions.asset;
+            collateralTokenPrices[i] = assetPositions.usdPrice;
+            collateralTokens[i] = assetPositions.asset;
         }
 
         // XXX handle wrapping ETH?
         bytes memory scriptCalldata = abi.encodeWithSelector(
             CometSupplyMultipleAssetsAndBorrow.run.selector,
             borrowInput.comet,
-            collateralAssets,
+            collateralTokens,
             borrowInput.collateralAmounts,
             borrowAssetPositions.asset,
             borrowInput.amount
@@ -533,8 +533,8 @@ library Actions {
             amount: borrowInput.amount,
             chainId: borrowInput.chainId,
             collateralAmounts: borrowInput.collateralAmounts,
-            collateralAssetPrices: collateralAssetPrices,
-            collateralAssets: collateralAssets,
+            collateralTokenPrices: collateralTokenPrices,
+            collateralTokens: collateralTokens,
             collateralAssetSymbols: borrowInput.collateralAssetSymbols,
             comet: borrowInput.comet,
             price: borrowAssetPositions.usdPrice,
