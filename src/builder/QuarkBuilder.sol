@@ -53,7 +53,7 @@ contract QuarkBuilder {
 
     /* ===== Main Implementation ===== */
 
-    struct BorrowIntent {
+    struct CometBorrowIntent {
         uint256 amount;
         string assetSymbol;
         uint256 blockTimestamp;
@@ -64,8 +64,8 @@ contract QuarkBuilder {
         address comet;
     }
 
-    function borrow(
-        BorrowIntent memory borrowIntent,
+    function cometBorrow(
+        CometBorrowIntent memory borrowIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
     ) external pure returns (BuilderResult memory /* builderResult */ ) {
@@ -158,8 +158,8 @@ contract QuarkBuilder {
             }
         }
 
-        (quarkOperations[actionIndex], actions[actionIndex]) = Actions.borrow(
-            Actions.BorrowInput({
+        (quarkOperations[actionIndex], actions[actionIndex]) = Actions.cometBorrow(
+            Actions.CometBorrowInput({
                 chainAccountsList: chainAccountsList,
                 amount: borrowIntent.amount,
                 assetSymbol: borrowIntent.assetSymbol,

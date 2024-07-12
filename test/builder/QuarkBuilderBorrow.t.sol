@@ -23,8 +23,8 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
         uint256 chainId,
         uint256[] memory collateralAmounts,
         string[] memory collateralAssetSymbols
-    ) internal pure returns (QuarkBuilder.BorrowIntent memory) {
-        return QuarkBuilder.BorrowIntent({
+    ) internal pure returns (QuarkBuilder.CometBorrowIntent memory) {
+        return QuarkBuilder.CometBorrowIntent({
             amount: amount,
             assetSymbol: assetSymbol,
             blockTimestamp: BLOCK_TIMESTAMP,
@@ -140,7 +140,7 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
 
         vm.expectRevert(QuarkBuilder.InvalidInput.selector);
 
-        builder.borrow(
+        builder.cometBorrow(
             borrowIntent_(1e6, "USDC", 1, collateralAmounts, collateralAssetSymbols),
             chainAccountsList_(3e6),
             paymentUsd_()
@@ -158,7 +158,7 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
 
         vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "LINK", 1e18, 0));
 
-        builder.borrow(
+        builder.cometBorrow(
             borrowIntent_(1e6, "USDC", 1, collateralAmounts, collateralAssetSymbols),
             chainAccountsList_(3e6), // holding 3 USDC in total across chains 1, 8453
             paymentUsd_()
@@ -189,7 +189,7 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
         });
 
         QuarkBuilder builder = new QuarkBuilder();
-        QuarkBuilder.BuilderResult memory result = builder.borrow(
+        QuarkBuilder.BuilderResult memory result = builder.cometBorrow(
             borrowIntent_(
                 1e6,
                 "USDC",
@@ -302,7 +302,7 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
         maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 0.1e6});
 
         QuarkBuilder builder = new QuarkBuilder();
-        QuarkBuilder.BuilderResult memory result = builder.borrow(
+        QuarkBuilder.BuilderResult memory result = builder.cometBorrow(
             borrowIntent_(
                 1e6,
                 "USDC",
@@ -420,7 +420,7 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
             assetBalances: uintArray(0, 0, 0, 0)
         });
 
-        QuarkBuilder.BuilderResult memory result = builder.borrow(
+        QuarkBuilder.BuilderResult memory result = builder.cometBorrow(
             borrowIntent_(
                 1e6,
                 "USDC",
@@ -539,7 +539,7 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
             assetBalances: uintArray(0, 0, 5e18, 0)
         });
 
-        QuarkBuilder.BuilderResult memory result = builder.borrow(
+        QuarkBuilder.BuilderResult memory result = builder.cometBorrow(
             borrowIntent_(
                 1e6,
                 "USDT",
@@ -719,7 +719,7 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
             assetBalances: uintArray(0, 0, 0, 0) // no assets on base
         });
 
-        QuarkBuilder.BuilderResult memory result = builder.borrow(
+        QuarkBuilder.BuilderResult memory result = builder.cometBorrow(
             borrowIntent_(
                 1e18,
                 "WETH", // borrowing WETH

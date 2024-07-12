@@ -468,7 +468,7 @@ library Actions {
         return (quarkOperation, action);
     }
 
-    struct BorrowInput {
+    struct CometBorrowInput {
         Accounts.ChainAccounts[] chainAccountsList;
         uint256 amount;
         string assetSymbol;
@@ -480,7 +480,7 @@ library Actions {
         address comet;
     }
 
-    function borrow(BorrowInput memory borrowInput, PaymentInfo.Payment memory payment)
+    function cometBorrow(CometBorrowInput memory borrowInput, PaymentInfo.Payment memory payment)
         internal
         pure
         returns (IQuarkWallet.QuarkOperation memory, Action memory)
