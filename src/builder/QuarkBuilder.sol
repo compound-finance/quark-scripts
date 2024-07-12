@@ -165,30 +165,12 @@ contract QuarkBuilder {
                 QuarkOperationHelper.wrapOperationsWithTokenPayment(quarkOperations, actions, payment, useQuotecall);
         }
 
-        // Construct EIP712 digests
-        EIP712Helper.EIP712Data memory eip712Data;
-        if (quarkOperations.length == 1) {
-            eip712Data = EIP712Helper.EIP712Data({
-                digest: EIP712Helper.getDigestForQuarkOperation(
-                    quarkOperations[0], actions[0].quarkAccount, actions[0].chainId
-                    ),
-                domainSeparator: EIP712Helper.getDomainSeparator(actions[0].quarkAccount, actions[0].chainId),
-                hashStruct: EIP712Helper.getHashStructForQuarkOperation(quarkOperations[0])
-            });
-        } else if (quarkOperations.length > 1) {
-            eip712Data = EIP712Helper.EIP712Data({
-                digest: EIP712Helper.getDigestForMultiQuarkOperation(quarkOperations, actions),
-                domainSeparator: EIP712Helper.MULTI_QUARK_OPERATION_DOMAIN_SEPARATOR,
-                hashStruct: EIP712Helper.getHashStructForMultiQuarkOperation(quarkOperations, actions)
-            });
-        }
-
         return BuilderResult({
             version: VERSION,
             actions: actions,
             quarkOperations: quarkOperations,
             paymentCurrency: payment.currency,
-            eip712Data: eip712Data
+            eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperations, actions)
         });
     }
 
@@ -339,30 +321,12 @@ contract QuarkBuilder {
                 QuarkOperationHelper.wrapOperationsWithTokenPayment(quarkOperations, actions, payment, useQuotecall);
         }
 
-        // Construct EIP712 digests
-        EIP712Helper.EIP712Data memory eip712Data;
-        if (quarkOperations.length == 1) {
-            eip712Data = EIP712Helper.EIP712Data({
-                digest: EIP712Helper.getDigestForQuarkOperation(
-                    quarkOperations[0], actions[0].quarkAccount, actions[0].chainId
-                    ),
-                domainSeparator: EIP712Helper.getDomainSeparator(actions[0].quarkAccount, actions[0].chainId),
-                hashStruct: EIP712Helper.getHashStructForQuarkOperation(quarkOperations[0])
-            });
-        } else if (quarkOperations.length > 1) {
-            eip712Data = EIP712Helper.EIP712Data({
-                digest: EIP712Helper.getDigestForMultiQuarkOperation(quarkOperations, actions),
-                domainSeparator: EIP712Helper.MULTI_QUARK_OPERATION_DOMAIN_SEPARATOR,
-                hashStruct: EIP712Helper.getHashStructForMultiQuarkOperation(quarkOperations, actions)
-            });
-        }
-
         return BuilderResult({
             version: VERSION,
             actions: actions,
             quarkOperations: quarkOperations,
             paymentCurrency: payment.currency,
-            eip712Data: eip712Data
+            eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperations, actions)
         });
     }
 
@@ -474,30 +438,12 @@ contract QuarkBuilder {
             );
         }
 
-        // Construct EIP712 digests
-        EIP712Helper.EIP712Data memory eip712Data;
-        if (quarkOperationsArray.length == 1) {
-            eip712Data = EIP712Helper.EIP712Data({
-                digest: EIP712Helper.getDigestForQuarkOperation(
-                    quarkOperationsArray[0], actionsArray[0].quarkAccount, actionsArray[0].chainId
-                    ),
-                domainSeparator: EIP712Helper.getDomainSeparator(actionsArray[0].quarkAccount, actionsArray[0].chainId),
-                hashStruct: EIP712Helper.getHashStructForQuarkOperation(quarkOperationsArray[0])
-            });
-        } else if (quarkOperationsArray.length > 1) {
-            eip712Data = EIP712Helper.EIP712Data({
-                digest: EIP712Helper.getDigestForMultiQuarkOperation(quarkOperationsArray, actionsArray),
-                domainSeparator: EIP712Helper.MULTI_QUARK_OPERATION_DOMAIN_SEPARATOR,
-                hashStruct: EIP712Helper.getHashStructForMultiQuarkOperation(quarkOperationsArray, actionsArray)
-            });
-        }
-
         return BuilderResult({
             version: VERSION,
             actions: actionsArray,
             quarkOperations: quarkOperationsArray,
             paymentCurrency: payment.currency,
-            eip712Data: eip712Data
+            eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
         });
     }
 
@@ -603,30 +549,12 @@ contract QuarkBuilder {
             );
         }
 
-        // Construct EIP712 digests
-        EIP712Helper.EIP712Data memory eip712Data;
-        if (quarkOperationsArray.length == 1) {
-            eip712Data = EIP712Helper.EIP712Data({
-                digest: EIP712Helper.getDigestForQuarkOperation(
-                    quarkOperationsArray[0], actionsArray[0].quarkAccount, actionsArray[0].chainId
-                    ),
-                domainSeparator: EIP712Helper.getDomainSeparator(actionsArray[0].quarkAccount, actionsArray[0].chainId),
-                hashStruct: EIP712Helper.getHashStructForQuarkOperation(quarkOperationsArray[0])
-            });
-        } else if (quarkOperationsArray.length > 1) {
-            eip712Data = EIP712Helper.EIP712Data({
-                digest: EIP712Helper.getDigestForMultiQuarkOperation(quarkOperationsArray, actionsArray),
-                domainSeparator: EIP712Helper.MULTI_QUARK_OPERATION_DOMAIN_SEPARATOR,
-                hashStruct: EIP712Helper.getHashStructForMultiQuarkOperation(quarkOperationsArray, actionsArray)
-            });
-        }
-
         return BuilderResult({
             version: VERSION,
             actions: actionsArray,
             quarkOperations: quarkOperationsArray,
             paymentCurrency: payment.currency,
-            eip712Data: eip712Data
+            eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
         });
     }
 
@@ -799,30 +727,12 @@ contract QuarkBuilder {
             );
         }
 
-        // Construct EIP712 digests
-        EIP712Helper.EIP712Data memory eip712Data;
-        if (quarkOperationsArray.length == 1) {
-            eip712Data = EIP712Helper.EIP712Data({
-                digest: EIP712Helper.getDigestForQuarkOperation(
-                    quarkOperationsArray[0], actionsArray[0].quarkAccount, actionsArray[0].chainId
-                    ),
-                domainSeparator: EIP712Helper.getDomainSeparator(actionsArray[0].quarkAccount, actionsArray[0].chainId),
-                hashStruct: EIP712Helper.getHashStructForQuarkOperation(quarkOperationsArray[0])
-            });
-        } else if (quarkOperationsArray.length > 1) {
-            eip712Data = EIP712Helper.EIP712Data({
-                digest: EIP712Helper.getDigestForMultiQuarkOperation(quarkOperationsArray, actionsArray),
-                domainSeparator: EIP712Helper.MULTI_QUARK_OPERATION_DOMAIN_SEPARATOR,
-                hashStruct: EIP712Helper.getHashStructForMultiQuarkOperation(quarkOperationsArray, actionsArray)
-            });
-        }
-
         return BuilderResult({
             version: VERSION,
             actions: actionsArray,
             quarkOperations: quarkOperationsArray,
             paymentCurrency: payment.currency,
-            eip712Data: eip712Data
+            eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
         });
     }
 
@@ -957,30 +867,12 @@ contract QuarkBuilder {
             );
         }
 
-        // Construct EIP712 digests
-        EIP712Helper.EIP712Data memory eip712Data;
-        if (quarkOperationsArray.length == 1) {
-            eip712Data = EIP712Helper.EIP712Data({
-                digest: EIP712Helper.getDigestForQuarkOperation(
-                    quarkOperationsArray[0], actionsArray[0].quarkAccount, actionsArray[0].chainId
-                    ),
-                domainSeparator: EIP712Helper.getDomainSeparator(actionsArray[0].quarkAccount, actionsArray[0].chainId),
-                hashStruct: EIP712Helper.getHashStructForQuarkOperation(quarkOperationsArray[0])
-            });
-        } else if (quarkOperationsArray.length > 1) {
-            eip712Data = EIP712Helper.EIP712Data({
-                digest: EIP712Helper.getDigestForMultiQuarkOperation(quarkOperationsArray, actionsArray),
-                domainSeparator: EIP712Helper.MULTI_QUARK_OPERATION_DOMAIN_SEPARATOR,
-                hashStruct: EIP712Helper.getHashStructForMultiQuarkOperation(quarkOperationsArray, actionsArray)
-            });
-        }
-
         return BuilderResult({
             version: VERSION,
             actions: actionsArray,
             quarkOperations: quarkOperationsArray,
             paymentCurrency: payment.currency,
-            eip712Data: eip712Data
+            eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
         });
     }
 
