@@ -249,8 +249,8 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
         QuarkBuilder builder = new QuarkBuilder();
 
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](2);
-        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 0.1e6}); // max cost is 1 USDC
-        maxCosts[1] = PaymentInfo.PaymentMaxCost({chainId: 8453, amount: 1e6});
+        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 0.1e6});
+        maxCosts[1] = PaymentInfo.PaymentMaxCost({chainId: 8453, amount: 1e6}); // max cost on base is 1 USDC
 
         Accounts.ChainAccounts[] memory chainAccountsList = new Accounts.ChainAccounts[](2);
         chainAccountsList[0] = Accounts.ChainAccounts({
@@ -296,7 +296,7 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
                 ),
                 0.1e6
             ),
-            "calldata is Paycall.run(CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 2.1e6, 6, bytes32(uint256(uint160(0xa11ce))), USDC_1)), 0.5e6);"
+            "calldata is Paycall.run(CCTPBridgeActions.bridgeUSDC(0xBd3fa81B58Ba92a82136038B25aDec7066af3155, 1e6, 6, 0xa11ce, USDC_1)), 0.1e6);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
