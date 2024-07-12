@@ -88,7 +88,7 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
                     assetSymbol: "LINK",
                     chainId: 1,
                     comet: COMET,
-                    price: 14e8,
+                    price: LINK_PRICE,
                     token: link_(1)
                 })
             ),
@@ -153,7 +153,7 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
                     assetSymbol: "LINK",
                     chainId: 1,
                     comet: COMET,
-                    price: 14e8,
+                    price: LINK_PRICE,
                     token: link_(1)
                 })
             ),
@@ -218,7 +218,7 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
                     assetSymbol: "USDC",
                     chainId: 1,
                     comet: COMET,
-                    price: 1e8,
+                    price: USDC_PRICE,
                     token: usdc_(1)
                 })
             ),
@@ -335,13 +335,13 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.BridgeActionContext({
                     amount: 1e6,
-                    price: 1e8,
-                    token: USDC_1,
                     assetSymbol: "USDC",
+                    bridgeType: Actions.BRIDGE_TYPE_CCTP,
                     chainId: 1,
-                    recipient: address(0xa11ce),
                     destinationChainId: 8453,
-                    bridgeType: Actions.BRIDGE_TYPE_CCTP
+                    price: USDC_PRICE,
+                    recipient: address(0xa11ce),
+                    token: USDC_1
                 })
             ),
             "action context encoded from BridgeActionContext"
@@ -361,7 +361,7 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
                     assetSymbol: "LINK",
                     chainId: 8453,
                     comet: COMET,
-                    price: 14e8,
+                    price: LINK_PRICE,
                     token: link_(8453)
                 })
             ),
