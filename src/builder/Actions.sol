@@ -154,8 +154,8 @@ library Actions {
         uint256 amount;
         uint256 chainId;
         uint256[] collateralAmounts;
-        uint256[] collateralTokenPrices;
-        address[] collateralTokens;
+        uint256[] collateralAssetPrices;
+        address[] collateralAssets;
         address comet;
         uint256 price;
         address token;
@@ -476,7 +476,7 @@ library Actions {
         address borrower;
         uint256 chainId;
         uint256[] collateralAmounts;
-        string[] collateralTokenSymbols;
+        string[] collateralAssetSymbols;
         address comet;
     }
 
@@ -496,21 +496,21 @@ library Actions {
         Accounts.AssetPositions memory borrowAssetPositions =
             Accounts.findAssetPositions(borrowInput.assetSymbol, accounts.assetPositionsList);
 
-        uint256[] memory collateralTokenPrices = new uint256[](borrowInput.collateralTokenSymbols.length);
-        address[] memory collateralTokens = new address[](borrowInput.collateralTokenSymbols.length);
+        uint256[] memory collateralAssetPrices = new uint256[](borrowInput.collateralAssetSymbols.length);
+        address[] memory collateralAssets = new address[](borrowInput.collateralAssetSymbols.length);
 
-        for (uint256 i = 0; i < borrowInput.collateralTokenSymbols.length; ++i) {
+        for (uint256 i = 0; i < borrowInput.collateralAssetSymbols.length; ++i) {
             Accounts.AssetPositions memory assetPositions =
-                Accounts.findAssetPositions(borrowInput.collateralTokenSymbols[i], accounts.assetPositionsList);
-            collateralTokenPrices[i] = assetPositions.usdPrice;
-            collateralTokens[i] = assetPositions.asset;
+                Accounts.findAssetPositions(borrowInput.collateralAssetSymbols[i], accounts.assetPositionsList);
+            collateralAssetPrices[i] = assetPositions.usdPrice;
+            collateralAssets[i] = assetPositions.asset;
         }
 
         // XXX handle wrapping ETH?
         bytes memory scriptCalldata = abi.encodeWithSelector(
             CometSupplyMultipleAssetsAndBorrow.run.selector,
             borrowInput.comet,
-            collateralTokens,
+            collateralAssets,
             borrowInput.collateralAmounts,
             borrowAssetPositions.asset,
             borrowInput.amount
@@ -530,8 +530,8 @@ library Actions {
             amount: borrowInput.amount,
             chainId: borrowInput.chainId,
             collateralAmounts: borrowInput.collateralAmounts,
-            collateralTokenPrices: collateralTokenPrices,
-            collateralTokens: collateralTokens,
+            collateralAssetPrices: collateralAssetPrices,
+            collateralAssets: collateralAssets,
             comet: borrowInput.comet,
             price: borrowAssetPositions.usdPrice,
             token: borrowAssetPositions.asset

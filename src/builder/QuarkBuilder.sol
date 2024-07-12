@@ -60,7 +60,7 @@ contract QuarkBuilder {
         address borrower;
         uint256 chainId;
         uint256[] collateralAmounts;
-        string[] collateralTokenSymbols;
+        string[] collateralAssetSymbols;
         address comet;
     }
 
@@ -69,21 +69,21 @@ contract QuarkBuilder {
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
     ) external pure returns (BuilderResult memory /* builderResult */ ) {
-        if (borrowIntent.collateralAmounts.length != borrowIntent.collateralTokenSymbols.length) {
+        if (borrowIntent.collateralAmounts.length != borrowIntent.collateralAssetSymbols.length) {
             revert InvalidInput();
         }
 
         uint256 actionIndex = 0;
         // max actions length = bridge each collateral asset + bridge payment token + perform borrow action
-        Actions.Action[] memory actions = new Actions.Action[](borrowIntent.collateralTokenSymbols.length + 1 + 1);
+        Actions.Action[] memory actions = new Actions.Action[](borrowIntent.collateralAssetSymbols.length + 1 + 1);
         IQuarkWallet.QuarkOperation[] memory quarkOperations =
             new IQuarkWallet.QuarkOperation[](chainAccountsList.length);
 
         bool useQuotecall = false; // TODO: calculate an actual value for useQuoteCall
         bool paymentTokenIsCollateralAsset = false;
 
-        for (uint256 i = 0; i < borrowIntent.collateralTokenSymbols.length; ++i) {
-            string memory assetSymbol = borrowIntent.collateralTokenSymbols[i];
+        for (uint256 i = 0; i < borrowIntent.collateralAssetSymbols.length; ++i) {
+            string memory assetSymbol = borrowIntent.collateralAssetSymbols[i];
             uint256 supplyAmount = borrowIntent.collateralAmounts[i];
 
             assertFundsAvailable(borrowIntent.chainId, assetSymbol, supplyAmount, chainAccountsList, payment);
@@ -167,7 +167,7 @@ contract QuarkBuilder {
                 borrower: borrowIntent.borrower,
                 chainId: borrowIntent.chainId,
                 collateralAmounts: borrowIntent.collateralAmounts,
-                collateralTokenSymbols: borrowIntent.collateralTokenSymbols,
+                collateralAssetSymbols: borrowIntent.collateralAssetSymbols,
                 comet: borrowIntent.comet
             }),
             payment

@@ -22,7 +22,7 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
         string memory assetSymbol,
         uint256 chainId,
         uint256[] memory collateralAmounts,
-        string[] memory collateralTokenSymbols
+        string[] memory collateralAssetSymbols
     ) internal pure returns (QuarkBuilder.BorrowIntent memory) {
         return QuarkBuilder.BorrowIntent({
             amount: amount,
@@ -31,7 +31,7 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
             borrower: address(0xa11ce),
             chainId: chainId,
             collateralAmounts: collateralAmounts,
-            collateralTokenSymbols: collateralTokenSymbols,
+            collateralAssetSymbols: collateralAssetSymbols,
             comet: COMET
         });
     }
@@ -133,15 +133,15 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
         collateralAmounts[0] = 1e18;
         collateralAmounts[1] = 1e18;
 
-        string[] memory collateralTokenSymbols = new string[](1);
-        collateralTokenSymbols[0] = "LINK";
+        string[] memory collateralAssetSymbols = new string[](1);
+        collateralAssetSymbols[0] = "LINK";
 
         QuarkBuilder builder = new QuarkBuilder();
 
         vm.expectRevert(QuarkBuilder.InvalidInput.selector);
 
         builder.borrow(
-            borrowIntent_(1e6, "USDC", 1, collateralAmounts, collateralTokenSymbols),
+            borrowIntent_(1e6, "USDC", 1, collateralAmounts, collateralAssetSymbols),
             chainAccountsList_(3e6),
             paymentUsd_()
         );
@@ -151,15 +151,15 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
         uint256[] memory collateralAmounts = new uint256[](1);
         collateralAmounts[0] = 1e18;
 
-        string[] memory collateralTokenSymbols = new string[](1);
-        collateralTokenSymbols[0] = "LINK";
+        string[] memory collateralAssetSymbols = new string[](1);
+        collateralAssetSymbols[0] = "LINK";
 
         QuarkBuilder builder = new QuarkBuilder();
 
         vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "LINK", 1e18, 0));
 
         builder.borrow(
-            borrowIntent_(1e6, "USDC", 1, collateralAmounts, collateralTokenSymbols),
+            borrowIntent_(1e6, "USDC", 1, collateralAmounts, collateralAssetSymbols),
             chainAccountsList_(3e6), // holding 3 USDC in total across chains 1, 8453
             paymentUsd_()
         );
@@ -169,8 +169,8 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
         uint256[] memory collateralAmounts = new uint256[](1);
         collateralAmounts[0] = 1e18;
 
-        string[] memory collateralTokenSymbols = new string[](1);
-        collateralTokenSymbols[0] = "LINK";
+        string[] memory collateralAssetSymbols = new string[](1);
+        collateralAssetSymbols[0] = "LINK";
 
         ChainPortfolio[] memory chainPortfolios = new ChainPortfolio[](2);
         chainPortfolios[0] = ChainPortfolio({
@@ -195,7 +195,7 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
                 "USDC",
                 1,
                 collateralAmounts, // [1e18]
-                collateralTokenSymbols // [LINK]
+                collateralAssetSymbols // [LINK]
             ),
             chainAccountsFromChainPortfolios(chainPortfolios),
             paymentUsd_()
@@ -225,12 +225,12 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
             ),
             "script address is correct given the code jar address on mainnet"
         );
-        address[] memory collateralTokens = new address[](1);
-        collateralTokens[0] = link_(1);
+        address[] memory collateralAssets = new address[](1);
+        collateralAssets[0] = link_(1);
         assertEq(
             result.quarkOperations[0].scriptCalldata,
             abi.encodeCall(
-                CometSupplyMultipleAssetsAndBorrow.run, (COMET, collateralTokens, collateralAmounts, usdc_(1), 1e6)
+                CometSupplyMultipleAssetsAndBorrow.run, (COMET, collateralAssets, collateralAmounts, usdc_(1), 1e6)
             ),
             "calldata is CometSupplyMultipleAssetsAndBorrow.run(COMET, [LINK], [1e18], USDC, 1e6);"
         );
@@ -249,8 +249,8 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
         assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
 
-        uint256[] memory collateralTokenPrices = new uint256[](1);
-        collateralTokenPrices[0] = 14e8;
+        uint256[] memory collateralAssetPrices = new uint256[](1);
+        collateralAssetPrices[0] = 14e8;
 
         assertEq(
             result.actions[0].actionContext,
@@ -259,8 +259,8 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
                     amount: 1e6,
                     chainId: 1,
                     collateralAmounts: collateralAmounts,
-                    collateralTokenPrices: collateralTokenPrices,
-                    collateralTokens: collateralTokens,
+                    collateralAssetPrices: collateralAssetPrices,
+                    collateralAssets: collateralAssets,
                     comet: COMET,
                     price: 1e8,
                     token: usdc_(1)
@@ -276,8 +276,8 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
     }
 
     function testBorrowWithPaycall() public {
-        string[] memory collateralTokenSymbols = new string[](1);
-        collateralTokenSymbols[0] = "LINK";
+        string[] memory collateralAssetSymbols = new string[](1);
+        collateralAssetSymbols[0] = "LINK";
 
         uint256[] memory collateralAmounts = new uint256[](1);
         collateralAmounts[0] = 1e18;
@@ -308,7 +308,7 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
                 "USDC",
                 1,
                 collateralAmounts, // [1e18]
-                collateralTokenSymbols // [LINK]
+                collateralAssetSymbols // [LINK]
             ),
             chainAccountsFromChainPortfolios(chainPortfolios),
             paymentUsdc_(maxCosts)
@@ -328,8 +328,8 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
             "script address is correct given the code jar address on mainnet"
         );
 
-        address[] memory collateralTokens = new address[](1);
-        collateralTokens[0] = link_(1);
+        address[] memory collateralAssets = new address[](1);
+        collateralAssets[0] = link_(1);
 
         assertEq(
             result.quarkOperations[0].scriptCalldata,
@@ -339,7 +339,7 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
                 abi.encodeWithSelector(
                     CometSupplyMultipleAssetsAndBorrow.run.selector,
                     COMET,
-                    collateralTokens,
+                    collateralAssets,
                     collateralAmounts,
                     usdc_(1),
                     1e6
@@ -367,8 +367,8 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
         assertEq(result.actions[0].paymentMaxCost, 0.1e6, "payment max is set to .1e6 in this test case");
 
-        uint256[] memory collateralTokenPrices = new uint256[](1);
-        collateralTokenPrices[0] = 14e8;
+        uint256[] memory collateralAssetPrices = new uint256[](1);
+        collateralAssetPrices[0] = 14e8;
 
         assertEq(
             result.actions[0].actionContext,
@@ -377,8 +377,8 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
                     amount: 1e6,
                     chainId: 1,
                     collateralAmounts: collateralAmounts,
-                    collateralTokenPrices: collateralTokenPrices,
-                    collateralTokens: collateralTokens,
+                    collateralAssetPrices: collateralAssetPrices,
+                    collateralAssets: collateralAssets,
                     comet: COMET,
                     price: 1e8,
                     token: usdc_(1)
@@ -401,8 +401,8 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
         uint256[] memory collateralAmounts = new uint256[](1);
         collateralAmounts[0] = 1e18;
 
-        string[] memory collateralTokenSymbols = new string[](1);
-        collateralTokenSymbols[0] = "LINK";
+        string[] memory collateralAssetSymbols = new string[](1);
+        collateralAssetSymbols[0] = "LINK";
 
         ChainPortfolio[] memory chainPortfolios = new ChainPortfolio[](2);
         chainPortfolios[0] = ChainPortfolio({
@@ -426,7 +426,7 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
                 "USDC",
                 1,
                 collateralAmounts, // [1e18]
-                collateralTokenSymbols // [LINK]
+                collateralAssetSymbols // [LINK]
             ),
             chainAccountsFromChainPortfolios(chainPortfolios),
             paymentUsdc_(maxCosts) // user is paying with borrowed USDC
@@ -438,8 +438,8 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
 
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
 
-        address[] memory collateralTokens = new address[](1);
-        collateralTokens[0] = link_(1);
+        address[] memory collateralAssets = new address[](1);
+        collateralAssets[0] = link_(1);
 
         // Check the quark operations
         assertEq(result.quarkOperations.length, 1, "one operation");
@@ -456,7 +456,7 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
                 abi.encodeWithSelector(
                     CometSupplyMultipleAssetsAndBorrow.run.selector,
                     COMET,
-                    collateralTokens,
+                    collateralAssets,
                     collateralAmounts,
                     usdc_(1),
                     1e6
@@ -484,8 +484,8 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
         assertEq(result.actions[0].paymentMaxCost, 0.5e6, "payment max is set to .5e6 in this test case");
 
-        uint256[] memory collateralTokenPrices = new uint256[](1);
-        collateralTokenPrices[0] = 14e8;
+        uint256[] memory collateralAssetPrices = new uint256[](1);
+        collateralAssetPrices[0] = 14e8;
 
         assertEq(
             result.actions[0].actionContext,
@@ -494,8 +494,8 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
                     amount: 1e6,
                     chainId: 1,
                     collateralAmounts: collateralAmounts,
-                    collateralTokenPrices: collateralTokenPrices,
-                    collateralTokens: collateralTokens,
+                    collateralAssetPrices: collateralAssetPrices,
+                    collateralAssets: collateralAssets,
                     comet: COMET,
                     price: 1e8,
                     token: usdc_(1)
@@ -517,8 +517,8 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
         maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 0.1e6});
         maxCosts[1] = PaymentInfo.PaymentMaxCost({chainId: 8453, amount: 1e6}); // max cost on base is 1 USDC
 
-        string[] memory collateralTokenSymbols = new string[](1);
-        collateralTokenSymbols[0] = "LINK";
+        string[] memory collateralAssetSymbols = new string[](1);
+        collateralAssetSymbols[0] = "LINK";
 
         uint256[] memory collateralAmounts = new uint256[](1);
         collateralAmounts[0] = 1e18;
@@ -545,7 +545,7 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
                 "USDT",
                 8453,
                 collateralAmounts, // [1e18]
-                collateralTokenSymbols // [LINK]
+                collateralAssetSymbols // [LINK]
             ),
             chainAccountsFromChainPortfolios(chainPortfolios),
             paymentUsdc_(maxCosts)
@@ -601,8 +601,8 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
             "script address[1] has been wrapped with paycall address"
         );
 
-        address[] memory collateralTokens = new address[](1);
-        collateralTokens[0] = link_(8453);
+        address[] memory collateralAssets = new address[](1);
+        collateralAssets[0] = link_(8453);
 
         assertEq(
             result.quarkOperations[1].scriptCalldata,
@@ -612,7 +612,7 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
                 abi.encodeWithSelector(
                     CometSupplyMultipleAssetsAndBorrow.run.selector,
                     COMET,
-                    collateralTokens,
+                    collateralAssets,
                     collateralAmounts,
                     usdt_(8453),
                     1e6
@@ -664,8 +664,8 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
         assertEq(result.actions[1].paymentToken, USDC_8453, "payment token is USDC on Base");
         assertEq(result.actions[1].paymentMaxCost, 1e6, "payment should have max cost of 1e6");
 
-        uint256[] memory collateralTokenPrices = new uint256[](1);
-        collateralTokenPrices[0] = 14e8;
+        uint256[] memory collateralAssetPrices = new uint256[](1);
+        collateralAssetPrices[0] = 14e8;
 
         assertEq(
             result.actions[1].actionContext,
@@ -674,8 +674,8 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
                     amount: 1e6,
                     chainId: 8453,
                     collateralAmounts: collateralAmounts,
-                    collateralTokenPrices: collateralTokenPrices,
-                    collateralTokens: collateralTokens,
+                    collateralAssetPrices: collateralAssetPrices,
+                    collateralAssets: collateralAssets,
                     comet: COMET,
                     price: 1e8,
                     token: usdt_(8453)
@@ -690,15 +690,15 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
     }
 
-    function testBorrowWithBridgedCollateralToken() public {
+    function testBorrowWithBridgedcollateralAsset() public {
         QuarkBuilder builder = new QuarkBuilder();
 
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](2);
         maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 0.1e6});
         maxCosts[1] = PaymentInfo.PaymentMaxCost({chainId: 8453, amount: 0.2e6});
 
-        string[] memory collateralTokenSymbols = new string[](1);
-        collateralTokenSymbols[0] = "USDC"; // supplying 2 USDC as collateral
+        string[] memory collateralAssetSymbols = new string[](1);
+        collateralAssetSymbols[0] = "USDC"; // supplying 2 USDC as collateral
 
         uint256[] memory collateralAmounts = new uint256[](1);
         collateralAmounts[0] = 2e6;
@@ -725,7 +725,7 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
                 "WETH", // borrowing WETH
                 8453,
                 collateralAmounts, // [2e6]
-                collateralTokenSymbols // [USDC]
+                collateralAssetSymbols // [USDC]
             ),
             chainAccountsFromChainPortfolios(chainPortfolios),
             paymentUsdc_(maxCosts)
@@ -781,8 +781,8 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
             "script address[1] has been wrapped with paycall address"
         );
 
-        address[] memory collateralTokens = new address[](1);
-        collateralTokens[0] = usdc_(8453);
+        address[] memory collateralAssets = new address[](1);
+        collateralAssets[0] = usdc_(8453);
 
         assertEq(
             result.quarkOperations[1].scriptCalldata,
@@ -792,7 +792,7 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
                 abi.encodeWithSelector(
                     CometSupplyMultipleAssetsAndBorrow.run.selector,
                     COMET,
-                    collateralTokens,
+                    collateralAssets,
                     collateralAmounts,
                     weth_(8453),
                     1e18
@@ -844,8 +844,8 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
         assertEq(result.actions[1].paymentToken, USDC_8453, "payment token is USDC on Base");
         assertEq(result.actions[1].paymentMaxCost, 0.2e6, "payment should have max cost of 0.2e6");
 
-        uint256[] memory collateralTokenPrices = new uint256[](1);
-        collateralTokenPrices[0] = 1e8;
+        uint256[] memory collateralAssetPrices = new uint256[](1);
+        collateralAssetPrices[0] = 1e8;
 
         assertEq(
             result.actions[1].actionContext,
@@ -854,8 +854,8 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
                     amount: 1e18,
                     chainId: 8453,
                     collateralAmounts: collateralAmounts,
-                    collateralTokenPrices: collateralTokenPrices,
-                    collateralTokens: collateralTokens,
+                    collateralAssetPrices: collateralAssetPrices,
+                    collateralAssets: collateralAssets,
                     comet: COMET,
                     price: 3000e8,
                     token: weth_(8453)
