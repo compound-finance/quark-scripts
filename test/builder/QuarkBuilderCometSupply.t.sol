@@ -13,7 +13,6 @@ import {CometSupplyActions, TransferActions} from "src/DeFiScripts.sol";
 import {Paycall} from "src/Paycall.sol";
 
 contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
-    uint256 constant BLOCK_TIMESTAMP = 123_456_789;
     address constant COMET = address(0xc3);
 
     function cometSupply_(uint256 chainId, uint256 amount)
