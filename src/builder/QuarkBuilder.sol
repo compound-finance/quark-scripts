@@ -192,14 +192,12 @@ contract QuarkBuilder {
         }
 
         // Merge operations that are from the same chain into one Multicall operation
-        (quarkOperations, actions) =
-            QuarkOperationHelper.mergeSameChainOperations(quarkOperations, actions);
+        (quarkOperations, actions) = QuarkOperationHelper.mergeSameChainOperations(quarkOperations, actions);
 
         // Wrap operations around Paycall/Quotecall if payment is with token
         if (payment.isToken) {
-            quarkOperations = QuarkOperationHelper.wrapOperationsWithTokenPayment(
-                quarkOperations, actions, payment, useQuotecall
-            );
+            quarkOperations =
+                QuarkOperationHelper.wrapOperationsWithTokenPayment(quarkOperations, actions, payment, useQuotecall);
         }
 
         // Construct EIP712 digests
