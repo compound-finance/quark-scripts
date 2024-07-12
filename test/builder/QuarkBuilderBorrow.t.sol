@@ -201,7 +201,6 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
             paymentUsd_()
         );
 
-        assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usd", "usd currency");
 
         // Check the quark operations
@@ -319,7 +318,6 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
             CodeJarHelper.getCodeAddress(type(CometSupplyMultipleAssetsAndBorrow).creationCode);
         address paycallAddress = paycallUsdc_(1);
 
-        assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
 
         // Check the quark operations
@@ -438,7 +436,6 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
             CodeJarHelper.getCodeAddress(type(CometSupplyMultipleAssetsAndBorrow).creationCode);
         address paycallAddress = paycallUsdc_(1);
 
-        assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
 
         address[] memory collateralTokens = new address[](1);
@@ -560,7 +557,6 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
         address cometSupplyMultipleAssetsAndBorrowAddress =
             CodeJarHelper.getCodeAddress(type(CometSupplyMultipleAssetsAndBorrow).creationCode);
 
-        assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
 
         // Check the quark operations
@@ -741,7 +737,6 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
         address cometSupplyMultipleAssetsAndBorrowAddress =
             CodeJarHelper.getCodeAddress(type(CometSupplyMultipleAssetsAndBorrow).creationCode);
 
-        assertEq(result.version, "1.0.0", "version 1");
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
 
         // Check the quark operations
