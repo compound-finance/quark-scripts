@@ -809,7 +809,7 @@ library Actions {
         returns (IQuarkWallet.QuarkOperation memory, Action memory)
     {
         bytes[] memory scriptSources = new bytes[](1);
-        scriptSources[0] = type(TransferActions).creationCode;
+        scriptSources[0] = type(ApproveAndSwap).creationCode;
 
         Accounts.ChainAccounts memory accounts = Accounts.findChainAccounts(swap.chainId, swap.chainAccountsList);
 

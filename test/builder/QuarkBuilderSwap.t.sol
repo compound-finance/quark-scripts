@@ -326,7 +326,7 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
                     )
                 )
             ),
-            "script address for transfer is correct given the code jar address"
+            "script address for swap is correct given the code jar address"
         );
         assertEq(
             result.quarkOperations[1].scriptCalldata,
