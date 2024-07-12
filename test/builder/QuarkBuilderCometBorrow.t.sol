@@ -13,7 +13,7 @@ import {CometSupplyMultipleAssetsAndBorrow} from "src/DeFiScripts.sol";
 import {Paycall} from "src/Paycall.sol";
 import {Strings} from "src/builder/Strings.sol";
 
-contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
+contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
     function borrowIntent_(
         uint256 amount,
         string memory assetSymbol,
