@@ -178,7 +178,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
 
         uint256[] memory collateralTokenPrices = new uint256[](1);
-        collateralTokenPrices[0] = 14e8;
+        collateralTokenPrices[0] = LINK_PRICE;
 
         assertEq(
             result.actions[0].actionContext,
@@ -192,7 +192,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                     collateralTokenPrices: collateralTokenPrices,
                     collateralTokens: collateralTokens,
                     comet: COMET_1,
-                    price: 1e8,
+                    price: USDC_PRICE,
                     token: usdc_(1)
                 })
             ),
@@ -298,7 +298,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMaxCost, 0.1e6, "payment max is set to .1e6 in this test case");
 
         uint256[] memory collateralTokenPrices = new uint256[](1);
-        collateralTokenPrices[0] = 14e8;
+        collateralTokenPrices[0] = LINK_PRICE;
 
         assertEq(
             result.actions[0].actionContext,
@@ -312,7 +312,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                     collateralTokenPrices: collateralTokenPrices,
                     collateralTokens: collateralTokens,
                     comet: COMET_1,
-                    price: 1e8,
+                    price: USDC_PRICE,
                     token: usdc_(1)
                 })
             ),
@@ -419,7 +419,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMaxCost, 0.5e6, "payment max is set to .5e6 in this test case");
 
         uint256[] memory collateralTokenPrices = new uint256[](1);
-        collateralTokenPrices[0] = 1e8;
+        collateralTokenPrices[0] = USDC_PRICE;
 
         assertEq(
             result.actions[0].actionContext,
@@ -433,7 +433,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                     collateralTokenPrices: collateralTokenPrices,
                     collateralTokens: collateralTokens,
                     comet: COMET_1,
-                    price: 3000e8,
+                    price: WETH_PRICE,
                     token: weth_(1)
                 })
             ),
@@ -581,13 +581,13 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.BridgeActionContext({
                     amount: 2.2e6,
-                    price: 1e8,
-                    token: USDC_1,
                     assetSymbol: "USDC",
+                    bridgeType: Actions.BRIDGE_TYPE_CCTP,
                     chainId: 1,
-                    recipient: address(0xa11ce),
                     destinationChainId: 8453,
-                    bridgeType: Actions.BRIDGE_TYPE_CCTP
+                    price: USDC_PRICE,
+                    recipient: address(0xa11ce),
+                    token: USDC_1
                 })
             ),
             "action context encoded from BridgeActionContext"
@@ -601,7 +601,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         assertEq(result.actions[1].paymentMaxCost, 0.2e6, "payment should have max cost of 0.2e6");
 
         uint256[] memory collateralTokenPrices = new uint256[](1);
-        collateralTokenPrices[0] = 14e8;
+        collateralTokenPrices[0] = LINK_PRICE;
 
         assertEq(
             result.actions[1].actionContext,
@@ -615,7 +615,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                     collateralTokenPrices: collateralTokenPrices,
                     collateralTokens: collateralTokens,
                     comet: COMET_1,
-                    price: 1e8,
+                    price: USDC_PRICE,
                     token: usdc_(8453)
                 })
             ),

@@ -119,7 +119,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     assetSymbol: "USDC",
                     chainId: 1,
                     comet: COMET,
-                    price: 1e8,
+                    price: USDC_PRICE,
                     token: USDC_1
                 })
             ),
@@ -184,7 +184,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     assetSymbol: "USDC",
                     chainId: 1,
                     comet: COMET,
-                    price: 1e8,
+                    price: USDC_PRICE,
                     token: USDC_1
                 })
             ),
@@ -292,7 +292,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.BridgeActionContext({
                     amount: 2e6,
-                    price: 1e8,
+                    price: USDC_PRICE,
                     token: USDC_1,
                     assetSymbol: "USDC",
                     chainId: 1,
@@ -319,7 +319,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     assetSymbol: "USDC",
                     chainId: 8453,
                     comet: COMET,
-                    price: 1e8,
+                    price: USDC_PRICE,
                     token: USDC_8453
                 })
             ),
@@ -414,7 +414,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.BridgeActionContext({
                     amount: 2.1e6,
-                    price: 1e8,
+                    price: USDC_PRICE,
                     token: USDC_1,
                     assetSymbol: "USDC",
                     chainId: 1,
@@ -440,7 +440,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     assetSymbol: "USDC",
                     chainId: 8453,
                     comet: COMET,
-                    price: 1e8,
+                    price: USDC_PRICE,
                     token: USDC_8453
                 })
             ),

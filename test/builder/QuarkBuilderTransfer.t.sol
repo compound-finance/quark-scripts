@@ -161,7 +161,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.TransferActionContext({
                     amount: 1e6,
-                    price: 1e8,
+                    price: USDC_PRICE,
                     token: USDC_1,
                     assetSymbol: "USDC",
                     chainId: 1,
@@ -225,7 +225,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.TransferActionContext({
                     amount: 1e6,
-                    price: 1e8,
+                    price: USDC_PRICE,
                     token: USDC_1,
                     assetSymbol: "USDC",
                     chainId: 1,
@@ -333,7 +333,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.BridgeActionContext({
                     amount: 2e6,
-                    price: 1e8,
+                    price: USDC_PRICE,
                     token: USDC_1,
                     assetSymbol: "USDC",
                     chainId: 1,
@@ -355,7 +355,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.TransferActionContext({
                     amount: 5e6,
-                    price: 1e8,
+                    price: USDC_PRICE,
                     token: USDC_8453,
                     assetSymbol: "USDC",
                     chainId: 8453,
@@ -448,7 +448,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.BridgeActionContext({
                     amount: 2.1e6,
-                    price: 1e8,
+                    price: USDC_PRICE,
                     token: USDC_1,
                     assetSymbol: "USDC",
                     chainId: 1,
@@ -470,7 +470,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.TransferActionContext({
                     amount: 5e6,
-                    price: 1e8,
+                    price: USDC_PRICE,
                     token: USDC_8453,
                     assetSymbol: "USDC",
                     chainId: 8453,
@@ -563,7 +563,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.BridgeActionContext({
                     amount: 1.5e6,
-                    price: 1e8,
+                    price: USDC_PRICE,
                     token: USDC_1,
                     assetSymbol: "USDC",
                     chainId: 1,
@@ -585,7 +585,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.TransferActionContext({
                     amount: 3e6,
-                    price: 1e8,
+                    price: USDT_PRICE,
                     token: USDT_8453,
                     assetSymbol: "USDT",
                     chainId: 8453,
@@ -658,7 +658,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.TransferActionContext({
                     amount: 9.9e6,
-                    price: 1e8,
+                    price: USDC_PRICE,
                     token: USDC_1,
                     assetSymbol: "USDC",
                     chainId: 1,
@@ -768,7 +768,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.BridgeActionContext({
                     amount: 7.5e6,
-                    price: 1e8,
+                    price: USDC_PRICE,
                     token: USDC_1,
                     assetSymbol: "USDC",
                     chainId: 1,
@@ -790,7 +790,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.TransferActionContext({
                     amount: 11.4e6,
-                    price: 1e8,
+                    price: USDC_PRICE,
                     token: USDC_8453,
                     assetSymbol: "USDC",
                     chainId: 8453,

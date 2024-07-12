@@ -169,11 +169,11 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
                 Actions.SwapActionContext({
                     chainId: 1,
                     inputToken: USDC_1,
-                    inputTokenPrice: 1e8,
+                    inputTokenPrice: USDC_PRICE,
                     inputAssetSymbol: "USDC",
                     inputAmount: 3000e6,
                     outputToken: WETH_1,
-                    outputTokenPrice: 3000e8,
+                    outputTokenPrice: WETH_PRICE,
                     outputAssetSymbol: "WETH",
                     outputAmount: 1e18
                 })
@@ -240,11 +240,11 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
                 Actions.SwapActionContext({
                     chainId: 1,
                     inputToken: USDC_1,
-                    inputTokenPrice: 1e8,
+                    inputTokenPrice: USDC_PRICE,
                     inputAssetSymbol: "USDC",
                     inputAmount: 3000e6,
                     outputToken: WETH_1,
-                    outputTokenPrice: 3000e8,
+                    outputTokenPrice: WETH_PRICE,
                     outputAssetSymbol: "WETH",
                     outputAmount: 1e18
                 })
@@ -351,7 +351,7 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.BridgeActionContext({
                     amount: 1000e6,
-                    price: 1e8,
+                    price: USDC_PRICE,
                     token: USDC_1,
                     assetSymbol: "USDC",
                     chainId: 1,
@@ -374,11 +374,11 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
                 Actions.SwapActionContext({
                     chainId: 8453,
                     inputToken: USDC_8453,
-                    inputTokenPrice: 1e8,
+                    inputTokenPrice: USDC_PRICE,
                     inputAssetSymbol: "USDC",
                     inputAmount: 3000e6,
                     outputToken: WETH_8453,
-                    outputTokenPrice: 3000e8,
+                    outputTokenPrice: WETH_PRICE,
                     outputAssetSymbol: "WETH",
                     outputAmount: 1e18
                 })
@@ -482,7 +482,7 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.BridgeActionContext({
                     amount: 1001e6,
-                    price: 1e8,
+                    price: USDC_PRICE,
                     token: USDC_1,
                     assetSymbol: "USDC",
                     chainId: 1,
@@ -505,11 +505,11 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
                 Actions.SwapActionContext({
                     chainId: 8453,
                     inputToken: USDC_8453,
-                    inputTokenPrice: 1e8,
+                    inputTokenPrice: USDC_PRICE,
                     inputAssetSymbol: "USDC",
                     inputAmount: 3000e6,
                     outputToken: WETH_8453,
-                    outputTokenPrice: 3000e8,
+                    outputTokenPrice: WETH_PRICE,
                     outputAssetSymbol: "WETH",
                     outputAmount: 1e18
                 })
@@ -613,7 +613,7 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.BridgeActionContext({
                     amount: 500e6,
-                    price: 1e8,
+                    price: USDC_PRICE,
                     token: USDC_1,
                     assetSymbol: "USDC",
                     chainId: 1,
@@ -636,11 +636,11 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
                 Actions.SwapActionContext({
                     chainId: 8453,
                     inputToken: USDT_8453,
-                    inputTokenPrice: 1e8,
+                    inputTokenPrice: USDT_PRICE,
                     inputAssetSymbol: "USDT",
                     inputAmount: 3000e6,
                     outputToken: WETH_8453,
-                    outputTokenPrice: 3000e8,
+                    outputTokenPrice: WETH_PRICE,
                     outputAssetSymbol: "WETH",
                     outputAmount: 1e18
                 })
