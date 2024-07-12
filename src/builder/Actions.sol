@@ -152,10 +152,12 @@ library Actions {
 
     struct BorrowActionContext {
         uint256 amount;
+        string assetSymbol;
         uint256 chainId;
         uint256[] collateralAmounts;
         uint256[] collateralAssetPrices;
         address[] collateralAssets;
+        string[] collateralAssetSymbols;
         address comet;
         uint256 price;
         address token;
@@ -527,11 +529,13 @@ library Actions {
 
         // Construct Action
         BorrowActionContext memory repayActionContext = BorrowActionContext({
+            assetSymbol: borrowInput.assetSymbol,
             amount: borrowInput.amount,
             chainId: borrowInput.chainId,
             collateralAmounts: borrowInput.collateralAmounts,
             collateralAssetPrices: collateralAssetPrices,
             collateralAssets: collateralAssets,
+            collateralAssetSymbols: borrowInput.collateralAssetSymbols,
             comet: borrowInput.comet,
             price: borrowAssetPositions.usdPrice,
             token: borrowAssetPositions.asset

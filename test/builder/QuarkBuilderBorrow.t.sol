@@ -257,10 +257,12 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.BorrowActionContext({
                     amount: 1e6,
+                    assetSymbol: "USDC",
                     chainId: 1,
                     collateralAmounts: collateralAmounts,
                     collateralAssetPrices: collateralAssetPrices,
                     collateralAssets: collateralAssets,
+                    collateralAssetSymbols: collateralAssetSymbols,
                     comet: COMET,
                     price: 1e8,
                     token: usdc_(1)
@@ -375,10 +377,12 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.BorrowActionContext({
                     amount: 1e6,
+                    assetSymbol: "USDC",
                     chainId: 1,
                     collateralAmounts: collateralAmounts,
                     collateralAssetPrices: collateralAssetPrices,
                     collateralAssets: collateralAssets,
+                    collateralAssetSymbols: collateralAssetSymbols,
                     comet: COMET,
                     price: 1e8,
                     token: usdc_(1)
@@ -492,10 +496,12 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.BorrowActionContext({
                     amount: 1e6,
+                    assetSymbol: "USDC",
                     chainId: 1,
                     collateralAmounts: collateralAmounts,
                     collateralAssetPrices: collateralAssetPrices,
                     collateralAssets: collateralAssets,
+                    collateralAssetSymbols: collateralAssetSymbols,
                     comet: COMET,
                     price: 1e8,
                     token: usdc_(1)
@@ -672,10 +678,12 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.BorrowActionContext({
                     amount: 1e6,
+                    assetSymbol: "USDT",
                     chainId: 8453,
                     collateralAmounts: collateralAmounts,
                     collateralAssetPrices: collateralAssetPrices,
                     collateralAssets: collateralAssets,
+                    collateralAssetSymbols: collateralAssetSymbols,
                     comet: COMET,
                     price: 1e8,
                     token: usdt_(8453)
@@ -852,10 +860,12 @@ contract QuarkBuilderBorrowTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.BorrowActionContext({
                     amount: 1e18,
+                    assetSymbol: "WETH",
                     chainId: 8453,
                     collateralAmounts: collateralAmounts,
                     collateralAssetPrices: collateralAssetPrices,
                     collateralAssets: collateralAssets,
+                    collateralAssetSymbols: collateralAssetSymbols,
                     comet: COMET,
                     price: 3000e8,
                     token: weth_(8453)
