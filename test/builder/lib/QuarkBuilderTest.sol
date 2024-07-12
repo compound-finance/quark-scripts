@@ -207,7 +207,6 @@ contract QuarkBuilderTest {
         return Accounts.QuarkState({account: account, quarkNextNonce: nextNonce});
     }
 
-    // XXX where should these functions live?
     function stringArray(string memory string0, string memory string1, string memory string2, string memory string3)
         internal
         pure

@@ -73,7 +73,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 0.5e6}); // action costs .5 USDC
 
         uint256[] memory collateralAmounts = new uint256[](0);
-        string[] memory collateralTokenSymbols = new string[](0);
+        string[] memory collateralAssetSymbols = new string[](0);
 
         ChainPortfolio[] memory chainPortfolios = new ChainPortfolio[](1);
         chainPortfolios[0] = ChainPortfolio({
@@ -87,7 +87,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         vm.expectRevert(QuarkBuilder.MaxCostTooHigh.selector);
 
         builder.cometRepay(
-            repayIntent_(1e18, "WETH", 1, collateralAmounts, collateralTokenSymbols),
+            repayIntent_(1e18, "WETH", 1, collateralAmounts, collateralAssetSymbols),
             chainAccountsFromChainPortfolios(chainPortfolios),
             paymentUsdc_(maxCosts)
         );
@@ -122,8 +122,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                 1e6, // repaying 1 USDC
                 "USDC",
                 1,
-                collateralAmounts, // [1e18]
-                collateralAssetSymbols // [LINK]
+                collateralAmounts, // withdrawing 1 LINK
+                collateralAssetSymbols
             ),
             chainAccountsFromChainPortfolios(chainPortfolios),
             paymentUsd_()
@@ -233,14 +233,14 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         QuarkBuilder builder = new QuarkBuilder();
         QuarkBuilder.BuilderResult memory result = builder.cometRepay(
             repayIntent_(
-                1e6,
+                1e6, // repaying 1 USDC
                 "USDC",
                 1,
-                collateralAmounts, // [1e18]
-                collateralAssetSymbols // [LINK]
+                collateralAmounts, // withdrawing 1 LINK
+                collateralAssetSymbols
             ),
             chainAccountsFromChainPortfolios(chainPortfolios),
-            paymentUsdc_(maxCosts)
+            paymentUsdc_(maxCosts) // and paying with USDC
         );
 
         address cometRepayAndWithdrawMultipleAssetsAddress =
@@ -332,8 +332,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         uint256[] memory collateralAmounts = new uint256[](1);
         collateralAmounts[0] = 1e6;
 
-        string[] memory collateralTokenSymbols = new string[](1);
-        collateralTokenSymbols[0] = "USDC";
+        string[] memory collateralAssetSymbols = new string[](1);
+        collateralAssetSymbols[0] = "USDC";
 
         ChainPortfolio[] memory chainPortfolios = new ChainPortfolio[](2);
         chainPortfolios[0] = ChainPortfolio({
@@ -357,7 +357,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                 "WETH",
                 1,
                 collateralAmounts, // and withdrawing 1 USDC
-                collateralTokenSymbols
+                collateralAssetSymbols
             ),
             chainAccountsFromChainPortfolios(chainPortfolios),
             paymentUsdc_(maxCosts) // user is paying with USDC that is currently supplied as collateral
@@ -462,7 +462,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             account: address(0xa11ce),
             nextNonce: 12,
             assetSymbols: stringArray("USDC", "USDT", "LINK", "WETH"),
-            assetBalances: uintArray(4e6, 0, 0, 0)
+            assetBalances: uintArray(4e6, 0, 0, 0) // 4 USDC on mainnet
         });
         chainPortfolios[1] = ChainPortfolio({
             chainId: 8453,
@@ -475,7 +475,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         QuarkBuilder.BuilderResult memory result = builder.cometRepay(
             repayIntent_(
                 2e6,
-                "USDC", // repaying 2 USDC
+                "USDC", // repaying 2 USDC, bridged from mainnet to base
                 8453,
                 collateralAmounts,
                 collateralAssetSymbols
