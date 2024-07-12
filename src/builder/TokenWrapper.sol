@@ -37,7 +37,7 @@ library TokenWrapper {
         });
         pairs[2] = KnownWrapperTokenPair({
             chainId: 11155111,
-            wrapper: 0x98cec103AE046A31420508eaBe1494E71C3EE7a3,
+            wrapper: 0x2D5ee574e710219a521449679A4A7f2B43f046ad,
             underlyingSymbol: "ETH",
             underlyingToken: 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE,
             wrappedSymbol: "WETH"
