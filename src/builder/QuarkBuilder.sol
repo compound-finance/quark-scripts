@@ -83,6 +83,8 @@ contract QuarkBuilder {
         IQuarkWallet.QuarkOperation[] memory quarkOperations =
             new IQuarkWallet.QuarkOperation[](chainAccountsList.length);
 
+        bool useQuotecall = false; // TODO: calculate an actual value for useQuoteCall
+
         if (
             needsBridgedFunds(
                 repayIntent.assetSymbol, repayIntent.amount, repayIntent.chainId, chainAccountsList, payment
@@ -104,7 +106,7 @@ contract QuarkBuilder {
                     dstChainId: repayIntent.chainId,
                     recipient: repayIntent.repayer,
                     blockTimestamp: repayIntent.blockTimestamp,
-                    useQuotecall: false // TODO: pass in an actual value for useQuoteCall
+                    useQuotecall: useQuotecall
                 }),
                 chainAccountsList,
                 payment
@@ -152,6 +154,15 @@ contract QuarkBuilder {
             assertSufficientPaymentTokenBalances(
                 actions, chainAccountsList, repayIntent.chainId, supplementalPaymentTokenBalance
             );
+        }
+
+        // Merge operations that are from the same chain into one Multicall operation
+        (quarkOperations, actions) = QuarkOperationHelper.mergeSameChainOperations(quarkOperations, actions);
+
+        // Wrap operations around Paycall/Quotecall if payment is with token
+        if (payment.isToken) {
+            quarkOperations =
+                QuarkOperationHelper.wrapOperationsWithTokenPayment(quarkOperations, actions, payment, useQuotecall);
         }
 
         // Construct EIP712 digests

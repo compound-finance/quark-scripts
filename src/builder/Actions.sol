@@ -614,16 +614,6 @@ library Actions {
             expiry: repayInput.blockTimestamp + STANDARD_EXPIRY_BUFFER
         });
 
-        if (payment.isToken) {
-            // Wrap operation with paycall
-            quarkOperation = PaycallWrapper.wrap(
-                quarkOperation,
-                repayInput.chainId,
-                payment.currency,
-                PaymentInfo.findMaxCost(payment, repayInput.chainId)
-            );
-        }
-
         // Construct Action
         RepayActionContext memory repayActionContext = RepayActionContext({
             amount: repayInput.amount,
