@@ -98,7 +98,7 @@ library Actions {
         uint256 blockTimestamp;
     }
 
-    struct MatchaSwap {
+    struct ZeroExSwap {
         Accounts.ChainAccounts[] chainAccountsList;
         address entryPoint;
         bytes swapData;
@@ -108,6 +108,9 @@ library Actions {
         address buyToken;
         string buyAssetSymbol;
         uint256 expectedBuyAmount;
+        address feeToken;
+        string feeAssetSymbol;
+        uint256 feeAmount;
         uint256 chainId;
         address sender;
         uint256 blockTimestamp;
@@ -210,10 +213,15 @@ library Actions {
 
     struct SwapActionContext {
         uint256 chainId;
+        uint256 feeAmount;
+        string feeAssetSymbol;
+        address feeToken;
+        uint256 feeTokenPrice;
         uint256 inputAmount;
         string inputAssetSymbol;
         address inputToken;
         uint256 inputTokenPrice;
+        // Note: The output amount should be inclusive of the feeAmount
         uint256 outputAmount;
         string outputAssetSymbol;
         address outputToken;
@@ -891,7 +899,7 @@ library Actions {
         return (quarkOperation, action);
     }
 
-    function matchaSwap(MatchaSwap memory swap, PaymentInfo.Payment memory payment, bool useQuotecall)
+    function zeroExSwap(ZeroExSwap memory swap, PaymentInfo.Payment memory payment, bool useQuotecall)
         internal
         pure
         returns (IQuarkWallet.QuarkOperation memory, Action memory)
@@ -906,6 +914,9 @@ library Actions {
 
         Accounts.AssetPositions memory buyTokenAssetPositions =
             Accounts.findAssetPositions(swap.buyAssetSymbol, accounts.assetPositionsList);
+
+        Accounts.AssetPositions memory feeTokenAssetPositions =
+            Accounts.findAssetPositions(swap.feeAssetSymbol, accounts.assetPositionsList);
 
         Accounts.QuarkState memory accountState = Accounts.findQuarkState(swap.sender, accounts.quarkStates);
 
@@ -932,14 +943,18 @@ library Actions {
         // Construct Action
         SwapActionContext memory swapActionContext = SwapActionContext({
             chainId: swap.chainId,
+            feeAmount: swap.feeAmount,
+            feeAssetSymbol: swap.feeAssetSymbol,
+            feeToken: swap.feeToken,
+            feeTokenPrice: feeTokenAssetPositions.usdPrice,
+            inputAmount: swap.sellAmount,
+            inputAssetSymbol: swap.sellAssetSymbol,
             inputToken: swap.sellToken,
             inputTokenPrice: sellTokenAssetPositions.usdPrice,
-            inputAssetSymbol: swap.sellAssetSymbol,
-            inputAmount: swap.sellAmount,
-            outputToken: swap.buyToken,
-            outputTokenPrice: buyTokenAssetPositions.usdPrice,
+            outputAmount: swap.expectedBuyAmount,
             outputAssetSymbol: swap.buyAssetSymbol,
-            outputAmount: swap.expectedBuyAmount
+            outputToken: swap.buyToken,
+            outputTokenPrice: buyTokenAssetPositions.usdPrice
         });
         string memory paymentMethod;
         if (payment.isToken) {
