@@ -158,4 +158,29 @@ library EIP712Helper {
         bytes32 hashStruct = getHashStructForMultiQuarkOperation(ops, actions);
         return keccak256(abi.encodePacked("\x19\x01", MULTI_QUARK_OPERATION_DOMAIN_SEPARATOR, hashStruct));
     }
+
+    /**
+     * @dev Returns EIP712Data struct for a list of quark operations (and actions)
+     * @param quarkOperations A list of QuarkOperations in a MultiQuarkOperation
+     * @param actions A list of Actions containing metadata for each QuarkOperation
+     * @return eip712Data EIP712Data struct
+     */
+    function eip712DataForQuarkOperations(
+        IQuarkWallet.QuarkOperation[] memory quarkOperations,
+        Actions.Action[] memory actions
+    ) internal pure returns (EIP712Data memory eip712Data) {
+        if (quarkOperations.length == 1) {
+            eip712Data = EIP712Data({
+                digest: getDigestForQuarkOperation(quarkOperations[0], actions[0].quarkAccount, actions[0].chainId),
+                domainSeparator: getDomainSeparator(actions[0].quarkAccount, actions[0].chainId),
+                hashStruct: getHashStructForQuarkOperation(quarkOperations[0])
+            });
+        } else if (quarkOperations.length > 1) {
+            eip712Data = EIP712Data({
+                digest: getDigestForMultiQuarkOperation(quarkOperations, actions),
+                domainSeparator: MULTI_QUARK_OPERATION_DOMAIN_SEPARATOR,
+                hashStruct: getHashStructForMultiQuarkOperation(quarkOperations, actions)
+            });
+        }
+    }
 }
