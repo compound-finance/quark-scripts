@@ -21,7 +21,6 @@ import {PaycallWrapper} from "src/builder/PaycallWrapper.sol";
 import {PaymentInfo} from "src/builder/PaymentInfo.sol";
 
 contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
-    uint256 constant BLOCK_TIMESTAMP = 123_456_789;
     address constant ZERO_EX_ENTRY_POINT = 0xDef1C0ded9bec7F1a1670819833240f027b25EfF;
     bytes constant ZERO_EX_SWAP_DATA = hex"abcdef";
 
