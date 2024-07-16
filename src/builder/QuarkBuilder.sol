@@ -1022,7 +1022,7 @@ contract QuarkBuilder {
             // If the asset has a wrapper counterpart, wrap/unwrap the token to cover the transferIntent amount
             string memory counterpartSymbol = TokenWrapper.getWrapperCounterpartSymbol(chainId, assetSymbol);
 
-            // Wrap/unwrap the token to cover the transferIntent amount
+            // Wrap/unwrap the token to cover the amount
             (IQuarkWallet.QuarkOperation memory wrapOrUnwrapOperation, Actions.Action memory wrapOrUnwrapAction) =
             Actions.wrapOrUnwrapAsset(
                 Actions.WrapOrUnwrapAsset({
