@@ -12,6 +12,8 @@ import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
 import {CometSupplyMultipleAssetsAndBorrow} from "src/DeFiScripts.sol";
 import {Paycall} from "src/Paycall.sol";
 import {Strings} from "src/builder/Strings.sol";
+import {Multicall} from "src/Multicall.sol";
+import {WrapperActions} from "src/WrapperScripts.sol";
 
 contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
     function borrowIntent_(
@@ -157,6 +159,117 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
         uint256[] memory collateralTokenPrices = new uint256[](1);
         collateralTokenPrices[0] = LINK_PRICE;
 
+        assertEq(
+            result.actions[0].actionContext,
+            abi.encode(
+                Actions.BorrowActionContext({
+                    amount: 1e6,
+                    assetSymbol: "USDC",
+                    chainId: 1,
+                    collateralAmounts: collateralAmounts,
+                    collateralTokenPrices: collateralTokenPrices,
+                    collateralTokens: collateralTokens,
+                    collateralAssetSymbols: collateralAssetSymbols,
+                    comet: COMET_1,
+                    price: USDC_PRICE,
+                    token: usdc_(1)
+                })
+            ),
+            "action context encoded from BorrowActionContext"
+        );
+
+        // TODO: Check the contents of the EIP712 data
+        assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
+        assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
+        assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
+    }
+
+    function testBorrowWithAutoWrapper() public {
+        uint256[] memory collateralAmounts = new uint256[](1);
+        collateralAmounts[0] = 1e18;
+
+        string[] memory collateralAssetSymbols = new string[](1);
+        collateralAssetSymbols[0] = "WETH";
+
+        address[] memory collateralTokens = new address[](1);
+        collateralTokens[0] = weth_(1);
+
+        uint256[] memory collateralTokenPrices = new uint256[](1);
+        collateralTokenPrices[0] = WETH_PRICE;
+
+        ChainPortfolio[] memory chainPortfolios = new ChainPortfolio[](2);
+        chainPortfolios[0] = ChainPortfolio({
+            chainId: 1,
+            account: address(0xa11ce),
+            nextNonce: 12,
+            assetSymbols: stringArray("USDC", "ETH", "LINK", "WETH"),
+            assetBalances: uintArray(0, 10e18, 0, 0) // user has 10 ETH
+        });
+        chainPortfolios[1] = ChainPortfolio({
+            chainId: 8453,
+            account: address(0xb0b),
+            nextNonce: 2,
+            assetSymbols: stringArray("USDC", "ETH", "LINK", "WETH"),
+            assetBalances: uintArray(0, 0, 0, 0)
+        });
+
+        QuarkBuilder builder = new QuarkBuilder();
+        QuarkBuilder.BuilderResult memory result = builder.cometBorrow(
+            borrowIntent_(
+                1e6,
+                "USDC",
+                1,
+                collateralAmounts, // [10e18]
+                collateralAssetSymbols // [WETH]
+            ),
+            chainAccountsFromChainPortfolios(chainPortfolios),
+            paymentUsd_()
+        );
+
+        assertEq(result.paymentCurrency, "usd", "usd currency");
+
+        address multicallAddress = CodeJarHelper.getCodeAddress(type(Multicall).creationCode);
+        address wrapperActionsAddress = CodeJarHelper.getCodeAddress(type(WrapperActions).creationCode);
+        address cometSupplyMultipleAssetsAndBorrowAddress =
+            CodeJarHelper.getCodeAddress(type(CometSupplyMultipleAssetsAndBorrow).creationCode);
+        // Check the quark operations
+        assertEq(result.quarkOperations.length, 1, "one merged operation");
+        assertEq(
+            result.quarkOperations[0].scriptAddress,
+            multicallAddress,
+            "script address is correct given the code jar address on mainnet"
+        );
+        address[] memory callContracts = new address[](2);
+        callContracts[0] = wrapperActionsAddress;
+        callContracts[1] = cometSupplyMultipleAssetsAndBorrowAddress;
+        bytes[] memory callDatas = new bytes[](2);
+        callDatas[0] =
+            abi.encodeWithSelector(WrapperActions.wrapETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18);
+        callDatas[1] = abi.encodeCall(
+            CometSupplyMultipleAssetsAndBorrow.run, (COMET_1, collateralTokens, collateralAmounts, usdc_(1), 1e6)
+        );
+
+        assertEq(
+            result.quarkOperations[0].scriptCalldata,
+            abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
+            "calldata is Multicall.run([wrapperActionsAddress, cometSupplyMultipleAssetsAndBorrowAddress], [WrapperActions.wrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 10e18), CometSupplyMultipleAssetsAndBorrow.run(COMET_1, collateralTokens, collateralAmounts, usdc_(1), 1e6)"
+        );
+        assertEq(result.quarkOperations[0].scriptSources.length, 3);
+        assertEq(result.quarkOperations[0].scriptSources[0], type(WrapperActions).creationCode);
+        assertEq(result.quarkOperations[0].scriptSources[1], type(CometSupplyMultipleAssetsAndBorrow).creationCode);
+        assertEq(result.quarkOperations[0].scriptSources[2], type(Multicall).creationCode);
+        assertEq(
+            result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
+        );
+
+        // check the actions
+        assertEq(result.actions.length, 1, "one action");
+        assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
+        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[0].actionType, "BORROW", "action type is 'BORROW'");
+        assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
+        assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
+        assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(

@@ -116,6 +116,20 @@ contract QuarkBuilder {
             }
         }
 
+        // Auto-wrap
+        checkAndInsertWrapOrUnwrapAction(
+            actions,
+            quarkOperations,
+            chainAccountsList,
+            payment,
+            repayIntent.assetSymbol,
+            repayIntent.amount,
+            repayIntent.chainId,
+            repayIntent.repayer,
+            repayIntent.blockTimestamp,
+            useQuotecall
+        );
+
         (IQuarkWallet.QuarkOperation memory repayQuarkOperations, Actions.Action memory repayActions) = Actions
             .cometRepay(
             Actions.CometRepayInput({
@@ -274,6 +288,22 @@ contract QuarkBuilder {
                     List.addAction(actions, bridgeActions[i]);
                 }
             }
+        }
+
+        // Auto-wrap on collateral supply
+        for (uint256 i = 0; i < borrowIntent.collateralAssetSymbols.length; ++i) {
+            checkAndInsertWrapOrUnwrapAction(
+                actions,
+                quarkOperations,
+                chainAccountsList,
+                payment,
+                borrowIntent.collateralAssetSymbols[i],
+                borrowIntent.collateralAmounts[i],
+                borrowIntent.chainId,
+                borrowIntent.borrower,
+                borrowIntent.blockTimestamp,
+                useQuotecall
+            );
         }
 
         (IQuarkWallet.QuarkOperation memory borrowQuarkOperation, Actions.Action memory borrowAction) = Actions
