@@ -1028,7 +1028,7 @@ contract QuarkBuilder {
                 Actions.WrapOrUnwrapAsset({
                     chainAccountsList: chainAccountsList,
                     assetSymbol: counterpartSymbol,
-                    // NOTE: Wrap/unwrap the amount needed to cover the transferIntent amount
+                    // NOTE: Wrap/unwrap the amount needed to cover the amount
                     amount: amount - balanceOnOriginalAsset,
                     chainId: chainId,
                     sender: account,
