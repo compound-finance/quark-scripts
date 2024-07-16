@@ -296,6 +296,8 @@ contract QuarkBuilderTest {
             return (usdt_(chainId), 6, USDT_PRICE);
         } else if (Strings.stringEq(assetSymbol, "WETH")) {
             return (weth_(chainId), 18, WETH_PRICE);
+        } else if (Strings.stringEq(assetSymbol, "ETH")) {
+            return (eth_(), 18, WETH_PRICE);
         } else if (Strings.stringEq(assetSymbol, "LINK")) {
             return (link_(chainId), 18, LINK_PRICE);
         } else {
