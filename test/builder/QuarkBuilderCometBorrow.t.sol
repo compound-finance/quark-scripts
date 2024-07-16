@@ -252,7 +252,7 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[0].scriptCalldata,
             abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
-            "calldata is Multicall.run([wrapperActionsAddress, cometSupplyMultipleAssetsAndBorrowAddress], [WrapperActions.wrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18), CometSupplyMultipleAssetsAndBorrow.run(COMET_1, collateralTokens, collateralAmounts, usdc_(1), 1e6)"
+            "calldata is Multicall.run([wrapperActionsAddress, cometSupplyMultipleAssetsAndBorrowAddress], [WrapperActions.wrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 10e18), CometSupplyMultipleAssetsAndBorrow.run(COMET_1, collateralTokens, collateralAmounts, usdc_(1), 1e6)"
         );
         assertEq(result.quarkOperations[0].scriptSources.length, 3);
         assertEq(result.quarkOperations[0].scriptSources[0], type(WrapperActions).creationCode);
