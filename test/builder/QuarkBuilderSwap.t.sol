@@ -197,7 +197,7 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
                     feeAmount: 10,
                     feeAssetSymbol: "WETH",
                     feeToken: WETH_1,
-                    feeTokenPrice: 3000e8,
+                    feeTokenPrice: WETH_PRICE,
                     inputToken: USDC_1,
                     inputTokenPrice: USDC_PRICE,
                     inputAssetSymbol: "USDC",
