@@ -211,7 +211,7 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
     }
 
-    function testLocalSwapWithAutoWrapperActiveSucceeds() public {
+    function testLocalSwapWithAutoWrapperSucceeds() public {
         QuarkBuilder builder = new QuarkBuilder();
         address account = address(0xa11ce);
         Accounts.ChainAccounts[] memory chainAccountsList = new Accounts.ChainAccounts[](1);
