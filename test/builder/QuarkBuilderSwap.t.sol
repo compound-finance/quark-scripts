@@ -21,8 +21,8 @@ import {PaycallWrapper} from "src/builder/PaycallWrapper.sol";
 import {PaymentInfo} from "src/builder/PaymentInfo.sol";
 
 contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
-    address constant MATCHA_ENTRY_POINT = 0xDef1C0ded9bec7F1a1670819833240f027b25EfF;
-    bytes constant MATCHA_SWAP_DATA = hex"abcdef";
+    address constant ZERO_EX_ENTRY_POINT = 0xDef1C0ded9bec7F1a1670819833240f027b25EfF;
+    bytes constant ZERO_EX_SWAP_DATA = hex"abcdef";
 
     function buyUsdc_(
         uint256 chainId,
@@ -31,12 +31,12 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
         uint256 expectedBuyAmount,
         address sender,
         uint256 blockTimestamp
-    ) internal pure returns (QuarkBuilder.MatchaSwapIntent memory) {
+    ) internal pure returns (QuarkBuilder.ZeroExSwapIntent memory) {
         address usdc = usdc_(chainId);
-        return matchaSwap_(
+        return zeroExSwap_(
             chainId,
-            MATCHA_ENTRY_POINT,
-            MATCHA_SWAP_DATA,
+            ZERO_EX_ENTRY_POINT,
+            ZERO_EX_SWAP_DATA,
             sellToken,
             sellAmount,
             usdc,
@@ -53,12 +53,12 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
         uint256 expectedBuyAmount,
         address sender,
         uint256 blockTimestamp
-    ) internal pure returns (QuarkBuilder.MatchaSwapIntent memory) {
+    ) internal pure returns (QuarkBuilder.ZeroExSwapIntent memory) {
         address weth = weth_(chainId);
-        return matchaSwap_(
+        return zeroExSwap_(
             chainId,
-            MATCHA_ENTRY_POINT,
-            MATCHA_SWAP_DATA,
+            ZERO_EX_ENTRY_POINT,
+            ZERO_EX_SWAP_DATA,
             sellToken,
             sellAmount,
             weth,
@@ -68,7 +68,7 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
         );
     }
 
-    function matchaSwap_(
+    function zeroExSwap_(
         uint256 chainId,
         address entryPoint,
         bytes memory swapData,
@@ -78,8 +78,8 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
         uint256 expectedBuyAmount,
         address sender,
         uint256 blockTimestamp
-    ) internal pure returns (QuarkBuilder.MatchaSwapIntent memory) {
-        return QuarkBuilder.MatchaSwapIntent({
+    ) internal pure returns (QuarkBuilder.ZeroExSwapIntent memory) {
+        return QuarkBuilder.ZeroExSwapIntent({
             chainId: chainId,
             entryPoint: entryPoint,
             swapData: swapData,
@@ -87,6 +87,8 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
             sellAmount: sellAmount,
             buyToken: buyToken,
             expectedBuyAmount: expectedBuyAmount,
+            feeToken: buyToken,
+            feeAmount: 10,
             sender: sender,
             blockTimestamp: blockTimestamp
         });
@@ -172,8 +174,8 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
         );
         assertEq(
             result.quarkOperations[0].scriptCalldata,
-            abi.encodeCall(ApproveAndSwap.run, (MATCHA_ENTRY_POINT, USDC_1, 3000e6, WETH_1, 1e18, MATCHA_SWAP_DATA)),
-            "calldata is ApproveAndSwap.run(MATCHA_ENTRY_POINT, USDC_1, 3500e6, WETH_1, 1e18, MATCHA_SWAP_DATA);"
+            abi.encodeCall(ApproveAndSwap.run, (ZERO_EX_ENTRY_POINT, USDC_1, 3000e6, WETH_1, 1e18, ZERO_EX_SWAP_DATA)),
+            "calldata is ApproveAndSwap.run(ZERO_EX_ENTRY_POINT, USDC_1, 3500e6, WETH_1, 1e18, ZERO_EX_SWAP_DATA);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 3 days, "expiry is current blockTimestamp + 3 days"
@@ -192,6 +194,10 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.SwapActionContext({
                     chainId: 1,
+                    feeAmount: 10,
+                    feeAssetSymbol: "WETH",
+                    feeToken: WETH_1,
+                    feeTokenPrice: WETH_PRICE,
                     inputToken: USDC_1,
                     inputTokenPrice: USDC_PRICE,
                     inputAssetSymbol: "USDC",
@@ -268,11 +274,11 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
         callDatas[0] =
             abi.encodeWithSelector(WrapperActions.wrapETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18);
         callDatas[1] =
-            abi.encodeCall(ApproveAndSwap.run, (MATCHA_ENTRY_POINT, WETH_1, 1e18, USDC_1, 3000e6, MATCHA_SWAP_DATA));
+            abi.encodeCall(ApproveAndSwap.run, (ZERO_EX_ENTRY_POINT, WETH_1, 1e18, USDC_1, 3000e6, ZERO_EX_SWAP_DATA));
         assertEq(
             result.quarkOperations[0].scriptCalldata,
             abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
-            "calldata is Multicall.run([wrapperActionsAddress, approveAndSwapAddress], [WrapperActions.wrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18), ApproveAndSwap.run (MATCHA_ENTRY_POINT, WETH_1, 1e18, USDC_1, 3000e6,  MATCHA_SWAP_DATA)]);"
+            "calldata is Multicall.run([wrapperActionsAddress, approveAndSwapAddress], [WrapperActions.wrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18), ApproveAndSwap.run (ZERO_EX_ENTRY_POINT, WETH_1, 1e18, USDC_1, 3000e6,  ZERO_EX_SWAP_DATA)]);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 3 days, "expiry is current blockTimestamp + 3 days"
@@ -291,6 +297,10 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.SwapActionContext({
                     chainId: 1,
+                    feeAmount: 10,
+                    feeAssetSymbol: "USDC",
+                    feeToken: USDC_1,
+                    feeTokenPrice: USDC_PRICE,
                     inputToken: WETH_1,
                     inputTokenPrice: WETH_PRICE,
                     inputAssetSymbol: "WETH",
@@ -340,11 +350,11 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
                 Paycall.run.selector,
                 approveAndSwapAddress,
                 abi.encodeWithSelector(
-                    ApproveAndSwap.run.selector, MATCHA_ENTRY_POINT, USDC_1, 3000e6, WETH_1, 1e18, MATCHA_SWAP_DATA
+                    ApproveAndSwap.run.selector, ZERO_EX_ENTRY_POINT, USDC_1, 3000e6, WETH_1, 1e18, ZERO_EX_SWAP_DATA
                 ),
                 5e6
             ),
-            "calldata is Paycall.run(ApproveAndSwap.run(MATCHA_ENTRY_POINT, USDC_1, 3500e6, WETH_1, 1e18, MATCHA_SWAP_DATA), 5e6);"
+            "calldata is Paycall.run(ApproveAndSwap.run(ZERO_EX_ENTRY_POINT, USDC_1, 3500e6, WETH_1, 1e18, ZERO_EX_SWAP_DATA), 5e6);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 3 days, "expiry is current blockTimestamp + 3 days"
@@ -362,6 +372,10 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.SwapActionContext({
                     chainId: 1,
+                    feeAmount: 10,
+                    feeAssetSymbol: "WETH",
+                    feeToken: WETH_1,
+                    feeTokenPrice: WETH_PRICE,
                     inputToken: USDC_1,
                     inputTokenPrice: USDC_PRICE,
                     inputAssetSymbol: "USDC",
@@ -453,9 +467,9 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[1].scriptCalldata,
             abi.encodeCall(
-                ApproveAndSwap.run, (MATCHA_ENTRY_POINT, USDC_8453, 3000e6, WETH_8453, 1e18, MATCHA_SWAP_DATA)
+                ApproveAndSwap.run, (ZERO_EX_ENTRY_POINT, USDC_8453, 3000e6, WETH_8453, 1e18, ZERO_EX_SWAP_DATA)
             ),
-            "calldata is ApproveAndSwap.run(MATCHA_ENTRY_POINT, USDC_8453, 3500e6, WETH_8453, 1e18, MATCHA_SWAP_DATA);"
+            "calldata is ApproveAndSwap.run(ZERO_EX_ENTRY_POINT, USDC_8453, 3500e6, WETH_8453, 1e18, ZERO_EX_SWAP_DATA);"
         );
         assertEq(
             result.quarkOperations[1].expiry, BLOCK_TIMESTAMP + 3 days, "expiry is current blockTimestamp + 3 days"
@@ -496,6 +510,10 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.SwapActionContext({
                     chainId: 8453,
+                    feeAmount: 10,
+                    feeAssetSymbol: "WETH",
+                    feeToken: WETH_8453,
+                    feeTokenPrice: WETH_PRICE,
                     inputToken: USDC_8453,
                     inputTokenPrice: USDC_PRICE,
                     inputAssetSymbol: "USDC",
@@ -577,16 +595,16 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
                 approveAndSwapAddress,
                 abi.encodeWithSelector(
                     ApproveAndSwap.run.selector,
-                    MATCHA_ENTRY_POINT,
+                    ZERO_EX_ENTRY_POINT,
                     USDC_8453,
                     3000e6,
                     WETH_8453,
                     1e18,
-                    MATCHA_SWAP_DATA
+                    ZERO_EX_SWAP_DATA
                 ),
                 1e6
             ),
-            "calldata is Paycall.run(ApproveAndSwap.run(MATCHA_ENTRY_POINT, USDC_8453, 3500e6, WETH_8453, 1e18, MATCHA_SWAP_DATA), 5e6);"
+            "calldata is Paycall.run(ApproveAndSwap.run(ZERO_EX_ENTRY_POINT, USDC_8453, 3500e6, WETH_8453, 1e18, ZERO_EX_SWAP_DATA), 5e6);"
         );
         assertEq(
             result.quarkOperations[1].expiry, BLOCK_TIMESTAMP + 3 days, "expiry is current blockTimestamp + 3 days"
@@ -627,6 +645,10 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.SwapActionContext({
                     chainId: 8453,
+                    feeAmount: 10,
+                    feeAssetSymbol: "WETH",
+                    feeToken: WETH_8453,
+                    feeTokenPrice: WETH_PRICE,
                     inputToken: USDC_8453,
                     inputTokenPrice: USDC_PRICE,
                     inputAssetSymbol: "USDC",
@@ -703,16 +725,16 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
                 approveAndSwapAddress,
                 abi.encodeWithSelector(
                     ApproveAndSwap.run.selector,
-                    MATCHA_ENTRY_POINT,
+                    ZERO_EX_ENTRY_POINT,
                     USDT_8453,
                     3000e6,
                     WETH_8453,
                     1e18,
-                    MATCHA_SWAP_DATA
+                    ZERO_EX_SWAP_DATA
                 ),
                 3500e6
             ),
-            "calldata is Paycall.run(ApproveAndSwap.run(MATCHA_ENTRY_POINT, USDT_8453, 3500e6, WETH_8453, 1e18, MATCHA_SWAP_DATA), 3500e6);"
+            "calldata is Paycall.run(ApproveAndSwap.run(ZERO_EX_ENTRY_POINT, USDT_8453, 3500e6, WETH_8453, 1e18, ZERO_EX_SWAP_DATA), 3500e6);"
         );
         assertEq(
             result.quarkOperations[1].scriptAddress,
@@ -758,6 +780,10 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.SwapActionContext({
                     chainId: 8453,
+                    feeAmount: 10,
+                    feeAssetSymbol: "WETH",
+                    feeToken: WETH_8453,
+                    feeTokenPrice: WETH_PRICE,
                     inputToken: USDT_8453,
                     inputTokenPrice: USDT_PRICE,
                     inputAssetSymbol: "USDT",

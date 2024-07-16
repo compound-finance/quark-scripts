@@ -19,7 +19,7 @@ import {List} from "./List.sol";
 contract QuarkBuilder {
     /* ===== Constants ===== */
 
-    string constant VERSION = "0.0.1";
+    string constant VERSION = "0.0.2";
 
     /* ===== Custom Errors ===== */
 
@@ -734,7 +734,7 @@ contract QuarkBuilder {
         });
     }
 
-    struct MatchaSwapIntent {
+    struct ZeroExSwapIntent {
         uint256 chainId;
         address entryPoint;
         bytes swapData;
@@ -742,12 +742,14 @@ contract QuarkBuilder {
         uint256 sellAmount;
         address buyToken;
         uint256 expectedBuyAmount;
+        address feeToken;
+        uint256 feeAmount;
         address sender;
         uint256 blockTimestamp;
     }
 
     function swap(
-        MatchaSwapIntent memory swapIntent,
+        ZeroExSwapIntent memory swapIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
     ) external pure returns (BuilderResult memory) {
@@ -760,6 +762,8 @@ contract QuarkBuilder {
             Accounts.findAssetPositions(swapIntent.sellToken, swapIntent.chainId, chainAccountsList).symbol;
         string memory buyAssetSymbol =
             Accounts.findAssetPositions(swapIntent.buyToken, swapIntent.chainId, chainAccountsList).symbol;
+        string memory feeAssetSymbol =
+            Accounts.findAssetPositions(swapIntent.feeToken, swapIntent.chainId, chainAccountsList).symbol;
         assertFundsAvailable(swapIntent.chainId, sellAssetSymbol, swapIntent.sellAmount, chainAccountsList, payment);
 
         // TODO: When should we use quotecall?
@@ -839,8 +843,8 @@ contract QuarkBuilder {
         );
 
         // Then, swap `amount` of `assetSymbol` to `recipient`
-        (IQuarkWallet.QuarkOperation memory operation, Actions.Action memory action) = Actions.matchaSwap(
-            Actions.MatchaSwap({
+        (IQuarkWallet.QuarkOperation memory operation, Actions.Action memory action) = Actions.zeroExSwap(
+            Actions.ZeroExSwap({
                 chainAccountsList: chainAccountsList,
                 entryPoint: swapIntent.entryPoint,
                 swapData: swapIntent.swapData,
@@ -850,6 +854,9 @@ contract QuarkBuilder {
                 buyToken: swapIntent.buyToken,
                 buyAssetSymbol: buyAssetSymbol,
                 expectedBuyAmount: swapIntent.expectedBuyAmount,
+                feeToken: swapIntent.feeToken,
+                feeAssetSymbol: feeAssetSymbol,
+                feeAmount: swapIntent.feeAmount,
                 chainId: swapIntent.chainId,
                 sender: swapIntent.sender,
                 blockTimestamp: swapIntent.blockTimestamp
