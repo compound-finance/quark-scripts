@@ -1017,8 +1017,8 @@ contract QuarkBuilder {
         bool useQuotecall
     ) internal pure {
         // Check if inserting wrapOrUnwrap action is necessary
-        uint256 balanceOnOriginalAsset = Accounts.getBalanceOnChain(assetSymbol, chainId, chainAccountsList);
-        if (balanceOnOriginalAsset < amount && TokenWrapper.hasWrapperContract(chainId, assetSymbol)) {
+        uint256 assetBalanceOnChain = Accounts.getBalanceOnChain(assetSymbol, chainId, chainAccountsList);
+        if (assetBalanceOnChain < amount && TokenWrapper.hasWrapperContract(chainId, assetSymbol)) {
             // If the asset has a wrapper counterpart, wrap/unwrap the token to cover the transferIntent amount
             string memory counterpartSymbol = TokenWrapper.getWrapperCounterpartSymbol(chainId, assetSymbol);
 
@@ -1029,7 +1029,7 @@ contract QuarkBuilder {
                     chainAccountsList: chainAccountsList,
                     assetSymbol: counterpartSymbol,
                     // NOTE: Wrap/unwrap the amount needed to cover the amount
-                    amount: amount - balanceOnOriginalAsset,
+                    amount: amount - assetBalanceOnChain,
                     chainId: chainId,
                     sender: account,
                     blockTimestamp: blockTimestamp
