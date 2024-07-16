@@ -15,12 +15,36 @@ import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
 import {QuarkBuilder} from "src/builder/QuarkBuilder.sol";
 import {Paycall} from "src/Paycall.sol";
 import {Quotecall} from "src/Quotecall.sol";
+import {Multicall} from "src/Multicall.sol";
+import {WrapperActions} from "src/WrapperScripts.sol";
 import {PaycallWrapper} from "src/builder/PaycallWrapper.sol";
 import {PaymentInfo} from "src/builder/PaymentInfo.sol";
 
 contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
     address constant MATCHA_ENTRY_POINT = 0xDef1C0ded9bec7F1a1670819833240f027b25EfF;
     bytes constant MATCHA_SWAP_DATA = hex"abcdef";
+
+    function buyUsdc_(
+        uint256 chainId,
+        address sellToken,
+        uint256 sellAmount,
+        uint256 expectedBuyAmount,
+        address sender,
+        uint256 blockTimestamp
+    ) internal pure returns (QuarkBuilder.MatchaSwapIntent memory) {
+        address usdc = usdc_(chainId);
+        return matchaSwap_(
+            chainId,
+            MATCHA_ENTRY_POINT,
+            MATCHA_SWAP_DATA,
+            sellToken,
+            sellAmount,
+            usdc,
+            expectedBuyAmount,
+            sender,
+            blockTimestamp
+        );
+    }
 
     function buyWeth_(
         uint256 chainId,
@@ -176,6 +200,105 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
                     outputTokenPrice: WETH_PRICE,
                     outputAssetSymbol: "WETH",
                     outputAmount: 1e18
+                })
+            ),
+            "action context encoded from SwapActionContext"
+        );
+
+        // TODO: Check the contents of the EIP712 data
+        assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
+        assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
+        assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
+    }
+
+    function testLocalSwapWithAutoWrapperActiveSucceeds() public {
+        QuarkBuilder builder = new QuarkBuilder();
+        address account = address(0xa11ce);
+        Accounts.ChainAccounts[] memory chainAccountsList = new Accounts.ChainAccounts[](1);
+        // Custom setup to hold just ETH (for auto wrap later)
+        Accounts.AssetPositions[] memory assetPositionsList = new Accounts.AssetPositions[](3);
+        assetPositionsList[0] = Accounts.AssetPositions({
+            asset: eth_(),
+            symbol: "ETH",
+            decimals: 18,
+            usdPrice: 3500_0000_0000,
+            accountBalances: accountBalances_(account, 1e18)
+        });
+        assetPositionsList[1] = Accounts.AssetPositions({
+            asset: weth_(1),
+            symbol: "WETH",
+            decimals: 18,
+            usdPrice: WETH_PRICE,
+            accountBalances: accountBalances_(account, 0)
+        });
+        assetPositionsList[2] = Accounts.AssetPositions({
+            asset: usdc_(1),
+            symbol: "USDC",
+            decimals: 6,
+            usdPrice: 1_0000_0000,
+            accountBalances: accountBalances_(account, 10e6)
+        });
+        chainAccountsList[0] = Accounts.ChainAccounts({
+            chainId: 1,
+            quarkStates: quarkStates_(address(0xa11ce), 12),
+            assetPositionsList: assetPositionsList
+        });
+        QuarkBuilder.BuilderResult memory result = builder.swap(
+            buyUsdc_(1, weth_(1), 1e18, 3000e6, address(0xa11ce), BLOCK_TIMESTAMP), // swap 1 ETH on chain 1 to 3000 USDC
+            chainAccountsList, // holding 1ETH in total in chains 1
+            paymentUsd_()
+        );
+
+        assertEq(result.paymentCurrency, "usd", "usd currency");
+
+        address multicallAddress = CodeJarHelper.getCodeAddress(type(Multicall).creationCode);
+        address wrapperActionsAddress = CodeJarHelper.getCodeAddress(type(WrapperActions).creationCode);
+        address approveAndSwapAddress = CodeJarHelper.getCodeAddress(type(ApproveAndSwap).creationCode);
+        // Check the quark operations
+        assertEq(result.quarkOperations.length, 1, "one merged operation");
+        assertEq(
+            result.quarkOperations[0].scriptAddress,
+            multicallAddress,
+            "script address is correct given the code jar address on mainnet"
+        );
+        address[] memory callContracts = new address[](2);
+        callContracts[0] = wrapperActionsAddress;
+        callContracts[1] = approveAndSwapAddress;
+        bytes[] memory callDatas = new bytes[](2);
+        callDatas[0] =
+            abi.encodeWithSelector(WrapperActions.wrapETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18);
+        callDatas[1] =
+            abi.encodeCall(ApproveAndSwap.run, (MATCHA_ENTRY_POINT, WETH_1, 1e18, USDC_1, 3000e6, MATCHA_SWAP_DATA));
+        assertEq(
+            result.quarkOperations[0].scriptCalldata,
+            abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
+            "calldata is Multicall.run([wrapperActionsAddress, approveAndSwapAddress], [WrapperActions.wrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 01e18), ApproveAndSwap.run (MATCHA_ENTRY_POINT, WETH_1, 1e18, USDC_1, 3000e6,  MATCHA_SWAP_DATA)]);"
+        );
+        assertEq(
+            result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 3 days, "expiry is current blockTimestamp + 3 days"
+        );
+
+        // check the actions
+        assertEq(result.actions.length, 1, "one action");
+        assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
+        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce does the swap");
+        assertEq(result.actions[0].actionType, "SWAP", "action type is 'SWAP'");
+        assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
+        assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
+        assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
+        assertEq(
+            result.actions[0].actionContext,
+            abi.encode(
+                Actions.SwapActionContext({
+                    chainId: 1,
+                    inputToken: WETH_1,
+                    inputTokenPrice: WETH_PRICE,
+                    inputAssetSymbol: "WETH",
+                    inputAmount: 1e18,
+                    outputToken: USDC_1,
+                    outputTokenPrice: USDC_PRICE,
+                    outputAssetSymbol: "USDC",
+                    outputAmount: 3000e6
                 })
             ),
             "action context encoded from SwapActionContext"
