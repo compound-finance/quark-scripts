@@ -78,10 +78,8 @@ contract QuarkBuilder {
             repayIntent.chainId, repayIntent.assetSymbol, repayIntent.amount, chainAccountsList, payment
         );
 
-        uint256 actionIndex = 0;
-        Actions.Action[] memory actions = new Actions.Action[](chainAccountsList.length);
-        IQuarkWallet.QuarkOperation[] memory quarkOperations =
-            new IQuarkWallet.QuarkOperation[](chainAccountsList.length);
+        List.DynamicArray memory actions = List.newList();
+        List.DynamicArray memory quarkOperations = List.newList();
 
         bool useQuotecall = false; // TODO: calculate an actual value for useQuoteCall
 
@@ -113,13 +111,13 @@ contract QuarkBuilder {
             );
 
             for (uint256 i = 0; i < bridgeQuarkOperations.length; ++i) {
-                quarkOperations[actionIndex] = bridgeQuarkOperations[i];
-                actions[actionIndex] = bridgeActions[i];
-                actionIndex++;
+                List.addAction(actions, bridgeActions[i]);
+                List.addQuarkOperation(quarkOperations, bridgeQuarkOperations[i]);
             }
         }
 
-        (quarkOperations[actionIndex], actions[actionIndex]) = Actions.cometRepay(
+        (IQuarkWallet.QuarkOperation memory repayQuarkOperations, Actions.Action memory repayActions) = Actions
+            .cometRepay(
             Actions.CometRepayInput({
                 chainAccountsList: chainAccountsList,
                 assetSymbol: repayIntent.assetSymbol,
@@ -134,11 +132,12 @@ contract QuarkBuilder {
             payment
         );
 
-        actionIndex++;
+        List.addAction(actions, repayActions);
+        List.addQuarkOperation(quarkOperations, repayQuarkOperations);
 
-        // Truncate actions and quark operations
-        actions = Actions.truncate(actions, actionIndex);
-        quarkOperations = Actions.truncate(quarkOperations, actionIndex);
+        // Convert actions and quark operations to arrays
+        Actions.Action[] memory actionsArray = List.toActionArray(actions);
+        IQuarkWallet.QuarkOperation[] memory quarkOperationsArray = List.toQuarkOperationArray(quarkOperations);
 
         // Validate generated actions for affordability
         if (payment.isToken) {
@@ -152,25 +151,27 @@ contract QuarkBuilder {
             }
 
             assertSufficientPaymentTokenBalances(
-                actions, chainAccountsList, repayIntent.chainId, supplementalPaymentTokenBalance
+                actionsArray, chainAccountsList, repayIntent.chainId, supplementalPaymentTokenBalance
             );
         }
 
         // Merge operations that are from the same chain into one Multicall operation
-        (quarkOperations, actions) = QuarkOperationHelper.mergeSameChainOperations(quarkOperations, actions);
+        (quarkOperationsArray, actionsArray) =
+            QuarkOperationHelper.mergeSameChainOperations(quarkOperationsArray, actionsArray);
 
         // Wrap operations around Paycall/Quotecall if payment is with token
         if (payment.isToken) {
-            quarkOperations =
-                QuarkOperationHelper.wrapOperationsWithTokenPayment(quarkOperations, actions, payment, useQuotecall);
+            quarkOperationsArray = QuarkOperationHelper.wrapOperationsWithTokenPayment(
+                quarkOperationsArray, actionsArray, payment, useQuotecall
+            );
         }
 
         return BuilderResult({
             version: VERSION,
-            actions: actions,
-            quarkOperations: quarkOperations,
+            actions: actionsArray,
+            quarkOperations: quarkOperationsArray,
             paymentCurrency: payment.currency,
-            eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperations, actions)
+            eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
         });
     }
 
@@ -194,11 +195,9 @@ contract QuarkBuilder {
             revert InvalidInput();
         }
 
-        uint256 actionIndex = 0;
         // max actions length = bridge each collateral asset + bridge payment token + perform borrow action
-        Actions.Action[] memory actions = new Actions.Action[](borrowIntent.collateralAssetSymbols.length + 1 + 1);
-        IQuarkWallet.QuarkOperation[] memory quarkOperations =
-            new IQuarkWallet.QuarkOperation[](chainAccountsList.length);
+        List.DynamicArray memory actions = List.newList();
+        List.DynamicArray memory quarkOperations = List.newList();
 
         bool useQuotecall = false; // TODO: calculate an actual value for useQuoteCall
         bool paymentTokenIsCollateralAsset = false;
@@ -237,9 +236,8 @@ contract QuarkBuilder {
                 );
 
                 for (uint256 j = 0; j < bridgeQuarkOperations.length; ++j) {
-                    quarkOperations[actionIndex] = bridgeQuarkOperations[j];
-                    actions[actionIndex] = bridgeActions[j];
-                    actionIndex++;
+                    List.addQuarkOperation(quarkOperations, bridgeQuarkOperations[j]);
+                    List.addAction(actions, bridgeActions[j]);
                 }
             }
         }
@@ -272,14 +270,14 @@ contract QuarkBuilder {
                 );
 
                 for (uint256 i = 0; i < bridgeQuarkOperations.length; ++i) {
-                    quarkOperations[actionIndex] = bridgeQuarkOperations[i];
-                    actions[actionIndex] = bridgeActions[i];
-                    actionIndex++;
+                    List.addQuarkOperation(quarkOperations, bridgeQuarkOperations[i]);
+                    List.addAction(actions, bridgeActions[i]);
                 }
             }
         }
 
-        (quarkOperations[actionIndex], actions[actionIndex]) = Actions.cometBorrow(
+        (IQuarkWallet.QuarkOperation memory borrowQuarkOperation, Actions.Action memory borrowAction) = Actions
+            .cometBorrow(
             Actions.CometBorrowInput({
                 chainAccountsList: chainAccountsList,
                 amount: borrowIntent.amount,
@@ -294,11 +292,12 @@ contract QuarkBuilder {
             payment
         );
 
-        actionIndex++;
+        List.addQuarkOperation(quarkOperations, borrowQuarkOperation);
+        List.addAction(actions, borrowAction);
 
-        // Truncate actions and quark operations
-        actions = Actions.truncate(actions, actionIndex);
-        quarkOperations = Actions.truncate(quarkOperations, actionIndex);
+        // Convert actions and quark operations to arrays
+        Actions.Action[] memory actionsArray = List.toActionArray(actions);
+        IQuarkWallet.QuarkOperation[] memory quarkOperationsArray = List.toQuarkOperationArray(quarkOperations);
 
         // Validate generated actions for affordability
         if (payment.isToken) {
@@ -308,25 +307,27 @@ contract QuarkBuilder {
             }
 
             assertSufficientPaymentTokenBalances(
-                actions, chainAccountsList, borrowIntent.chainId, supplementalPaymentTokenBalance
+                actionsArray, chainAccountsList, borrowIntent.chainId, supplementalPaymentTokenBalance
             );
         }
 
         // Merge operations that are from the same chain into one Multicall operation
-        (quarkOperations, actions) = QuarkOperationHelper.mergeSameChainOperations(quarkOperations, actions);
+        (quarkOperationsArray, actionsArray) =
+            QuarkOperationHelper.mergeSameChainOperations(quarkOperationsArray, actionsArray);
 
         // Wrap operations around Paycall/Quotecall if payment is with token
         if (payment.isToken) {
-            quarkOperations =
-                QuarkOperationHelper.wrapOperationsWithTokenPayment(quarkOperations, actions, payment, useQuotecall);
+            quarkOperationsArray = QuarkOperationHelper.wrapOperationsWithTokenPayment(
+                quarkOperationsArray, actionsArray, payment, useQuotecall
+            );
         }
 
         return BuilderResult({
             version: VERSION,
-            actions: actions,
-            quarkOperations: quarkOperations,
+            actions: actionsArray,
+            quarkOperations: quarkOperationsArray,
             paymentCurrency: payment.currency,
-            eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperations, actions)
+            eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
         });
     }
 
