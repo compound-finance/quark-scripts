@@ -400,6 +400,20 @@ contract QuarkBuilder {
             }
         }
 
+        // Auto-wrap
+        checkAndInsertWrapOrUnwrapAction(
+            actions,
+            quarkOperations,
+            chainAccountsList,
+            payment,
+            cometSupplyIntent.assetSymbol,
+            cometSupplyIntent.amount,
+            cometSupplyIntent.chainId,
+            cometSupplyIntent.sender,
+            cometSupplyIntent.blockTimestamp,
+            useQuotecall
+        );
+
         (IQuarkWallet.QuarkOperation memory supplyQuarkOperation, Actions.Action memory supplyAction) = Actions
             .cometSupplyAsset(
             Actions.CometSupply({
@@ -659,35 +673,18 @@ contract QuarkBuilder {
         // Check if need to wrap/unwrap token to cover the transferIntent amount
         // If the existing balance is not enough to cover the transferIntent amount, wrap/unwrap the counterpart token here
         // NOTE: We prioritize unwrap/wrap in the dst chain over bridging, bridging logic checks for counterpart tokens when calculating the amounts to bridge.
-        // TODO: Will also implement this logics in comet supply scenario
-        uint256 existingBalance =
-            Accounts.getBalanceOnChain(transferIntent.assetSymbol, transferIntent.chainId, chainAccountsList);
-        if (
-            existingBalance < transferIntent.amount
-                && TokenWrapper.hasWrapperContract(transferIntent.chainId, transferIntent.assetSymbol)
-        ) {
-            // If the asset has a wrapper counterpart, wrap/unwrap the token to cover the transferIntent amount
-            string memory counterpartSymbol =
-                TokenWrapper.getWrapperCounterpartSymbol(transferIntent.chainId, transferIntent.assetSymbol);
-
-            // Wrap/unwrap the token to cover the transferIntent amount
-            (IQuarkWallet.QuarkOperation memory wrapOrUnwrapOperation, Actions.Action memory wrapOrUnwrapAction) =
-            Actions.wrapOrUnwrapAsset(
-                Actions.WrapOrUnwrapAsset({
-                    chainAccountsList: chainAccountsList,
-                    assetSymbol: counterpartSymbol,
-                    // NOTE: Wrap/unwrap the amount needed to cover the transferIntent amount
-                    amount: transferIntent.amount - existingBalance,
-                    chainId: transferIntent.chainId,
-                    sender: transferIntent.sender,
-                    blockTimestamp: transferIntent.blockTimestamp
-                }),
-                payment,
-                useQuotecall
-            );
-            List.addQuarkOperation(quarkOperations, wrapOrUnwrapOperation);
-            List.addAction(actions, wrapOrUnwrapAction);
-        }
+        checkAndInsertWrapOrUnwrapAction(
+            actions,
+            quarkOperations,
+            chainAccountsList,
+            payment,
+            transferIntent.assetSymbol,
+            transferIntent.amount,
+            transferIntent.chainId,
+            transferIntent.sender,
+            transferIntent.blockTimestamp,
+            useQuotecall
+        );
 
         // Then, transfer `amount` of `assetSymbol` to `recipient`
         (IQuarkWallet.QuarkOperation memory operation, Actions.Action memory action) = Actions.transferAsset(
@@ -825,6 +822,20 @@ contract QuarkBuilder {
                 }
             }
         }
+
+        // Auto-wrap/unwrap
+        checkAndInsertWrapOrUnwrapAction(
+            actions,
+            quarkOperations,
+            chainAccountsList,
+            payment,
+            sellAssetSymbol,
+            swapIntent.sellAmount,
+            swapIntent.chainId,
+            swapIntent.sender,
+            swapIntent.blockTimestamp,
+            useQuotecall
+        );
 
         // Then, swap `amount` of `assetSymbol` to `recipient`
         (IQuarkWallet.QuarkOperation memory operation, Actions.Action memory action) = Actions.matchaSwap(
@@ -987,6 +998,48 @@ contract QuarkBuilder {
         }
 
         return balanceOnChain < amountNeededOnDstChain;
+    }
+
+    /**
+     * @dev Check if the asset required its wrapped/unwrapped counterpart balance to cover the intented action
+     * and if so, insert wrap/unwrap action to cover the original intent amount
+     */
+    function checkAndInsertWrapOrUnwrapAction(
+        List.DynamicArray memory actions,
+        List.DynamicArray memory quarkOperations,
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        PaymentInfo.Payment memory payment,
+        string memory assetSymbol,
+        uint256 amount,
+        uint256 chainId,
+        address account,
+        uint256 blockTimestamp,
+        bool useQuotecall
+    ) internal pure {
+        // Check if inserting wrapOrUnwrap action is necessary
+        uint256 balanceOnOriginalAsset = Accounts.getBalanceOnChain(assetSymbol, chainId, chainAccountsList);
+        if (balanceOnOriginalAsset < amount && TokenWrapper.hasWrapperContract(chainId, assetSymbol)) {
+            // If the asset has a wrapper counterpart, wrap/unwrap the token to cover the transferIntent amount
+            string memory counterpartSymbol = TokenWrapper.getWrapperCounterpartSymbol(chainId, assetSymbol);
+
+            // Wrap/unwrap the token to cover the transferIntent amount
+            (IQuarkWallet.QuarkOperation memory wrapOrUnwrapOperation, Actions.Action memory wrapOrUnwrapAction) =
+            Actions.wrapOrUnwrapAsset(
+                Actions.WrapOrUnwrapAsset({
+                    chainAccountsList: chainAccountsList,
+                    assetSymbol: counterpartSymbol,
+                    // NOTE: Wrap/unwrap the amount needed to cover the transferIntent amount
+                    amount: amount - balanceOnOriginalAsset,
+                    chainId: chainId,
+                    sender: account,
+                    blockTimestamp: blockTimestamp
+                }),
+                payment,
+                useQuotecall
+            );
+            List.addQuarkOperation(quarkOperations, wrapOrUnwrapOperation);
+            List.addAction(actions, wrapOrUnwrapAction);
+        }
     }
 
     /**
