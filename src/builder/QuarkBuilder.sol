@@ -1001,8 +1001,8 @@ contract QuarkBuilder {
     }
 
     /**
-     * @dev Check if the asset required its wrapped/unwrapped counterpart balance to cover the intented action
-     * and if so, insert wrap/unwrap action to cover the original intent amount
+     * @dev If there is not enough of the asset to cover the amount and the asset has a counterpart asset,
+     * insert a wrap/unwrap action to cover the gap in amount.
      */
     function checkAndInsertWrapOrUnwrapAction(
         List.DynamicArray memory actions,
