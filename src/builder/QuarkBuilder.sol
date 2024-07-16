@@ -501,8 +501,6 @@ contract QuarkBuilder {
         address withdrawer;
     }
 
-    // XXX support withdraw max
-    // XXX support Quotecall?
     function cometWithdraw(
         CometWithdrawIntent memory cometWithdrawIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
@@ -510,8 +508,8 @@ contract QuarkBuilder {
     ) external pure returns (BuilderResult memory) {
         // XXX confirm that you actually have the amount to withdraw
 
-        // TODO: set this properly
-        bool useQuotecall = false;
+        bool isMaxWithdraw = cometWithdrawIntent.amount == type(uint256).max;
+        bool useQuotecall = payment.isToken && isMaxWithdraw;
         List.DynamicArray memory actions = List.newList();
         List.DynamicArray memory quarkOperations = List.newList();
 
@@ -561,7 +559,8 @@ contract QuarkBuilder {
                 withdrawer: cometWithdrawIntent.withdrawer,
                 blockTimestamp: cometWithdrawIntent.blockTimestamp
             }),
-            payment
+            payment,
+            useQuotecall
         );
         List.addAction(actions, cometWithdrawAction);
         List.addQuarkOperation(quarkOperations, cometWithdrawQuarkOperation);
@@ -574,8 +573,24 @@ contract QuarkBuilder {
         if (payment.isToken) {
             uint256 supplementalPaymentTokenBalance = 0;
             if (Strings.stringEqIgnoreCase(payment.currency, cometWithdrawIntent.assetSymbol)) {
-                // XXX in the withdrawMax case, use the Comet balance
-                supplementalPaymentTokenBalance += cometWithdrawIntent.amount;
+                if (isMaxWithdraw) {
+                    // when doing a maxWithdraw of the payment token, add the account's supplied balance
+                    // as supplemental payment token balance
+                    //
+                    // assumes that a maxWithdraw is for the base asset, since
+                    // you cannot maxWithdraw Collateral
+                    Accounts.CometPosition memory cometPosition = Accounts.findCometPosition(
+                        cometWithdrawIntent.chainId, cometWithdrawIntent.comet, chainAccountsList
+                    );
+
+                    for (uint256 i = 0; i < cometPosition.basePosition.accounts.length; ++i) {
+                        if (cometPosition.basePosition.accounts[i] == cometWithdrawIntent.withdrawer) {
+                            supplementalPaymentTokenBalance += cometPosition.basePosition.supplied[i];
+                        }
+                    }
+                } else {
+                    supplementalPaymentTokenBalance += cometWithdrawIntent.amount;
+                }
             }
 
             assertSufficientPaymentTokenBalances(

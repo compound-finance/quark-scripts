@@ -608,7 +608,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         chainAccountsList[0] = Accounts.ChainAccounts({
             chainId: 1,
             quarkStates: quarkStates_(address(0xa11ce), 12),
-            assetPositionsList: assetPositionsList_(1, address(0xa11ce), uint256(10e6))
+            assetPositionsList: assetPositionsList_(1, address(0xa11ce), uint256(10e6)),
+            cometPositions: emptyCometPositions_()
         });
 
         QuarkBuilder.BuilderResult memory result = builder.transfer(
@@ -683,12 +684,14 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         chainAccountsList[0] = Accounts.ChainAccounts({
             chainId: 1,
             quarkStates: quarkStates_(address(0xa11ce), 12),
-            assetPositionsList: assetPositionsList_(1, address(0xa11ce), 8e6)
+            assetPositionsList: assetPositionsList_(1, address(0xa11ce), 8e6),
+            cometPositions: emptyCometPositions_()
         });
         chainAccountsList[1] = Accounts.ChainAccounts({
             chainId: 8453,
             quarkStates: quarkStates_(address(0xb0b), 2),
-            assetPositionsList: assetPositionsList_(8453, address(0xb0b), 4e6)
+            assetPositionsList: assetPositionsList_(8453, address(0xb0b), 4e6),
+            cometPositions: emptyCometPositions_()
         });
 
         QuarkBuilder.BuilderResult memory result = builder.transfer(
@@ -816,17 +819,20 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         chainAccountsList[0] = Accounts.ChainAccounts({
             chainId: 1,
             quarkStates: quarkStates_(address(0xa11ce), 12),
-            assetPositionsList: assetPositionsList_(1, address(0xa11ce), 8e6)
+            assetPositionsList: assetPositionsList_(1, address(0xa11ce), 8e6),
+            cometPositions: emptyCometPositions_()
         });
         chainAccountsList[1] = Accounts.ChainAccounts({
             chainId: 8453,
             quarkStates: quarkStates_(address(0xb0b), 2),
-            assetPositionsList: assetPositionsList_(8453, address(0xb0b), 4e6)
+            assetPositionsList: assetPositionsList_(8453, address(0xb0b), 4e6),
+            cometPositions: emptyCometPositions_()
         });
         chainAccountsList[2] = Accounts.ChainAccounts({
             chainId: 7777,
             quarkStates: quarkStates_(address(0xfe11a), 2),
-            assetPositionsList: assetPositionsList_(7777, address(0xfe11a), 5e6)
+            assetPositionsList: assetPositionsList_(7777, address(0xfe11a), 5e6),
+            cometPositions: emptyCometPositions_()
         });
 
         // User has total holding of 17 USDC, but only 12 USDC is available for transfer/bridge to 8453, and missing 5 USDC stuck in random L2 so will revert with FundsUnavailable error
@@ -912,7 +918,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         chainAccountsList[0] = Accounts.ChainAccounts({
             chainId: 1,
             quarkStates: quarkStates_(address(0xa11ce), 12),
-            assetPositionsList: assetPositionsList
+            assetPositionsList: assetPositionsList,
+            cometPositions: emptyCometPositions_()
         });
 
         // Transfer 1.5ETH to 0xceecee on chain 1
@@ -1012,7 +1019,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         chainAccountsList[0] = Accounts.ChainAccounts({
             chainId: 1,
             quarkStates: quarkStates_(address(0xa11ce), 12),
-            assetPositionsList: assetPositionsList
+            assetPositionsList: assetPositionsList,
+            cometPositions: emptyCometPositions_()
         });
 
         // Transfer 1.5ETH to 0xceecee on chain 1
@@ -1120,7 +1128,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         chainAccountsList[0] = Accounts.ChainAccounts({
             chainId: 1,
             quarkStates: quarkStates_(address(0xa11ce), 12),
-            assetPositionsList: assetPositionsList
+            assetPositionsList: assetPositionsList,
+            cometPositions: emptyCometPositions_()
         });
 
         // Transfer max ETH to 0xceecee on chain 1
@@ -1229,7 +1238,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         chainAccountsList[0] = Accounts.ChainAccounts({
             chainId: 1,
             quarkStates: quarkStates_(address(0xa11ce), 12),
-            assetPositionsList: assetPositionsList
+            assetPositionsList: assetPositionsList,
+            cometPositions: emptyCometPositions_()
         });
 
         // Transfer 1.5ETH to 0xceecee on chain 1

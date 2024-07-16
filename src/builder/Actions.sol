@@ -708,11 +708,11 @@ library Actions {
         return (quarkOperation, action);
     }
 
-    function cometWithdrawAsset(CometWithdraw memory cometWithdraw, PaymentInfo.Payment memory payment)
-        internal
-        pure
-        returns (IQuarkWallet.QuarkOperation memory, Action memory)
-    {
+    function cometWithdrawAsset(
+        CometWithdraw memory cometWithdraw,
+        PaymentInfo.Payment memory payment,
+        bool useQuotecall
+    ) internal pure returns (IQuarkWallet.QuarkOperation memory, Action memory) {
         bytes[] memory scriptSources = new bytes[](1);
         scriptSources[0] = type(CometWithdrawActions).creationCode;
 
@@ -756,7 +756,7 @@ library Actions {
             quarkAccount: cometWithdraw.withdrawer,
             actionType: ACTION_TYPE_WITHDRAW,
             actionContext: abi.encode(cometWithdrawActionContext),
-            paymentMethod: payment.isToken ? PAYMENT_METHOD_PAYCALL : PAYMENT_METHOD_OFFCHAIN,
+            paymentMethod: paymentMethodForPayment(payment, useQuotecall),
             // Null address for OFFCHAIN payment.
             paymentToken: payment.isToken
                 ? PaymentInfo.knownToken(payment.currency, cometWithdraw.chainId).token
@@ -814,20 +814,13 @@ library Actions {
             chainId: transfer.chainId,
             recipient: transfer.recipient
         });
-        string memory paymentMethod;
-        if (payment.isToken) {
-            // To pay with token, it has to be a paycall or quotecall.
-            paymentMethod = useQuotecall ? PAYMENT_METHOD_QUOTECALL : PAYMENT_METHOD_PAYCALL;
-        } else {
-            paymentMethod = PAYMENT_METHOD_OFFCHAIN;
-        }
 
         Action memory action = Actions.Action({
             chainId: transfer.chainId,
             quarkAccount: transfer.sender,
             actionType: ACTION_TYPE_TRANSFER,
             actionContext: abi.encode(transferActionContext),
-            paymentMethod: paymentMethod,
+            paymentMethod: paymentMethodForPayment(payment, useQuotecall),
             // Null address for OFFCHAIN payment.
             paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, transfer.chainId).token : address(0),
             paymentTokenSymbol: payment.currency,
@@ -835,6 +828,20 @@ library Actions {
         });
 
         return (quarkOperation, action);
+    }
+
+    function paymentMethodForPayment(PaymentInfo.Payment memory payment, bool useQuotecall)
+        internal
+        pure
+        returns (string memory)
+    {
+        if (payment.isToken && useQuotecall) {
+            return PAYMENT_METHOD_QUOTECALL;
+        } else if (payment.isToken && !useQuotecall) {
+            return PAYMENT_METHOD_PAYCALL;
+        } else {
+            return PAYMENT_METHOD_OFFCHAIN;
+        }
     }
 
     function wrapOrUnwrapAsset(
