@@ -11,9 +11,27 @@ import {CCTPBridgeActions} from "src/BridgeScripts.sol";
 import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
 import {CometSupplyActions, TransferActions} from "src/DeFiScripts.sol";
 import {Paycall} from "src/Paycall.sol";
+import {Multicall} from "src/Multicall.sol";
+import {WrapperActions} from "src/WrapperScripts.sol";
 
 contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
-    address constant COMET = address(0xc3);
+    address constant COMET = address(0xc3d688B66703497DAA19211EEdff47f25384cdc3);
+    address constant COMET_ETH = address(0xA17581A9E3356d9A858b789D68B4d866e593aE94);
+
+    function cometWethSupply_(uint256 chainId, uint256 amount)
+        internal
+        pure
+        returns (QuarkBuilder.CometSupplyIntent memory)
+    {
+        return QuarkBuilder.CometSupplyIntent({
+            amount: amount,
+            assetSymbol: "WETH",
+            blockTimestamp: BLOCK_TIMESTAMP,
+            chainId: chainId,
+            comet: COMET_ETH,
+            sender: address(0xa11ce)
+        });
+    }
 
     function cometSupply_(uint256 chainId, uint256 amount)
         internal
@@ -121,6 +139,99 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     comet: COMET,
                     price: USDC_PRICE,
                     token: USDC_1
+                })
+            ),
+            "action context encoded from SupplyActionContext"
+        );
+
+        // // TODO: Check the contents of the EIP712 data
+        assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
+        assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
+        assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
+    }
+
+    function testSimpleCometSupplyWithAutoWrapper() public {
+        QuarkBuilder builder = new QuarkBuilder();
+        address account = address(0xa11ce);
+        Accounts.ChainAccounts[] memory chainAccountsList = new Accounts.ChainAccounts[](1);
+        // Custom setup to hold ETH (for auto wrap later when supply WETH to comet)
+        Accounts.AssetPositions[] memory assetPositionsList = new Accounts.AssetPositions[](3);
+        assetPositionsList[0] = Accounts.AssetPositions({
+            asset: eth_(),
+            symbol: "ETH",
+            decimals: 18,
+            usdPrice: WETH_PRICE,
+            accountBalances: accountBalances_(account, 1e18)
+        });
+        assetPositionsList[1] = Accounts.AssetPositions({
+            asset: weth_(1),
+            symbol: "WETH",
+            decimals: 18,
+            usdPrice: WETH_PRICE,
+            accountBalances: accountBalances_(account, 0)
+        });
+        assetPositionsList[2] = Accounts.AssetPositions({
+            asset: usdc_(1),
+            symbol: "USDC",
+            decimals: 6,
+            usdPrice: USDC_PRICE,
+            accountBalances: accountBalances_(account, 0e6)
+        });
+        chainAccountsList[0] = Accounts.ChainAccounts({
+            chainId: 1,
+            quarkStates: quarkStates_(address(0xa11ce), 12),
+            assetPositionsList: assetPositionsList
+        });
+
+        QuarkBuilder.BuilderResult memory result =
+            builder.cometSupply(cometWethSupply_(1, 1e18), chainAccountsList, paymentUsd_());
+
+        assertEq(result.paymentCurrency, "usd", "usd currency");
+
+        address multicallAddress = CodeJarHelper.getCodeAddress(type(Multicall).creationCode);
+        address wrapperActionsAddress = CodeJarHelper.getCodeAddress(type(WrapperActions).creationCode);
+        address cometSupplyActionsAddress = CodeJarHelper.getCodeAddress(type(CometSupplyActions).creationCode);
+        // Check the quark operations
+        assertEq(result.quarkOperations.length, 1, "one merged operation");
+        assertEq(
+            result.quarkOperations[0].scriptAddress,
+            multicallAddress,
+            "script address is correct given the code jar address on mainnet"
+        );
+        address[] memory callContracts = new address[](2);
+        callContracts[0] = wrapperActionsAddress;
+        callContracts[1] = cometSupplyActionsAddress;
+        bytes[] memory callDatas = new bytes[](2);
+        callDatas[0] =
+            abi.encodeWithSelector(WrapperActions.wrapETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18);
+        callDatas[1] = abi.encodeCall(CometSupplyActions.supply, (COMET_ETH, weth_(1), 1e18));
+        assertEq(
+            result.quarkOperations[0].scriptCalldata,
+            abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
+            "calldata is Multicall.run([wrapperActionsAddress, cometSupplyActionsAddress], [WrapperActions.wrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18), CometSupplyActions.supply(COMET_ETH, weth_(1), 1e18)"
+        );
+        assertEq(
+            result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 3 days"
+        );
+
+        // check the actions
+        assertEq(result.actions.length, 1, "one action");
+        assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
+        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[0].actionType, "SUPPLY", "action type is 'SUPPLY'");
+        assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
+        assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
+        assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
+        assertEq(
+            result.actions[0].actionContext,
+            abi.encode(
+                Actions.SupplyActionContext({
+                    amount: 1e18,
+                    assetSymbol: "WETH",
+                    chainId: 1,
+                    comet: COMET_ETH,
+                    price: WETH_PRICE,
+                    token: WETH_1
                 })
             ),
             "action context encoded from SupplyActionContext"
