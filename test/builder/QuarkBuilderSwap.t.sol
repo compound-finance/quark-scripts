@@ -221,7 +221,7 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
             asset: eth_(),
             symbol: "ETH",
             decimals: 18,
-            usdPrice: 3500_0000_0000,
+            usdPrice: WETH_PRICE,
             accountBalances: accountBalances_(account, 1e18)
         });
         assetPositionsList[1] = Accounts.AssetPositions({
@@ -235,7 +235,7 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
             asset: usdc_(1),
             symbol: "USDC",
             decimals: 6,
-            usdPrice: 1_0000_0000,
+            usdPrice: USDC_PRICE,
             accountBalances: accountBalances_(account, 10e6)
         });
         chainAccountsList[0] = Accounts.ChainAccounts({
