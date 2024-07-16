@@ -31,12 +31,12 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
         uint256 expectedBuyAmount,
         address sender,
         uint256 blockTimestamp
-    ) internal pure returns (QuarkBuilder.MatchaSwapIntent memory) {
+    ) internal pure returns (QuarkBuilder.ZeroExSwapIntent memory) {
         address usdc = usdc_(chainId);
-        return matchaSwap_(
+        return zeroExSwap_(
             chainId,
-            MATCHA_ENTRY_POINT,
-            MATCHA_SWAP_DATA,
+            ZERO_EX_ENTRY_POINT,
+            ZERO_EX_SWAP_DATA,
             sellToken,
             sellAmount,
             usdc,
@@ -274,11 +274,11 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
         callDatas[0] =
             abi.encodeWithSelector(WrapperActions.wrapETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18);
         callDatas[1] =
-            abi.encodeCall(ApproveAndSwap.run, (MATCHA_ENTRY_POINT, WETH_1, 1e18, USDC_1, 3000e6, MATCHA_SWAP_DATA));
+            abi.encodeCall(ApproveAndSwap.run, (ZERO_EX_ENTRY_POINT, WETH_1, 1e18, USDC_1, 3000e6, ZERO_EX_SWAP_DATA));
         assertEq(
             result.quarkOperations[0].scriptCalldata,
             abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
-            "calldata is Multicall.run([wrapperActionsAddress, approveAndSwapAddress], [WrapperActions.wrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18), ApproveAndSwap.run (MATCHA_ENTRY_POINT, WETH_1, 1e18, USDC_1, 3000e6,  MATCHA_SWAP_DATA)]);"
+            "calldata is Multicall.run([wrapperActionsAddress, approveAndSwapAddress], [WrapperActions.wrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18), ApproveAndSwap.run (ZERO_EX_ENTRY_POINT, WETH_1, 1e18, USDC_1, 3000e6,  ZERO_EX_SWAP_DATA)]);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 3 days, "expiry is current blockTimestamp + 3 days"
@@ -297,6 +297,10 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.SwapActionContext({
                     chainId: 1,
+                    feeAmount: 10,
+                    feeAssetSymbol: "USDC",
+                    feeToken: USDC_1,
+                    feeTokenPrice: USDC_PRICE,
                     inputToken: WETH_1,
                     inputTokenPrice: WETH_PRICE,
                     inputAssetSymbol: "WETH",
