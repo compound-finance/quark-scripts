@@ -230,15 +230,17 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             chainId: 1,
             account: address(0xa11ce),
             nextNonce: 12,
-            assetSymbols: stringArray("USDC", "ETH", "LINK", "WETH"),
-            assetBalances: uintArray(0, 1e18, 0, 0) // has 1 ETH
+            assetSymbols: Arrays.stringArray("USDC", "ETH", "LINK", "WETH"),
+            assetBalances: Arrays.uintArray(0, 1e18, 0, 0), // has 1 ETH
+            cometPortfolios: emptyCometPortfolios_()
         });
         chainPortfolios[1] = ChainPortfolio({
             chainId: 8453,
             account: address(0xb0b),
             nextNonce: 2,
-            assetSymbols: stringArray("USDC", "ETH", "LINK", "WETH"),
-            assetBalances: uintArray(0, 0, 0, 0)
+            assetSymbols: Arrays.stringArray("USDC", "ETH", "LINK", "WETH"),
+            assetBalances: Arrays.uintArray(0, 0, 0, 0),
+            cometPortfolios: emptyCometPortfolios_()
         });
 
         QuarkBuilder builder = new QuarkBuilder();
@@ -274,7 +276,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         callDatas[0] =
             abi.encodeWithSelector(WrapperActions.wrapETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18);
         callDatas[1] = abi.encodeCall(
-            CometRepayAndWithdrawMultipleAssets.run, (COMET_1, collateralTokens, collateralAmounts, weth_(1), 1e18)
+            CometRepayAndWithdrawMultipleAssets.run, (cometUsdc_(1), collateralTokens, collateralAmounts, weth_(1), 1e18)
         );
 
         assertEq(
@@ -309,7 +311,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                     collateralAssetSymbols: collateralAssetSymbols,
                     collateralTokenPrices: collateralTokenPrices,
                     collateralTokens: collateralTokens,
-                    comet: COMET_1,
+                    comet: cometUsdc_(1),
                     price: WETH_PRICE,
                     token: weth_(1)
                 })

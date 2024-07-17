@@ -180,7 +180,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         chainAccountsList[0] = Accounts.ChainAccounts({
             chainId: 1,
             quarkStates: quarkStates_(address(0xa11ce), 12),
-            assetPositionsList: assetPositionsList
+            assetPositionsList: assetPositionsList,
+            cometPositions: emptyCometPositions_()
         });
 
         QuarkBuilder.BuilderResult memory result =
