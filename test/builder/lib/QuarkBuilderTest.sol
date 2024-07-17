@@ -331,6 +331,8 @@ contract QuarkBuilderTest {
     function baseAssetForComet(uint256 chainId, address comet) internal pure returns (address) {
         if (comet == COMET_1_USDC || comet == COMET_8453_USDC) {
             return usdc_(chainId);
+        } else if (comet == COMET_1_WETH || comet == COMET_8453_WETH) {
+            return weth_(chainId);
         } else {
             revert("unknown chainId/comet combination");
         }
