@@ -446,7 +446,7 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
             result.actions[0].actionContext,
             abi.encode(
                 Actions.WithdrawActionContext({
-                    amount: type(uint256).max, // ?? should this be a different amount?
+                    amount: type(uint256).max,
                     assetSymbol: "USDC",
                     chainId: 1,
                     comet: cometUsdc_(1),
