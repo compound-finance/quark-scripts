@@ -276,7 +276,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         callDatas[0] =
             abi.encodeWithSelector(WrapperActions.wrapETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18);
         callDatas[1] = abi.encodeCall(
-            CometRepayAndWithdrawMultipleAssets.run, (cometUsdc_(1), collateralTokens, collateralAmounts, weth_(1), 1e18)
+            CometRepayAndWithdrawMultipleAssets.run,
+            (cometUsdc_(1), collateralTokens, collateralAmounts, weth_(1), 1e18)
         );
 
         assertEq(
