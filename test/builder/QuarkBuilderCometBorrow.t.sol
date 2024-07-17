@@ -4,6 +4,7 @@ pragma solidity ^0.8.23;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
+import {Arrays} from "test/builder/lib/Arrays.sol";
 import {QuarkBuilderTest, Accounts, PaymentInfo, QuarkBuilder} from "test/builder/lib/QuarkBuilderTest.sol";
 
 import {Actions} from "src/builder/Actions.sol";
@@ -31,7 +32,7 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
             chainId: chainId,
             collateralAmounts: collateralAmounts,
             collateralAssetSymbols: collateralAssetSymbols,
-            comet: COMET_1
+            comet: cometUsdc_(1)
         });
     }
 
@@ -84,15 +85,17 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
             chainId: 1,
             account: address(0xa11ce),
             nextNonce: 12,
-            assetSymbols: stringArray("USDC", "USDT", "LINK", "WETH"),
-            assetBalances: uintArray(0, 0, 10e18, 0) // user has 10 LINK
+            assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
+            assetBalances: Arrays.uintArray(0, 0, 10e18, 0), // user has 10 LINK
+            cometPortfolios: emptyCometPortfolios_()
         });
         chainPortfolios[1] = ChainPortfolio({
             chainId: 8453,
             account: address(0xb0b),
             nextNonce: 2,
-            assetSymbols: stringArray("USDC", "USDT", "LINK", "WETH"),
-            assetBalances: uintArray(0, 0, 0, 0)
+            assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
+            assetBalances: Arrays.uintArray(0, 0, 0, 0),
+            cometPortfolios: emptyCometPortfolios_()
         });
 
         QuarkBuilder builder = new QuarkBuilder();
@@ -137,9 +140,10 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[0].scriptCalldata,
             abi.encodeCall(
-                CometSupplyMultipleAssetsAndBorrow.run, (COMET_1, collateralTokens, collateralAmounts, usdc_(1), 1e6)
+                CometSupplyMultipleAssetsAndBorrow.run,
+                (cometUsdc_(1), collateralTokens, collateralAmounts, usdc_(1), 1e6)
             ),
-            "calldata is CometSupplyMultipleAssetsAndBorrow.run(COMET_1, [LINK], [1e18], USDC, 1e6);"
+            "calldata is CometSupplyMultipleAssetsAndBorrow.run(COMET_1_USDC, [LINK], [1e18], USDC, 1e6);"
         );
         assertEq(result.quarkOperations[0].scriptSources.length, 1);
         assertEq(result.quarkOperations[0].scriptSources[0], type(CometSupplyMultipleAssetsAndBorrow).creationCode);
@@ -170,7 +174,7 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
                     collateralTokenPrices: collateralTokenPrices,
                     collateralTokens: collateralTokens,
                     collateralAssetSymbols: collateralAssetSymbols,
-                    comet: COMET_1,
+                    comet: cometUsdc_(1),
                     price: USDC_PRICE,
                     token: usdc_(1)
                 })
@@ -202,15 +206,17 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
             chainId: 1,
             account: address(0xa11ce),
             nextNonce: 12,
-            assetSymbols: stringArray("USDC", "ETH", "LINK", "WETH"),
-            assetBalances: uintArray(0, 10e18, 0, 0) // user has 10 ETH
+            assetSymbols: Arrays.stringArray("USDC", "ETH", "LINK", "WETH"),
+            assetBalances: Arrays.uintArray(0, 10e18, 0, 0), // user has 10 ETH
+            cometPortfolios: emptyCometPortfolios_()
         });
         chainPortfolios[1] = ChainPortfolio({
             chainId: 8453,
             account: address(0xb0b),
             nextNonce: 2,
-            assetSymbols: stringArray("USDC", "ETH", "LINK", "WETH"),
-            assetBalances: uintArray(0, 0, 0, 0)
+            assetSymbols: Arrays.stringArray("USDC", "ETH", "LINK", "WETH"),
+            assetBalances: Arrays.uintArray(0, 0, 0, 0),
+            cometPortfolios: emptyCometPortfolios_()
         });
 
         QuarkBuilder builder = new QuarkBuilder();
@@ -246,7 +252,7 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
         callDatas[0] =
             abi.encodeWithSelector(WrapperActions.wrapETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18);
         callDatas[1] = abi.encodeCall(
-            CometSupplyMultipleAssetsAndBorrow.run, (COMET_1, collateralTokens, collateralAmounts, usdc_(1), 1e6)
+            CometSupplyMultipleAssetsAndBorrow.run, (cometUsdc_(1), collateralTokens, collateralAmounts, usdc_(1), 1e6)
         );
 
         assertEq(
@@ -281,7 +287,7 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
                     collateralTokenPrices: collateralTokenPrices,
                     collateralTokens: collateralTokens,
                     collateralAssetSymbols: collateralAssetSymbols,
-                    comet: COMET_1,
+                    comet: cometUsdc_(1),
                     price: USDC_PRICE,
                     token: usdc_(1)
                 })
@@ -307,15 +313,17 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
             chainId: 1,
             account: address(0xa11ce),
             nextNonce: 12,
-            assetSymbols: stringArray("USDC", "USDT", "LINK", "WETH"),
-            assetBalances: uintArray(1e6, 0, 10e18, 0) // user has 1 USDC, 10 LINK
+            assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
+            assetBalances: Arrays.uintArray(1e6, 0, 10e18, 0), // user has 1 USDC, 10 LINK
+            cometPortfolios: emptyCometPortfolios_()
         });
         chainPortfolios[1] = ChainPortfolio({
             chainId: 8453,
             account: address(0xb0b),
             nextNonce: 2,
-            assetSymbols: stringArray("USDC", "USDT", "LINK", "WETH"),
-            assetBalances: uintArray(0, 0, 0, 0)
+            assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
+            assetBalances: Arrays.uintArray(0, 0, 0, 0),
+            cometPortfolios: emptyCometPortfolios_()
         });
 
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
@@ -358,7 +366,7 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
                 cometSupplyMultipleAssetsAndBorrowAddress,
                 abi.encodeWithSelector(
                     CometSupplyMultipleAssetsAndBorrow.run.selector,
-                    COMET_1,
+                    cometUsdc_(1),
                     collateralTokens,
                     collateralAmounts,
                     usdc_(1),
@@ -366,7 +374,7 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
                 ),
                 0.1e6
             ),
-            "calldata is Paycall.run(CometSupplyMultipleAssetsAndBorrow.run(COMET_1, [LINK_1], [1e18], USDC_1, 1e6), 0.1e6);"
+            "calldata is Paycall.run(CometSupplyMultipleAssetsAndBorrow.run(COMET_1_USDC, [LINK_1], [1e18], USDC_1, 1e6), 0.1e6);"
         );
         assertEq(result.quarkOperations[0].scriptSources.length, 2);
         assertEq(result.quarkOperations[0].scriptSources[0], type(CometSupplyMultipleAssetsAndBorrow).creationCode);
@@ -401,7 +409,7 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
                     collateralTokenPrices: collateralTokenPrices,
                     collateralTokens: collateralTokens,
                     collateralAssetSymbols: collateralAssetSymbols,
-                    comet: COMET_1,
+                    comet: cometUsdc_(1),
                     price: USDC_PRICE,
                     token: usdc_(1)
                 })
@@ -431,15 +439,17 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
             chainId: 1,
             account: address(0xa11ce),
             nextNonce: 12,
-            assetSymbols: stringArray("USDC", "USDT", "LINK", "WETH"),
-            assetBalances: uintArray(0, 0, 10e18, 0) // user has 10 LINK and 0 USDC
+            assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
+            assetBalances: Arrays.uintArray(0, 0, 10e18, 0), // user has 10 LINK and 0 USDC
+            cometPortfolios: emptyCometPortfolios_()
         });
         chainPortfolios[1] = ChainPortfolio({
             chainId: 8453,
             account: address(0xb0b),
             nextNonce: 2,
-            assetSymbols: stringArray("USDC", "USDT", "LINK", "WETH"),
-            assetBalances: uintArray(0, 0, 0, 0)
+            assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
+            assetBalances: Arrays.uintArray(0, 0, 0, 0),
+            cometPortfolios: emptyCometPortfolios_()
         });
 
         QuarkBuilder.BuilderResult memory result = builder.cometBorrow(
@@ -477,7 +487,7 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
                 cometSupplyMultipleAssetsAndBorrowAddress,
                 abi.encodeWithSelector(
                     CometSupplyMultipleAssetsAndBorrow.run.selector,
-                    COMET_1,
+                    cometUsdc_(1),
                     collateralTokens,
                     collateralAmounts,
                     usdc_(1),
@@ -485,7 +495,7 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
                 ),
                 0.5e6
             ),
-            "calldata is Paycall.run(CometSupplyMultipleAssetsAndBorrow.run.selector, (COMET_1, [LINK_1], [1e18], USDC_1, 1e6), .5e6);"
+            "calldata is Paycall.run(CometSupplyMultipleAssetsAndBorrow.run.selector, (COMET_1_USDC, [LINK_1], [1e18], USDC_1, 1e6), .5e6);"
         );
         assertEq(result.quarkOperations[0].scriptSources.length, 2);
         assertEq(result.quarkOperations[0].scriptSources[0], type(CometSupplyMultipleAssetsAndBorrow).creationCode);
@@ -520,7 +530,7 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
                     collateralTokenPrices: collateralTokenPrices,
                     collateralTokens: collateralTokens,
                     collateralAssetSymbols: collateralAssetSymbols,
-                    comet: COMET_1,
+                    comet: cometUsdc_(1),
                     price: USDC_PRICE,
                     token: usdc_(1)
                 })
@@ -552,15 +562,17 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
             chainId: 1,
             account: address(0xa11ce),
             nextNonce: 12,
-            assetSymbols: stringArray("USDC", "USDT", "LINK", "WETH"),
-            assetBalances: uintArray(3e6, 0, 0, 0) // 3 USDC on mainnet
+            assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
+            assetBalances: Arrays.uintArray(3e6, 0, 0, 0), // 3 USDC on mainnet
+            cometPortfolios: emptyCometPortfolios_()
         });
         chainPortfolios[1] = ChainPortfolio({
             chainId: 8453,
             account: address(0xb0b),
             nextNonce: 2,
-            assetSymbols: stringArray("USDC", "USDT", "LINK", "WETH"),
-            assetBalances: uintArray(0, 0, 5e18, 0)
+            assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
+            assetBalances: Arrays.uintArray(0, 0, 5e18, 0),
+            cometPortfolios: emptyCometPortfolios_()
         });
 
         QuarkBuilder.BuilderResult memory result = builder.cometBorrow(
@@ -635,7 +647,7 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
                 cometSupplyMultipleAssetsAndBorrowAddress,
                 abi.encodeWithSelector(
                     CometSupplyMultipleAssetsAndBorrow.run.selector,
-                    COMET_1,
+                    cometUsdc_(1),
                     collateralTokens,
                     collateralAmounts,
                     usdt_(8453),
@@ -643,7 +655,7 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
                 ),
                 1e6
             ),
-            "calldata is Paycall.run(CometSupplyMultipleAssetsAndBorrow.run(COMET_1, [LINK_8453], [1e18], USDT_8453, 1e6), 1e6);"
+            "calldata is Paycall.run(CometSupplyMultipleAssetsAndBorrow.run(COMET_1_USDC, [LINK_8453], [1e18], USDT_8453, 1e6), 1e6);"
         );
         assertEq(result.quarkOperations[1].scriptSources.length, 2);
         assertEq(result.quarkOperations[1].scriptSources[0], type(CometSupplyMultipleAssetsAndBorrow).creationCode);
@@ -702,7 +714,7 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
                     collateralTokenPrices: collateralTokenPrices,
                     collateralTokens: collateralTokens,
                     collateralAssetSymbols: collateralAssetSymbols,
-                    comet: COMET_1,
+                    comet: cometUsdc_(1),
                     price: USDT_PRICE,
                     token: usdt_(8453)
                 })
@@ -734,15 +746,17 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
             chainId: 1,
             account: address(0xa11ce),
             nextNonce: 12,
-            assetSymbols: stringArray("USDC", "USDT", "LINK", "WETH"),
-            assetBalances: uintArray(4e6, 0, 0, 0) // 4 USDC on mainnet
+            assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
+            assetBalances: Arrays.uintArray(4e6, 0, 0, 0), // 4 USDC on mainnet
+            cometPortfolios: emptyCometPortfolios_()
         });
         chainPortfolios[1] = ChainPortfolio({
             chainId: 8453,
             account: address(0xb0b),
             nextNonce: 2,
-            assetSymbols: stringArray("USDC", "USDT", "LINK", "WETH"),
-            assetBalances: uintArray(0, 0, 0, 0) // no assets on base
+            assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
+            assetBalances: Arrays.uintArray(0, 0, 0, 0), // no assets on base
+            cometPortfolios: emptyCometPortfolios_()
         });
 
         QuarkBuilder.BuilderResult memory result = builder.cometBorrow(
@@ -817,7 +831,7 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
                 cometSupplyMultipleAssetsAndBorrowAddress,
                 abi.encodeWithSelector(
                     CometSupplyMultipleAssetsAndBorrow.run.selector,
-                    COMET_1,
+                    cometUsdc_(1),
                     collateralTokens,
                     collateralAmounts,
                     weth_(8453),
@@ -825,7 +839,7 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
                 ),
                 0.2e6
             ),
-            "calldata is Paycall.run(CometSupplyMultipleAssetsAndBorrow.run(COMET_1, [USDC_8453], [2e6], WETH_8453, 1e18), 0.2e6);"
+            "calldata is Paycall.run(CometSupplyMultipleAssetsAndBorrow.run(COMET_1_USDC, [USDC_8453], [2e6], WETH_8453, 1e18), 0.2e6);"
         );
         assertEq(result.quarkOperations[1].scriptSources.length, 2);
         assertEq(result.quarkOperations[1].scriptSources[0], type(CometSupplyMultipleAssetsAndBorrow).creationCode);
@@ -884,7 +898,7 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
                     collateralTokenPrices: collateralTokenPrices,
                     collateralTokens: collateralTokens,
                     collateralAssetSymbols: collateralAssetSymbols,
-                    comet: COMET_1,
+                    comet: cometUsdc_(1),
                     price: WETH_PRICE,
                     token: weth_(8453)
                 })

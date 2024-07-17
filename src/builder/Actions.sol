@@ -23,10 +23,6 @@ import {List} from "./List.sol";
 
 library Actions {
     /* ===== Constants ===== */
-    string constant PAYMENT_METHOD_OFFCHAIN = "OFFCHAIN";
-    string constant PAYMENT_METHOD_PAYCALL = "PAY_CALL";
-    string constant PAYMENT_METHOD_QUOTECALL = "QUOTE_CALL";
-
     string constant ACTION_TYPE_BORROW = "BORROW";
     string constant ACTION_TYPE_BRIDGE = "BRIDGE";
     string constant ACTION_TYPE_CLAIM_REWARDS = "CLAIM_REWARDS";
@@ -145,7 +141,7 @@ library Actions {
         address quarkAccount;
         string actionType;
         bytes actionContext;
-        // One of the PAYMENT_METHOD_* constants.
+        // One of the PaymentInfo.PAYMENT_METHOD_* constants.
         string paymentMethod;
         // Address of payment token on chainId.
         // Null address if the payment method was OFFCHAIN.
@@ -458,20 +454,12 @@ library Actions {
             bridgeType: BRIDGE_TYPE_CCTP
         });
 
-        string memory paymentMethod;
-        if (payment.isToken) {
-            // To pay with token, it has to be a paycall or quotecall.
-            paymentMethod = useQuotecall ? PAYMENT_METHOD_QUOTECALL : PAYMENT_METHOD_PAYCALL;
-        } else {
-            paymentMethod = PAYMENT_METHOD_OFFCHAIN;
-        }
-
         Action memory action = Actions.Action({
             chainId: bridge.srcChainId,
             quarkAccount: bridge.sender,
             actionType: ACTION_TYPE_BRIDGE,
             actionContext: abi.encode(bridgeActionContext),
-            paymentMethod: paymentMethod,
+            paymentMethod: PaymentInfo.paymentMethodForPayment(payment, useQuotecall),
             // Null address for OFFCHAIN payment.
             paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, bridge.srcChainId).token : address(0),
             paymentTokenSymbol: payment.currency,
@@ -556,7 +544,7 @@ library Actions {
             quarkAccount: borrowInput.borrower,
             actionType: ACTION_TYPE_BORROW,
             actionContext: abi.encode(repayActionContext),
-            paymentMethod: payment.isToken ? PAYMENT_METHOD_PAYCALL : PAYMENT_METHOD_OFFCHAIN,
+            paymentMethod: PaymentInfo.paymentMethodForPayment(payment, false),
             // Null address for OFFCHAIN payment.
             paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, borrowInput.chainId).token : address(0),
             paymentTokenSymbol: payment.currency,
@@ -641,7 +629,7 @@ library Actions {
             quarkAccount: repayInput.repayer,
             actionType: ACTION_TYPE_REPAY,
             actionContext: abi.encode(repayActionContext),
-            paymentMethod: payment.isToken ? PAYMENT_METHOD_PAYCALL : PAYMENT_METHOD_OFFCHAIN,
+            paymentMethod: PaymentInfo.paymentMethodForPayment(payment, false),
             // Null address for OFFCHAIN payment.
             paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, repayInput.chainId).token : address(0),
             paymentTokenSymbol: payment.currency,
@@ -698,7 +686,7 @@ library Actions {
             quarkAccount: cometSupply.sender,
             actionType: ACTION_TYPE_SUPPLY,
             actionContext: abi.encode(cometSupplyActionContext),
-            paymentMethod: payment.isToken ? PAYMENT_METHOD_PAYCALL : PAYMENT_METHOD_OFFCHAIN,
+            paymentMethod: PaymentInfo.paymentMethodForPayment(payment, false),
             // Null address for OFFCHAIN payment.
             paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, cometSupply.chainId).token : address(0),
             paymentTokenSymbol: payment.currency,
@@ -756,7 +744,7 @@ library Actions {
             quarkAccount: cometWithdraw.withdrawer,
             actionType: ACTION_TYPE_WITHDRAW,
             actionContext: abi.encode(cometWithdrawActionContext),
-            paymentMethod: payment.isToken ? PAYMENT_METHOD_PAYCALL : PAYMENT_METHOD_OFFCHAIN,
+            paymentMethod: PaymentInfo.paymentMethodForPayment(payment, false),
             // Null address for OFFCHAIN payment.
             paymentToken: payment.isToken
                 ? PaymentInfo.knownToken(payment.currency, cometWithdraw.chainId).token
@@ -814,20 +802,13 @@ library Actions {
             chainId: transfer.chainId,
             recipient: transfer.recipient
         });
-        string memory paymentMethod;
-        if (payment.isToken) {
-            // To pay with token, it has to be a paycall or quotecall.
-            paymentMethod = useQuotecall ? PAYMENT_METHOD_QUOTECALL : PAYMENT_METHOD_PAYCALL;
-        } else {
-            paymentMethod = PAYMENT_METHOD_OFFCHAIN;
-        }
 
         Action memory action = Actions.Action({
             chainId: transfer.chainId,
             quarkAccount: transfer.sender,
             actionType: ACTION_TYPE_TRANSFER,
             actionContext: abi.encode(transferActionContext),
-            paymentMethod: paymentMethod,
+            paymentMethod: PaymentInfo.paymentMethodForPayment(payment, useQuotecall),
             // Null address for OFFCHAIN payment.
             paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, transfer.chainId).token : address(0),
             paymentTokenSymbol: payment.currency,
@@ -872,14 +853,6 @@ library Actions {
             toAssetSymbol: TokenWrapper.getWrapperCounterpartSymbol(wrapOrUnwrap.chainId, assetPositions.symbol)
         });
 
-        string memory paymentMethod;
-        if (payment.isToken) {
-            // To pay with token, it has to be a paycall or quotecall.
-            paymentMethod = useQuotecall ? PAYMENT_METHOD_QUOTECALL : PAYMENT_METHOD_PAYCALL;
-        } else {
-            paymentMethod = PAYMENT_METHOD_OFFCHAIN;
-        }
-
         Action memory action = Actions.Action({
             chainId: wrapOrUnwrap.chainId,
             quarkAccount: wrapOrUnwrap.sender,
@@ -887,7 +860,7 @@ library Actions {
                 ? ACTION_TYPE_UNWRAP
                 : ACTION_TYPE_WRAP,
             actionContext: abi.encode(wrapOrUnwrapActionContext),
-            paymentMethod: paymentMethod,
+            paymentMethod: PaymentInfo.paymentMethodForPayment(payment, useQuotecall),
             // Null address for OFFCHAIN payment.
             paymentToken: payment.isToken
                 ? PaymentInfo.knownToken(payment.currency, wrapOrUnwrap.chainId).token
@@ -956,20 +929,13 @@ library Actions {
             outputToken: swap.buyToken,
             outputTokenPrice: buyTokenAssetPositions.usdPrice
         });
-        string memory paymentMethod;
-        if (payment.isToken) {
-            // To pay with token, it has to be a paycall or quotecall.
-            paymentMethod = useQuotecall ? PAYMENT_METHOD_QUOTECALL : PAYMENT_METHOD_PAYCALL;
-        } else {
-            paymentMethod = PAYMENT_METHOD_OFFCHAIN;
-        }
 
         Action memory action = Actions.Action({
             chainId: swap.chainId,
             quarkAccount: swap.sender,
             actionType: ACTION_TYPE_SWAP,
             actionContext: abi.encode(swapActionContext),
-            paymentMethod: paymentMethod,
+            paymentMethod: PaymentInfo.paymentMethodForPayment(payment, useQuotecall),
             // Null address for OFFCHAIN payment.
             paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, swap.chainId).token : address(0),
             paymentTokenSymbol: payment.currency,

@@ -11,10 +11,15 @@ import {PaymentInfo} from "src/builder/PaymentInfo.sol";
 import {QuarkBuilder} from "src/builder/QuarkBuilder.sol";
 import {Strings} from "src/builder/Strings.sol";
 
+import {Arrays} from "test/builder/lib/Arrays.sol";
+
 contract QuarkBuilderTest {
     uint256 constant BLOCK_TIMESTAMP = 123_456_789;
 
-    address constant COMET_1 = address(0xc3);
+    address constant COMET_1_USDC = address(0xc3010a);
+    address constant COMET_1_WETH = address(0xc3010b);
+    address constant COMET_8453_USDC = address(0xc384530a);
+    address constant COMET_8453_WETH = address(0xc384530b);
 
     address constant LINK_1 = address(0xfeed01);
     address constant LINK_7777 = address(0xfeed7777);
@@ -77,19 +82,27 @@ contract QuarkBuilderTest {
         chainAccountsList[0] = Accounts.ChainAccounts({
             chainId: 1,
             quarkStates: quarkStates_(address(0xa11ce), 12),
-            assetPositionsList: assetPositionsList_(1, address(0xa11ce), uint256(amount / 2))
+            assetPositionsList: assetPositionsList_(1, address(0xa11ce), uint256(amount / 2)),
+            cometPositions: emptyCometPositions_()
         });
         chainAccountsList[1] = Accounts.ChainAccounts({
             chainId: 8453,
             quarkStates: quarkStates_(address(0xb0b), 2),
-            assetPositionsList: assetPositionsList_(8453, address(0xb0b), uint256(amount / 2))
+            assetPositionsList: assetPositionsList_(8453, address(0xb0b), uint256(amount / 2)),
+            cometPositions: emptyCometPositions_()
         });
         chainAccountsList[2] = Accounts.ChainAccounts({
             chainId: 7777,
             quarkStates: quarkStates_(address(0xc0b), 5),
-            assetPositionsList: assetPositionsList_(7777, address(0xc0b), uint256(0))
+            assetPositionsList: assetPositionsList_(7777, address(0xc0b), uint256(0)),
+            cometPositions: emptyCometPositions_()
         });
         return chainAccountsList;
+    }
+
+    function emptyCometPositions_() internal pure returns (Accounts.CometPositions[] memory) {
+        Accounts.CometPositions[] memory emptyCometPositions = new Accounts.CometPositions[](0);
+        return emptyCometPositions;
     }
 
     function quarkStates_() internal pure returns (Accounts.QuarkState[] memory) {
@@ -197,6 +210,26 @@ contract QuarkBuilderTest {
         }
     }
 
+    function cometUsdc_(uint256 chainId) internal pure returns (address) {
+        if (chainId == 1) {
+            return COMET_1_USDC;
+        } else if (chainId == 8453) {
+            return COMET_8453_USDC;
+        } else {
+            revert("no USDC Comet for chain id");
+        }
+    }
+
+    function cometWeth_(uint256 chainId) internal pure returns (address) {
+        if (chainId == 1) {
+            return COMET_1_WETH;
+        } else if (chainId == 8453) {
+            return COMET_8453_WETH;
+        } else {
+            revert("no WETH Comet for chain id");
+        }
+    }
+
     function quarkStates_(address account, uint96 nextNonce) internal pure returns (Accounts.QuarkState[] memory) {
         Accounts.QuarkState[] memory quarkStates = new Accounts.QuarkState[](1);
         quarkStates[0] = quarkState_(account, nextNonce);
@@ -211,38 +244,26 @@ contract QuarkBuilderTest {
         return Accounts.QuarkState({account: account, quarkNextNonce: nextNonce});
     }
 
-    function stringArray(string memory string0, string memory string1, string memory string2, string memory string3)
-        internal
-        pure
-        returns (string[] memory)
-    {
-        string[] memory strings = new string[](4);
-        strings[0] = string0;
-        strings[1] = string1;
-        strings[2] = string2;
-        strings[3] = string3;
-        return strings;
-    }
-
-    function uintArray(uint256 uint0, uint256 uint1, uint256 uint2, uint256 uint3)
-        internal
-        pure
-        returns (uint256[] memory)
-    {
-        uint256[] memory uints = new uint256[](4);
-        uints[0] = uint0;
-        uints[1] = uint1;
-        uints[2] = uint2;
-        uints[3] = uint3;
-        return uints;
-    }
-
     struct ChainPortfolio {
         uint256 chainId;
         address account;
         uint96 nextNonce;
         string[] assetSymbols;
         uint256[] assetBalances;
+        CometPortfolio[] cometPortfolios;
+    }
+
+    struct CometPortfolio {
+        address comet;
+        uint256 baseSupplied;
+        uint256 baseBorrowed;
+        string[] collateralAssetSymbols;
+        uint256[] collateralAssetBalances;
+    }
+
+    function emptyCometPortfolios_() internal pure returns (CometPortfolio[] memory) {
+        CometPortfolio[] memory emptyCometPortfolios = new CometPortfolio[](0);
+        return emptyCometPortfolios;
     }
 
     function chainAccountsFromChainPortfolios(ChainPortfolio[] memory chainPortfolios)
@@ -260,11 +281,61 @@ contract QuarkBuilderTest {
                     chainPortfolios[i].account,
                     chainPortfolios[i].assetSymbols,
                     chainPortfolios[i].assetBalances
+                    ),
+                // cometPositions: cometPositionsFor
+                cometPositions: cometPositionsForCometPorfolios(
+                    chainPortfolios[i].chainId, chainPortfolios[i].account, chainPortfolios[i].cometPortfolios
                     )
             });
         }
 
         return chainAccountsList;
+    }
+
+    function cometPositionsForCometPorfolios(uint256 chainId, address account, CometPortfolio[] memory cometPortfolios)
+        internal
+        pure
+        returns (Accounts.CometPositions[] memory)
+    {
+        Accounts.CometPositions[] memory cometPositions = new Accounts.CometPositions[](cometPortfolios.length);
+
+        for (uint256 i = 0; i < cometPortfolios.length; ++i) {
+            CometPortfolio memory cometPortfolio = cometPortfolios[i];
+            Accounts.CometCollateralPosition[] memory collateralPositions =
+                new Accounts.CometCollateralPosition[](cometPortfolio.collateralAssetSymbols.length);
+
+            for (uint256 j = 0; j < cometPortfolio.collateralAssetSymbols.length; ++j) {
+                (address asset,,) = assetInfo(cometPortfolio.collateralAssetSymbols[j], chainId);
+                collateralPositions[j] = Accounts.CometCollateralPosition({
+                    asset: asset,
+                    accounts: Arrays.addressArray(account),
+                    balances: Arrays.uintArray(cometPortfolio.collateralAssetBalances[j])
+                });
+            }
+
+            cometPositions[i] = Accounts.CometPositions({
+                comet: cometPortfolio.comet,
+                basePosition: Accounts.CometBasePosition({
+                    asset: baseAssetForComet(chainId, cometPortfolio.comet),
+                    accounts: Arrays.addressArray(account),
+                    borrowed: Arrays.uintArray(cometPortfolio.baseBorrowed),
+                    supplied: Arrays.uintArray(cometPortfolio.baseSupplied)
+                }),
+                collateralPositions: collateralPositions
+            });
+        }
+
+        return cometPositions;
+    }
+
+    function baseAssetForComet(uint256 chainId, address comet) internal pure returns (address) {
+        if (comet == COMET_1_USDC || comet == COMET_8453_USDC) {
+            return usdc_(chainId);
+        } else if (comet == COMET_1_WETH || comet == COMET_8453_WETH) {
+            return weth_(chainId);
+        } else {
+            revert("unknown chainId/comet combination");
+        }
     }
 
     function assetPositionsForAssets(

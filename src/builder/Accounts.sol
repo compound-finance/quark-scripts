@@ -12,6 +12,7 @@ library Accounts {
         uint256 chainId;
         QuarkState[] quarkStates;
         AssetPositions[] assetPositionsList;
+        CometPositions[] cometPositions;
     }
 
     // We map this to the Portfolio data structure that the client will already have.
@@ -37,6 +38,25 @@ library Accounts {
         uint256 balance;
     }
 
+    struct CometPositions {
+        address comet;
+        CometBasePosition basePosition;
+        CometCollateralPosition[] collateralPositions;
+    }
+
+    struct CometBasePosition {
+        address asset;
+        address[] accounts;
+        uint256[] borrowed;
+        uint256[] supplied;
+    }
+
+    struct CometCollateralPosition {
+        address asset;
+        address[] accounts;
+        uint256[] balances;
+    }
+
     function findChainAccounts(uint256 chainId, ChainAccounts[] memory chainAccountsList)
         internal
         pure
@@ -45,6 +65,19 @@ library Accounts {
         for (uint256 i = 0; i < chainAccountsList.length; ++i) {
             if (chainAccountsList[i].chainId == chainId) {
                 return found = chainAccountsList[i];
+            }
+        }
+    }
+
+    function findCometPositions(uint256 chainId, address comet, ChainAccounts[] memory chainAccountsList)
+        internal
+        pure
+        returns (CometPositions memory found)
+    {
+        ChainAccounts memory chainAccounts = findChainAccounts(chainId, chainAccountsList);
+        for (uint256 i = 0; i < chainAccounts.cometPositions.length; ++i) {
+            if (chainAccounts.cometPositions[i].comet == comet) {
+                return found = chainAccounts.cometPositions[i];
             }
         }
     }

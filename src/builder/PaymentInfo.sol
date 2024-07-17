@@ -4,6 +4,10 @@ pragma solidity ^0.8.23;
 import {Strings} from "./Strings.sol";
 
 library PaymentInfo {
+    string constant PAYMENT_METHOD_OFFCHAIN = "OFFCHAIN";
+    string constant PAYMENT_METHOD_PAYCALL = "PAY_CALL";
+    string constant PAYMENT_METHOD_QUOTECALL = "QUOTE_CALL";
+
     error NoKnownPaymentToken(uint256 chainId);
     error MaxCostMissingForChain(uint256 chainId);
 
@@ -75,5 +79,19 @@ library PaymentInfo {
             }
         }
         return false;
+    }
+
+    function paymentMethodForPayment(PaymentInfo.Payment memory payment, bool useQuotecall)
+        internal
+        pure
+        returns (string memory)
+    {
+        if (payment.isToken && useQuotecall) {
+            return PAYMENT_METHOD_QUOTECALL;
+        } else if (payment.isToken && !useQuotecall) {
+            return PAYMENT_METHOD_PAYCALL;
+        } else {
+            return PAYMENT_METHOD_OFFCHAIN;
+        }
     }
 }
