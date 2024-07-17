@@ -41,7 +41,7 @@ library Accounts {
     struct CometPositions {
         address comet;
         CometBasePosition basePosition;
-        CometCollateralPosition[] collaterals;
+        CometCollateralPosition[] collateralPositions;
     }
 
     struct CometBasePosition {

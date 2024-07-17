@@ -321,7 +321,7 @@ contract QuarkBuilderTest {
                     borrowed: Arrays.uintArray(cometPortfolio.baseBorrowed),
                     supplied: Arrays.uintArray(cometPortfolio.baseSupplied)
                 }),
-                collaterals: collateralPositions
+                collateralPositions: collateralPositions
             });
         }
 
