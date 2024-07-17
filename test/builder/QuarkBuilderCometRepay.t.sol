@@ -11,18 +11,20 @@ import {Actions} from "src/builder/Actions.sol";
 import {CCTPBridgeActions} from "src/BridgeScripts.sol";
 import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
 import {CometRepayAndWithdrawMultipleAssets} from "src/DeFiScripts.sol";
-import {Paycall} from "src/Paycall.sol";
-import {Strings} from "src/builder/Strings.sol";
 import {Multicall} from "src/Multicall.sol";
+import {Paycall} from "src/Paycall.sol";
+import {Quotecall} from "src/Quotecall.sol";
+import {Strings} from "src/builder/Strings.sol";
 import {WrapperActions} from "src/WrapperScripts.sol";
 
 contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
     function repayIntent_(
-        uint256 amount,
-        string memory assetSymbol,
         uint256 chainId,
-        uint256[] memory collateralAmounts,
-        string[] memory collateralAssetSymbols
+        address comet,
+        string memory assetSymbol,
+        uint256 amount,
+        string[] memory collateralAssetSymbols,
+        uint256[] memory collateralAmounts
     ) internal pure returns (QuarkBuilder.CometRepayIntent memory) {
         return QuarkBuilder.CometRepayIntent({
             amount: amount,
@@ -31,7 +33,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             chainId: chainId,
             collateralAmounts: collateralAmounts,
             collateralAssetSymbols: collateralAssetSymbols,
-            comet: cometUsdc_(1),
+            comet: comet,
             repayer: address(0xa11ce)
         });
     }
@@ -49,7 +51,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         vm.expectRevert(QuarkBuilder.InvalidInput.selector);
 
         builder.cometRepay(
-            repayIntent_(1e6, "USDC", 1, collateralAmounts, collateralAssetSymbols),
+            repayIntent_(1, cometUsdc_(1), "USDC", 1e6, collateralAssetSymbols, collateralAmounts),
             chainAccountsList_(3e6),
             paymentUsd_()
         );
@@ -64,7 +66,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "USDC", 1e6, 0));
 
         builder.cometRepay(
-            repayIntent_(1e6, "USDC", 1, collateralAmounts, collateralAssetSymbols), // attempting to repay 1 USDC
+            repayIntent_(1, cometUsdc_(1), "USDC", 1e6, collateralAssetSymbols, collateralAmounts), // attempting to repay 1 USDC
             chainAccountsList_(0e6), // but user has 0 USDC
             paymentUsd_()
         );
@@ -91,7 +93,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         vm.expectRevert(QuarkBuilder.MaxCostTooHigh.selector);
 
         builder.cometRepay(
-            repayIntent_(1e18, "WETH", 1, collateralAmounts, collateralAssetSymbols),
+            repayIntent_(1, cometWeth_(1), "WETH", 1e18, collateralAssetSymbols, collateralAmounts),
             chainAccountsFromChainPortfolios(chainPortfolios),
             paymentUsdc_(maxCosts)
         );
@@ -125,11 +127,12 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         QuarkBuilder builder = new QuarkBuilder();
         QuarkBuilder.BuilderResult memory result = builder.cometRepay(
             repayIntent_(
-                1e6, // repaying 1 USDC
-                "USDC",
                 1,
-                collateralAmounts, // withdrawing 1 LINK
-                collateralAssetSymbols
+                cometUsdc_(1),
+                "USDC",
+                1e6, // repaying 1 USDC
+                collateralAssetSymbols,
+                collateralAmounts // withdrawing 1 LINK
             ),
             chainAccountsFromChainPortfolios(chainPortfolios),
             paymentUsd_()
@@ -246,11 +249,12 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         QuarkBuilder builder = new QuarkBuilder();
         QuarkBuilder.BuilderResult memory result = builder.cometRepay(
             repayIntent_(
-                1e18, // repaying 1 WETH
-                "WETH",
                 1,
-                collateralAmounts, // withdrawing 1 LINK
-                collateralAssetSymbols
+                cometWeth_(1),
+                "WETH",
+                1e18, // repaying 1 WETH
+                collateralAssetSymbols,
+                collateralAmounts // withdrawing 1 LINK
             ),
             chainAccountsFromChainPortfolios(chainPortfolios),
             paymentUsd_()
@@ -277,13 +281,13 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             abi.encodeWithSelector(WrapperActions.wrapETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18);
         callDatas[1] = abi.encodeCall(
             CometRepayAndWithdrawMultipleAssets.run,
-            (cometUsdc_(1), collateralTokens, collateralAmounts, weth_(1), 1e18)
+            (cometWeth_(1), collateralTokens, collateralAmounts, weth_(1), 1e18)
         );
 
         assertEq(
             result.quarkOperations[0].scriptCalldata,
             abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
-            "calldata is Multicall.run([wrapperActionsAddress, cometRepayAndWithdrawMultipleAssetsAddress], [WrapperActions.wrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18), CometRepayAndWithdrawMultipleAssets.run(COMET_1, collateralTokens, collateralAmounts, weth_(1), 1e18)"
+            "calldata is Multicall.run([wrapperActionsAddress, cometRepayAndWithdrawMultipleAssetsAddress], [WrapperActions.wrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18), CometRepayAndWithdrawMultipleAssets.run(COMET_1_WETH, collateralTokens, collateralAmounts, weth_(1), 1e18)"
         );
         assertEq(result.quarkOperations[0].scriptSources.length, 3);
         assertEq(result.quarkOperations[0].scriptSources[0], type(WrapperActions).creationCode);
@@ -312,7 +316,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                     collateralAssetSymbols: collateralAssetSymbols,
                     collateralTokenPrices: collateralTokenPrices,
                     collateralTokens: collateralTokens,
-                    comet: cometUsdc_(1),
+                    comet: cometWeth_(1),
                     price: WETH_PRICE,
                     token: weth_(1)
                 })
@@ -357,11 +361,12 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         QuarkBuilder builder = new QuarkBuilder();
         QuarkBuilder.BuilderResult memory result = builder.cometRepay(
             repayIntent_(
-                1e6, // repaying 1 USDC
-                "USDC",
                 1,
-                collateralAmounts, // withdrawing 1 LINK
-                collateralAssetSymbols
+                cometUsdc_(1),
+                "USDC",
+                1e6, // repaying 1 USDC
+                collateralAssetSymbols,
+                collateralAmounts // withdrawing 1 LINK
             ),
             chainAccountsFromChainPortfolios(chainPortfolios),
             paymentUsdc_(maxCosts) // and paying with USDC
@@ -480,11 +485,12 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
 
         QuarkBuilder.BuilderResult memory result = builder.cometRepay(
             repayIntent_(
-                1e18, // repaying 1 WETH
-                "WETH",
                 1,
-                collateralAmounts, // and withdrawing 1 USDC
-                collateralAssetSymbols
+                cometWeth_(1),
+                "WETH",
+                1e18, // repaying 1 WETH
+                collateralAssetSymbols,
+                collateralAmounts // and withdrawing 1 USDC
             ),
             chainAccountsFromChainPortfolios(chainPortfolios),
             paymentUsdc_(maxCosts) // user is paying with USDC that is currently supplied as collateral
@@ -513,7 +519,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                 cometRepayAndWithdrawMultipleAssetsAddress,
                 abi.encodeWithSelector(
                     CometRepayAndWithdrawMultipleAssets.run.selector,
-                    cometUsdc_(1),
+                    cometWeth_(1),
                     collateralTokens,
                     collateralAmounts,
                     weth_(1),
@@ -521,7 +527,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                 ),
                 0.5e6
             ),
-            "calldata is Paycall.run(CometRepayAndWithdrawMultipleAssets.run(cometUsdc_(1), [USDC_1], [1e6], WETH_1, 1e18), 0.5e6);"
+            "calldata is Paycall.run(CometRepayAndWithdrawMultipleAssets.run(cometWeth_(1), [USDC_1], [1e6], WETH_1, 1e18), 0.5e6);"
         );
 
         assertEq(result.quarkOperations[0].scriptSources.length, 2);
@@ -557,7 +563,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                     collateralAssetSymbols: collateralAssetSymbols,
                     collateralTokenPrices: collateralTokenPrices,
                     collateralTokens: collateralTokens,
-                    comet: cometUsdc_(1),
+                    comet: cometWeth_(1),
                     price: WETH_PRICE,
                     token: weth_(1)
                 })
@@ -604,11 +610,12 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
 
         QuarkBuilder.BuilderResult memory result = builder.cometRepay(
             repayIntent_(
-                2e6,
-                "USDC", // repaying 2 USDC, bridged from mainnet to base
                 8453,
-                collateralAmounts,
-                collateralAssetSymbols
+                cometUsdc_(8453),
+                "USDC", // repaying 2 USDC, bridged from mainnet to base
+                2e6,
+                collateralAssetSymbols,
+                collateralAmounts
             ),
             chainAccountsFromChainPortfolios(chainPortfolios),
             paymentUsdc_(maxCosts)
@@ -674,7 +681,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                 cometRepayAndWithdrawMultipleAssetsAddress,
                 abi.encodeWithSelector(
                     CometRepayAndWithdrawMultipleAssets.run.selector,
-                    cometUsdc_(1),
+                    cometUsdc_(8453),
                     collateralTokens,
                     collateralAmounts,
                     usdc_(8453),
@@ -682,7 +689,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                 ),
                 0.2e6
             ),
-            "calldata is Paycall.run(CometRepayAndWithdrawMultipleAssets.run(cometUsdc_(1), [LINK_8453], [1e18], USDC_8453, 2e6), 0.2e6);"
+            "calldata is Paycall.run(CometRepayAndWithdrawMultipleAssets.run(cometUsdc_(8453), [LINK_8453], [1e18], USDC_8453, 2e6), 0.2e6);"
         );
         assertEq(result.quarkOperations[1].scriptSources.length, 2);
         assertEq(result.quarkOperations[1].scriptSources[0], type(CometRepayAndWithdrawMultipleAssets).creationCode);
@@ -714,7 +721,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                     destinationChainId: 8453,
                     price: USDC_PRICE,
                     recipient: address(0xa11ce),
-                    token: USDC_1
+                    token: usdc_(1)
                 })
             ),
             "action context encoded from BridgeActionContext"
@@ -741,7 +748,318 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                     collateralAssetSymbols: collateralAssetSymbols,
                     collateralTokenPrices: collateralTokenPrices,
                     collateralTokens: collateralTokens,
+                    comet: cometUsdc_(8453),
+                    price: USDC_PRICE,
+                    token: usdc_(8453)
+                })
+            ),
+            "action context encoded from RepayActionContext"
+        );
+
+        // TODO: Check the contents of the EIP712 data
+        assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
+        assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
+        assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
+    }
+
+    function testCometRepayMax() public {
+        PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
+        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 0.1e6});
+
+        address[] memory collateralTokens = new address[](0);
+        uint256[] memory collateralAmounts = new uint256[](0);
+        string[] memory collateralAssetSymbols = new string[](0);
+
+        CometPortfolio[] memory cometPortfolios = new CometPortfolio[](1);
+        cometPortfolios[0] = CometPortfolio({
+            comet: cometUsdc_(1),
+            baseSupplied: 0,
+            baseBorrowed: 10e6, // currently borrowing 10 USDC
+            collateralAssetSymbols: Arrays.stringArray("LINK"),
+            collateralAssetBalances: Arrays.uintArray(0)
+        });
+
+        ChainPortfolio[] memory chainPortfolios = new ChainPortfolio[](1);
+        chainPortfolios[0] = ChainPortfolio({
+            chainId: 1,
+            account: address(0xa11ce),
+            nextNonce: 12,
+            assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
+            assetBalances: Arrays.uintArray(50e6, 0, 0, 0), // has 50 USDC
+            cometPortfolios: cometPortfolios
+        });
+
+        QuarkBuilder builder = new QuarkBuilder();
+        QuarkBuilder.BuilderResult memory result = builder.cometRepay(
+            repayIntent_(
+                1,
+                cometUsdc_(1),
+                "USDC",
+                type(uint256).max, // repaying max (all 10 USDC)
+                collateralAssetSymbols,
+                collateralAmounts
+            ),
+            chainAccountsFromChainPortfolios(chainPortfolios), // user has no assets
+            paymentUsdc_(maxCosts) // but will pay from withdrawn funds
+        );
+
+        assertEq(result.paymentCurrency, "usdc", "usdc currency");
+
+        address quotecallAddress = CodeJarHelper.getCodeAddress(
+            abi.encodePacked(type(Quotecall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
+        );
+        address cometRepayAndWithdrawMultipleAssetsAddress =
+            CodeJarHelper.getCodeAddress(type(CometRepayAndWithdrawMultipleAssets).creationCode);
+
+        // Check the quark operations
+        assertEq(result.quarkOperations.length, 1, "one operation");
+        assertEq(
+            result.quarkOperations[0].scriptAddress,
+            quotecallAddress,
+            "script address is correct given the code jar address on mainnet"
+        );
+
+        assertEq(
+            result.quarkOperations[0].scriptCalldata,
+            abi.encodeWithSelector(
+                Quotecall.run.selector,
+                cometRepayAndWithdrawMultipleAssetsAddress,
+                abi.encodeWithSelector(
+                    CometRepayAndWithdrawMultipleAssets.run.selector,
+                    cometUsdc_(1),
+                    collateralTokens,
+                    collateralAmounts,
+                    usdc_(1),
+                    type(uint256).max
+                ),
+                0.1e6
+            ),
+            "calldata is Quotecall.run(CometRepayAndWithdrawMultipleAssets.run(cometUsdc_(1), [], [], USDC_1, uint256.max), 0.1e6);"
+        );
+
+        assertEq(result.quarkOperations[0].scriptSources.length, 2);
+        assertEq(result.quarkOperations[0].scriptSources[0], type(CometRepayAndWithdrawMultipleAssets).creationCode);
+        assertEq(
+            result.quarkOperations[0].scriptSources[1],
+            abi.encodePacked(type(Quotecall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
+        );
+        assertEq(
+            result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
+        );
+
+        // check the actions
+        assertEq(result.actions.length, 1, "one action");
+        assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
+        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[0].actionType, "REPAY", "action type is 'REPAY'");
+        assertEq(result.actions[0].paymentMethod, "QUOTE_CALL", "payment method is 'QUOTE_CALL'");
+        assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC on mainnet");
+        assertEq(result.actions[0].paymentMaxCost, 0.1e6, "payment should have max cost of 0.1e6");
+
+        uint256[] memory collateralTokenPrices = new uint256[](0);
+
+        assertEq(
+            result.actions[0].actionContext,
+            abi.encode(
+                Actions.RepayActionContext({
+                    amount: type(uint256).max,
+                    assetSymbol: "USDC",
+                    chainId: 1,
+                    collateralAmounts: collateralAmounts,
+                    collateralAssetSymbols: collateralAssetSymbols,
+                    collateralTokenPrices: collateralTokenPrices,
+                    collateralTokens: collateralTokens,
                     comet: cometUsdc_(1),
+                    price: USDC_PRICE,
+                    token: usdc_(1)
+                })
+            ),
+            "action context encoded from RepayActionContext"
+        );
+
+        // TODO: Check the contents of the EIP712 data
+        assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
+        assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
+        assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
+    }
+
+    function testCometRepayMaxWithBridge() public {
+        PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](2);
+        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 0.1e6});
+        maxCosts[1] = PaymentInfo.PaymentMaxCost({chainId: 8453, amount: 0.1e6});
+
+        address[] memory collateralTokens = new address[](0);
+        uint256[] memory collateralAmounts = new uint256[](0);
+        string[] memory collateralAssetSymbols = new string[](0);
+
+        CometPortfolio[] memory cometPortfolios = new CometPortfolio[](1);
+        cometPortfolios[0] = CometPortfolio({
+            comet: cometUsdc_(8453),
+            baseSupplied: 0,
+            baseBorrowed: 10e6, // currently borrowing 10 USDC on Base Comet
+            collateralAssetSymbols: Arrays.stringArray("LINK"),
+            collateralAssetBalances: Arrays.uintArray(0)
+        });
+
+        ChainPortfolio[] memory chainPortfolios = new ChainPortfolio[](2);
+        chainPortfolios[0] = ChainPortfolio({
+            chainId: 1,
+            account: address(0xa11ce),
+            nextNonce: 12,
+            assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
+            assetBalances: Arrays.uintArray(50e6, 0, 0, 0), // has 50 USDC on mainnet
+            cometPortfolios: emptyCometPortfolios_()
+        });
+        chainPortfolios[1] = ChainPortfolio({
+            chainId: 8453,
+            account: address(0xa11ce),
+            nextNonce: 12,
+            assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
+            assetBalances: Arrays.uintArray(0, 0, 0, 0), // has 0 USDC on base
+            cometPortfolios: cometPortfolios
+        });
+
+        QuarkBuilder builder = new QuarkBuilder();
+        QuarkBuilder.BuilderResult memory result = builder.cometRepay(
+            repayIntent_(
+                8453,
+                cometUsdc_(8453),
+                "USDC",
+                type(uint256).max, // repaying max (all 10 USDC)
+                collateralAssetSymbols,
+                collateralAmounts
+            ),
+            chainAccountsFromChainPortfolios(chainPortfolios), // user has no assets
+            paymentUsdc_(maxCosts) // but will pay from withdrawn funds
+        );
+
+        assertEq(result.paymentCurrency, "usdc", "usdc currency");
+
+        address cctpBridgeActionsAddress = CodeJarHelper.getCodeAddress(type(CCTPBridgeActions).creationCode);
+        address cometRepayAndWithdrawMultipleAssetsAddress =
+            CodeJarHelper.getCodeAddress(type(CometRepayAndWithdrawMultipleAssets).creationCode);
+        address quotecallAddress = CodeJarHelper.getCodeAddress(
+            abi.encodePacked(type(Quotecall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
+        );
+        address quotecallAddressBase = CodeJarHelper.getCodeAddress(
+            abi.encodePacked(type(Quotecall).creationCode, abi.encode(ETH_USD_PRICE_FEED_8453, USDC_8453))
+        );
+
+        // Check the quark operations
+        // first operation
+        assertEq(result.quarkOperations.length, 2, "two operations");
+        assertEq(
+            result.quarkOperations[0].scriptAddress,
+            quotecallAddress,
+            "script address is correct given the code jar address on base"
+        );
+        assertEq(
+            result.quarkOperations[0].scriptCalldata,
+            abi.encodeWithSelector(
+                Quotecall.run.selector,
+                cctpBridgeActionsAddress,
+                abi.encodeWithSelector(
+                    CCTPBridgeActions.bridgeUSDC.selector,
+                    address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155),
+                    10.1e6, // 2e6 repaid + 0.2e6 max cost on Base
+                    6,
+                    bytes32(uint256(uint160(0xa11ce))),
+                    usdc_(1)
+                ),
+                0.1e6
+            ),
+            "calldata is Paycall.run(CCTPBridgeActions.bridgeUSDC(0xBd3fa81B58Ba92a82136038B25aDec7066af3155, 10.1e6, 6, 0xa11ce, USDC_1)), 0.1e6);"
+        );
+        assertEq(result.quarkOperations[0].scriptSources.length, 2);
+        assertEq(result.quarkOperations[0].scriptSources[0], type(CCTPBridgeActions).creationCode);
+        assertEq(
+            result.quarkOperations[0].scriptSources[1],
+            abi.encodePacked(type(Quotecall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
+        );
+        assertEq(
+            result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
+        );
+
+        // second operation
+        assertEq(
+            result.quarkOperations[1].scriptAddress,
+            quotecallAddressBase,
+            "script address[1] has been wrapped with quotecall address"
+        );
+        assertEq(
+            result.quarkOperations[1].scriptCalldata,
+            abi.encodeWithSelector(
+                Quotecall.run.selector,
+                cometRepayAndWithdrawMultipleAssetsAddress,
+                abi.encodeWithSelector(
+                    CometRepayAndWithdrawMultipleAssets.run.selector,
+                    cometUsdc_(8453),
+                    collateralTokens,
+                    collateralAmounts,
+                    usdc_(8453),
+                    type(uint256).max
+                ),
+                0.1e6
+            ),
+            "calldata is Quotecall.run(CometRepayAndWithdrawMultipleAssets.run(cometUsdc_(8453), [], [], USDC_8453, uint256.max), 0.1e6);"
+        );
+        assertEq(result.quarkOperations[1].scriptSources.length, 2);
+        assertEq(result.quarkOperations[1].scriptSources[0], type(CometRepayAndWithdrawMultipleAssets).creationCode);
+        assertEq(
+            result.quarkOperations[1].scriptSources[1],
+            abi.encodePacked(type(Quotecall).creationCode, abi.encode(ETH_USD_PRICE_FEED_8453, USDC_8453))
+        );
+        assertEq(
+            result.quarkOperations[1].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
+        );
+
+        // check the actions
+        // first action
+        assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
+        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[0].actionType, "BRIDGE", "action type is 'BRIDGE'");
+        assertEq(result.actions[0].paymentMethod, "QUOTE_CALL", "payment method is 'QUOTE_CALL'");
+        assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC on mainnet");
+        assertEq(result.actions[0].paymentMaxCost, 0.1e6, "payment should have max cost of 0.1e6");
+        assertEq(
+            result.actions[0].actionContext,
+            abi.encode(
+                Actions.BridgeActionContext({
+                    amount: 10.1e6,
+                    assetSymbol: "USDC",
+                    bridgeType: Actions.BRIDGE_TYPE_CCTP,
+                    chainId: 1,
+                    destinationChainId: 8453,
+                    price: USDC_PRICE,
+                    recipient: address(0xa11ce),
+                    token: USDC_1
+                })
+            ),
+            "action context encoded from BridgeActionContext"
+        );
+
+        // second action
+        assertEq(result.actions[1].chainId, 8453, "operation is on chainid 8453");
+        assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[1].actionType, "REPAY", "action type is 'REPAY'");
+        assertEq(result.actions[1].paymentMethod, "QUOTE_CALL", "payment method is 'QUOTE_CALL'");
+        assertEq(result.actions[1].paymentToken, USDC_8453, "payment token is USDC on Base");
+        assertEq(result.actions[1].paymentMaxCost, 0.1e6, "payment should have max cost of 0.1e6");
+
+        uint256[] memory collateralTokenPrices = new uint256[](0);
+
+        assertEq(
+            result.actions[1].actionContext,
+            abi.encode(
+                Actions.RepayActionContext({
+                    amount: type(uint256).max,
+                    assetSymbol: "USDC",
+                    chainId: 8453,
+                    collateralAmounts: collateralAmounts,
+                    collateralAssetSymbols: collateralAssetSymbols,
+                    collateralTokenPrices: collateralTokenPrices,
+                    collateralTokens: collateralTokens,
+                    comet: cometUsdc_(8453),
                     price: USDC_PRICE,
                     token: usdc_(8453)
                 })

@@ -566,7 +566,7 @@ library Actions {
         address repayer;
     }
 
-    function cometRepay(CometRepayInput memory repayInput, PaymentInfo.Payment memory payment)
+    function cometRepay(CometRepayInput memory repayInput, PaymentInfo.Payment memory payment, bool useQuotecall)
         internal
         pure
         returns (IQuarkWallet.QuarkOperation memory, Action memory)
@@ -629,7 +629,7 @@ library Actions {
             quarkAccount: repayInput.repayer,
             actionType: ACTION_TYPE_REPAY,
             actionContext: abi.encode(repayActionContext),
-            paymentMethod: PaymentInfo.paymentMethodForPayment(payment, false),
+            paymentMethod: PaymentInfo.paymentMethodForPayment(payment, useQuotecall),
             // Null address for OFFCHAIN payment.
             paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, repayInput.chainId).token : address(0),
             paymentTokenSymbol: payment.currency,

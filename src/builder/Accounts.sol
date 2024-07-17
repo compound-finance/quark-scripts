@@ -239,4 +239,18 @@ library Accounts {
         }
         return result;
     }
+
+    function totalBorrowForAccount(
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        uint256 chainId,
+        address comet,
+        address account
+    ) internal pure returns (uint256 totalBorrow) {
+        Accounts.CometPositions memory cometPositions = Accounts.findCometPositions(chainId, comet, chainAccountsList);
+        for (uint256 i = 0; i < cometPositions.basePosition.accounts.length; ++i) {
+            if (cometPositions.basePosition.accounts[i] == account) {
+                totalBorrow = cometPositions.basePosition.borrowed[i];
+            }
+        }
+    }
 }

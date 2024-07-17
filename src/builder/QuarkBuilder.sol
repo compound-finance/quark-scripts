@@ -26,7 +26,6 @@ contract QuarkBuilder {
     error AssetPositionNotFound();
     error FundsUnavailable(string assetSymbol, uint256 requiredAmount, uint256 actualAmount);
     error InvalidActionChain();
-    error InvalidActionType();
     error InvalidInput();
     error MaxCostTooHigh();
     error MissingWrapperCounterpart();
@@ -74,22 +73,28 @@ contract QuarkBuilder {
 
         // XXX confirm that the user is not withdrawing beyond their limits
 
-        assertFundsAvailable(
-            repayIntent.chainId, repayIntent.assetSymbol, repayIntent.amount, chainAccountsList, payment
-        );
+        bool isMaxRepay = repayIntent.amount == type(uint256).max;
+        bool useQuotecall = isMaxRepay;
+
+        uint256 repayAmount;
+        if (isMaxRepay) {
+            repayAmount += Accounts.totalBorrowForAccount(
+                chainAccountsList, repayIntent.chainId, repayIntent.comet, repayIntent.repayer
+            );
+            // XXX apply buffer to repayAmount
+            repayAmount = repayAmount + 0;
+        } else {
+            repayAmount = repayIntent.amount;
+        }
+
+        assertFundsAvailable(repayIntent.chainId, repayIntent.assetSymbol, repayAmount, chainAccountsList, payment);
 
         List.DynamicArray memory actions = List.newList();
         List.DynamicArray memory quarkOperations = List.newList();
 
-        bool useQuotecall = false; // TODO: calculate an actual value for useQuoteCall
-
-        if (
-            needsBridgedFunds(
-                repayIntent.assetSymbol, repayIntent.amount, repayIntent.chainId, chainAccountsList, payment
-            )
-        ) {
+        if (needsBridgedFunds(repayIntent.assetSymbol, repayAmount, repayIntent.chainId, chainAccountsList, payment)) {
             // Note: Assumes that the asset uses the same # of decimals on each chain
-            uint256 amountNeededOnDst = repayIntent.amount;
+            uint256 amountNeededOnDst = repayAmount;
             // If action is paid for with tokens and the payment token is the
             // repay token, we need to add the max cost to the
             // amountNeededOnDst for target chain
@@ -123,7 +128,7 @@ contract QuarkBuilder {
             chainAccountsList,
             payment,
             repayIntent.assetSymbol,
-            repayIntent.amount,
+            repayAmount,
             repayIntent.chainId,
             repayIntent.repayer,
             repayIntent.blockTimestamp,
@@ -143,7 +148,8 @@ contract QuarkBuilder {
                 blockTimestamp: repayIntent.blockTimestamp,
                 repayer: repayIntent.repayer
             }),
-            payment
+            payment,
+            useQuotecall
         );
 
         List.addAction(actions, repayActions);
@@ -157,15 +163,20 @@ contract QuarkBuilder {
         if (payment.isToken) {
             // if you are withdrawing the payment token, you can pay with the
             // withdrawn funds
-            uint256 supplementalPaymentTokenBalance = 0;
+            uint256 paymentTokenReceived = 0;
             for (uint256 i = 0; i < repayIntent.collateralAssetSymbols.length; ++i) {
                 if (Strings.stringEqIgnoreCase(payment.currency, repayIntent.collateralAssetSymbols[i])) {
-                    supplementalPaymentTokenBalance += repayIntent.collateralAmounts[i];
+                    paymentTokenReceived += repayIntent.collateralAmounts[i];
                 }
             }
 
+            uint256 paymentTokenSpent = 0;
+            if (Strings.stringEqIgnoreCase(repayIntent.assetSymbol, payment.currency)) {
+                paymentTokenSpent += repayAmount;
+            }
+
             assertSufficientPaymentTokenBalances(
-                actionsArray, chainAccountsList, repayIntent.chainId, supplementalPaymentTokenBalance
+                actionsArray, chainAccountsList, repayIntent.chainId, paymentTokenReceived, paymentTokenSpent
             );
         }
 
@@ -213,7 +224,7 @@ contract QuarkBuilder {
         List.DynamicArray memory actions = List.newList();
         List.DynamicArray memory quarkOperations = List.newList();
 
-        bool useQuotecall = false; // TODO: calculate an actual value for useQuoteCall
+        bool useQuotecall = false; // never use Quotecall
         bool paymentTokenIsCollateralAsset = false;
 
         for (uint256 i = 0; i < borrowIntent.collateralAssetSymbols.length; ++i) {
@@ -331,13 +342,13 @@ contract QuarkBuilder {
 
         // Validate generated actions for affordability
         if (payment.isToken) {
-            uint256 supplementalPaymentTokenBalance = 0;
+            uint256 paymentTokenReceived = 0;
             if (Strings.stringEqIgnoreCase(payment.currency, borrowIntent.assetSymbol)) {
-                supplementalPaymentTokenBalance += borrowIntent.amount;
+                paymentTokenReceived += borrowIntent.amount;
             }
 
             assertSufficientPaymentTokenBalances(
-                actionsArray, chainAccountsList, borrowIntent.chainId, supplementalPaymentTokenBalance
+                actionsArray, chainAccountsList, borrowIntent.chainId, paymentTokenReceived
             );
         }
 
@@ -370,7 +381,6 @@ contract QuarkBuilder {
         address sender;
     }
 
-    // TODO: handle supply max
     function cometSupply(
         CometSupplyIntent memory cometSupplyIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
@@ -389,8 +399,7 @@ contract QuarkBuilder {
             payment
         );
 
-        // TODO: set this properly
-        bool useQuotecall = false;
+        bool useQuotecall = false; // never use Quotecall
         List.DynamicArray memory actions = List.newList();
         List.DynamicArray memory quarkOperations = List.newList();
 
@@ -469,7 +478,16 @@ contract QuarkBuilder {
 
         // Validate generated actions for affordability
         if (payment.isToken) {
-            assertSufficientPaymentTokenBalances(actionsArray, chainAccountsList, cometSupplyIntent.chainId);
+            uint256 paymentTokenReceived = 0;
+            uint256 paymentTokenSpent = 0;
+
+            if (Strings.stringEqIgnoreCase(cometSupplyIntent.assetSymbol, payment.currency)) {
+                paymentTokenSpent += cometSupplyIntent.amount;
+            }
+
+            assertSufficientPaymentTokenBalances(
+                actionsArray, chainAccountsList, cometSupplyIntent.chainId, paymentTokenReceived, paymentTokenSpent
+            );
         }
 
         // Merge operations that are from the same chain into one Multicall operation
@@ -570,7 +588,8 @@ contract QuarkBuilder {
 
         // Validate generated actions for affordability
         if (payment.isToken) {
-            uint256 supplementalPaymentTokenBalance = 0;
+            uint256 paymentTokenReceived = 0;
+
             if (Strings.stringEqIgnoreCase(payment.currency, cometWithdrawIntent.assetSymbol)) {
                 if (isMaxWithdraw) {
                     // when doing a maxWithdraw of the payment token, add the account's supplied balance
@@ -584,16 +603,16 @@ contract QuarkBuilder {
 
                     for (uint256 i = 0; i < cometPositions.basePosition.accounts.length; ++i) {
                         if (cometPositions.basePosition.accounts[i] == cometWithdrawIntent.withdrawer) {
-                            supplementalPaymentTokenBalance += cometPositions.basePosition.supplied[i];
+                            paymentTokenReceived += cometPositions.basePosition.supplied[i];
                         }
                     }
                 } else {
-                    supplementalPaymentTokenBalance += cometWithdrawIntent.amount;
+                    paymentTokenReceived += cometWithdrawIntent.amount;
                 }
             }
 
             assertSufficientPaymentTokenBalances(
-                actionsArray, chainAccountsList, cometWithdrawIntent.chainId, supplementalPaymentTokenBalance
+                actionsArray, chainAccountsList, cometWithdrawIntent.chainId, paymentTokenReceived
             );
         }
 
@@ -755,7 +774,16 @@ contract QuarkBuilder {
 
         // Validate generated actions for affordability
         if (payment.isToken) {
-            assertSufficientPaymentTokenBalances(actionsArray, chainAccountsList, transferIntent.chainId);
+            uint256 paymentTokenReceived = 0;
+            uint256 paymentTokenSpent = 0;
+
+            if (Strings.stringEqIgnoreCase(transferIntent.assetSymbol, payment.currency)) {
+                paymentTokenSpent += transferIntent.amount;
+            }
+
+            assertSufficientPaymentTokenBalances(
+                actionsArray, chainAccountsList, transferIntent.chainId, paymentTokenReceived, paymentTokenSpent
+            );
         }
 
         // Merge operations that are from the same chain into one Multicall operation
@@ -916,7 +944,18 @@ contract QuarkBuilder {
         IQuarkWallet.QuarkOperation[] memory quarkOperationsArray = List.toQuarkOperationArray(quarkOperations);
         // Validate generated actions for affordability
         if (payment.isToken) {
-            assertSufficientPaymentTokenBalances(actionsArray, chainAccountsList, swapIntent.chainId);
+            uint256 paymentTokenReceived = 0;
+            uint256 paymentTokenSpent = 0;
+
+            if (Strings.stringEqIgnoreCase(sellAssetSymbol, payment.currency)) {
+                paymentTokenSpent += swapIntent.sellAmount;
+            }
+
+            // XXX add any received payment token to paymentTokenReceived?
+
+            assertSufficientPaymentTokenBalances(
+                actionsArray, chainAccountsList, swapIntent.chainId, paymentTokenReceived, paymentTokenSpent
+            );
         }
 
         // Merge operations that are from the same chain into one Multicall operation
@@ -1100,25 +1139,35 @@ contract QuarkBuilder {
      * the destination chain (once bridging is complete) will have a sufficient
      * amount of the payment token to cover the non-bridged actions.
      *
-     * Optional `supplementalPaymentTokenBalance` param describes an amount of
-     * the payment token that might have been received in the course of an
-     * action (for example, withdrawing an asset from Compound), which would
-     * therefore not be present in `chainAccountsList` but could be used to
-     * cover action costs.
+     * Optional `paymentTokenReceived` and `paymentTokenSpent` params describe
+     * an amount of the payment token that might have been spent or received in
+     * the course of an action (for example, withdrawing an asset from Compound
+     * or repaying a borrow in Compound), which would therefore not be present
+     * in `chainAccountsList`.
      */
     function assertSufficientPaymentTokenBalances(
         Actions.Action[] memory actions,
         Accounts.ChainAccounts[] memory chainAccountsList,
         uint256 targetChainId
     ) internal pure {
-        return assertSufficientPaymentTokenBalances(actions, chainAccountsList, targetChainId, 0);
+        return assertSufficientPaymentTokenBalances(actions, chainAccountsList, targetChainId, 0, 0);
     }
 
     function assertSufficientPaymentTokenBalances(
         Actions.Action[] memory actions,
         Accounts.ChainAccounts[] memory chainAccountsList,
         uint256 targetChainId,
-        uint256 supplementalPaymentTokenBalance
+        uint256 paymentTokenReceived
+    ) internal pure {
+        return assertSufficientPaymentTokenBalances(actions, chainAccountsList, targetChainId, paymentTokenReceived, 0);
+    }
+
+    function assertSufficientPaymentTokenBalances(
+        Actions.Action[] memory actions,
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        uint256 targetChainId,
+        uint256 paymentTokenReceived,
+        uint256 paymentTokenSpent
     ) internal pure {
         Actions.Action[] memory bridgeActions = Actions.findActionsOfType(actions, Actions.ACTION_TYPE_BRIDGE);
         Actions.Action[] memory nonBridgeActions = Actions.findActionsNotOfType(actions, Actions.ACTION_TYPE_BRIDGE);
@@ -1160,52 +1209,11 @@ contract QuarkBuilder {
                 revert InvalidActionChain();
             }
             paymentTokenCost += nonBridgeAction.paymentMaxCost;
-
-            if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_BORROW)) {
-                continue;
-            } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_REPAY)) {
-                Actions.RepayActionContext memory cometRepayActionContext =
-                    abi.decode(nonBridgeAction.actionContext, (Actions.RepayActionContext));
-                if (Strings.stringEqIgnoreCase(cometRepayActionContext.assetSymbol, paymentTokenSymbol)) {
-                    paymentTokenCost += cometRepayActionContext.amount;
-                }
-            } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_SUPPLY)) {
-                Actions.SupplyActionContext memory cometSupplyActionContext =
-                    abi.decode(nonBridgeAction.actionContext, (Actions.SupplyActionContext));
-                if (Strings.stringEqIgnoreCase(cometSupplyActionContext.assetSymbol, paymentTokenSymbol)) {
-                    paymentTokenCost += cometSupplyActionContext.amount;
-                }
-            } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_SWAP)) {
-                Actions.SwapActionContext memory swapActionContext =
-                    abi.decode(nonBridgeAction.actionContext, (Actions.SwapActionContext));
-                if (Strings.stringEqIgnoreCase(swapActionContext.inputAssetSymbol, paymentTokenSymbol)) {
-                    paymentTokenCost += swapActionContext.inputAmount;
-                }
-            } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_TRANSFER)) {
-                Actions.TransferActionContext memory transferActionContext =
-                    abi.decode(nonBridgeAction.actionContext, (Actions.TransferActionContext));
-                if (Strings.stringEqIgnoreCase(transferActionContext.assetSymbol, paymentTokenSymbol)) {
-                    paymentTokenCost += transferActionContext.amount;
-                }
-            } else if (
-                Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_UNWRAP)
-                    || Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_WRAP)
-            ) {
-                Actions.WrapOrUnwrapActionContext memory wrapOrUnwrapActionContext =
-                    abi.decode(nonBridgeAction.actionContext, (Actions.WrapOrUnwrapActionContext));
-                if (Strings.stringEqIgnoreCase(wrapOrUnwrapActionContext.fromAssetSymbol, paymentTokenSymbol)) {
-                    paymentTokenCost += wrapOrUnwrapActionContext.amount;
-                }
-            } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_WITHDRAW)) {
-                continue;
-            } else {
-                revert InvalidActionType();
-            }
         }
 
         if (
-            paymentTokenCost
-                > (targetChainPaymentTokenBalance + paymentTokenBridgeAmount + supplementalPaymentTokenBalance)
+            paymentTokenCost + paymentTokenSpent
+                > (targetChainPaymentTokenBalance + paymentTokenBridgeAmount + paymentTokenReceived)
         ) {
             revert MaxCostTooHigh();
         }
