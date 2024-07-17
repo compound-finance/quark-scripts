@@ -579,13 +579,13 @@ contract QuarkBuilder {
                     //
                     // assumes that a maxWithdraw is for the base asset, since
                     // you cannot maxWithdraw Collateral
-                    Accounts.CometPosition memory cometPosition = Accounts.findCometPosition(
+                    Accounts.CometPositions memory cometPositions = Accounts.findCometPositions(
                         cometWithdrawIntent.chainId, cometWithdrawIntent.comet, chainAccountsList
                     );
 
-                    for (uint256 i = 0; i < cometPosition.basePosition.accounts.length; ++i) {
-                        if (cometPosition.basePosition.accounts[i] == cometWithdrawIntent.withdrawer) {
-                            supplementalPaymentTokenBalance += cometPosition.basePosition.supplied[i];
+                    for (uint256 i = 0; i < cometPositions.basePosition.accounts.length; ++i) {
+                        if (cometPositions.basePosition.accounts[i] == cometWithdrawIntent.withdrawer) {
+                            supplementalPaymentTokenBalance += cometPositions.basePosition.supplied[i];
                         }
                     }
                 } else {

@@ -100,8 +100,8 @@ contract QuarkBuilderTest {
         return chainAccountsList;
     }
 
-    function emptyCometPositions_() internal pure returns (Accounts.CometPosition[] memory) {
-        Accounts.CometPosition[] memory emptyCometPositions = new Accounts.CometPosition[](0);
+    function emptyCometPositions_() internal pure returns (Accounts.CometPositions[] memory) {
+        Accounts.CometPositions[] memory emptyCometPositions = new Accounts.CometPositions[](0);
         return emptyCometPositions;
     }
 
@@ -295,9 +295,9 @@ contract QuarkBuilderTest {
     function cometPositionsForCometPorfolios(uint256 chainId, address account, CometPortfolio[] memory cometPortfolios)
         internal
         pure
-        returns (Accounts.CometPosition[] memory)
+        returns (Accounts.CometPositions[] memory)
     {
-        Accounts.CometPosition[] memory cometPositions = new Accounts.CometPosition[](cometPortfolios.length);
+        Accounts.CometPositions[] memory cometPositions = new Accounts.CometPositions[](cometPortfolios.length);
 
         for (uint256 i = 0; i < cometPortfolios.length; ++i) {
             CometPortfolio memory cometPortfolio = cometPortfolios[i];
@@ -313,7 +313,7 @@ contract QuarkBuilderTest {
                 });
             }
 
-            cometPositions[i] = Accounts.CometPosition({
+            cometPositions[i] = Accounts.CometPositions({
                 comet: cometPortfolio.comet,
                 basePosition: Accounts.CometBasePosition({
                     asset: baseAssetForComet(chainId, cometPortfolio.comet),
