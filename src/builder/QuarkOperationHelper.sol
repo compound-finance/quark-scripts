@@ -10,6 +10,8 @@ import {CodeJarHelper} from "./CodeJarHelper.sol";
 import {PaycallWrapper} from "./PaycallWrapper.sol";
 import {PaymentInfo} from "./PaymentInfo.sol";
 import {QuotecallWrapper} from "./QuotecallWrapper.sol";
+import {List} from "./List.sol";
+import {HashMap} from "./HashMap.sol";
 
 // Helper library to for transforming Quark Operations
 library QuarkOperationHelper {
@@ -25,68 +27,50 @@ library QuarkOperationHelper {
     ) internal pure returns (IQuarkWallet.QuarkOperation[] memory, Actions.Action[] memory) {
         if (quarkOperations.length != actions.length) revert BadData();
 
-        // Arrays to keep track of unique chain IDs and their operations
-        uint256[] memory uniqueChainIds = new uint256[](quarkOperations.length);
-        uint256[] memory operationCounts = new uint256[](quarkOperations.length);
-        uint256 uniqueChainCount = 0;
-
-        // Count operations per chain
-        for (uint256 i = 0; i < quarkOperations.length; ++i) {
-            uint256 chainId = actions[i].chainId;
-            bool found = false;
-            for (uint256 j = 0; j < uniqueChainCount; j++) {
-                if (uniqueChainIds[j] == chainId) {
-                    operationCounts[j]++;
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                uniqueChainIds[uniqueChainCount] = chainId;
-                operationCounts[uniqueChainCount] = 1;
-                uniqueChainCount++;
-            }
-        }
-
-        // 2D array to group operations and actions by chain id
-        IQuarkWallet.QuarkOperation[][] memory groupedQuarkOperations =
-            new IQuarkWallet.QuarkOperation[][](uniqueChainCount);
-        Actions.Action[][] memory groupedActions = new Actions.Action[][](uniqueChainCount);
-
-        // Initialize grouped arrays
-        for (uint256 i = 0; i < uniqueChainCount; ++i) {
-            groupedQuarkOperations[i] = new IQuarkWallet.QuarkOperation[](operationCounts[i]);
-            groupedActions[i] = new Actions.Action[](operationCounts[i]);
-        }
+        // Group operations and actions by chain id
+        HashMap.Map memory groupedQuarkOperations = HashMap.newMap();
+        HashMap.Map memory groupedActions = HashMap.newMap();
 
         // Group operations by chain
-        uint256[] memory currentIndices = new uint256[](uniqueChainCount);
         for (uint256 i = 0; i < quarkOperations.length; ++i) {
             uint256 chainId = actions[i].chainId;
-            for (uint256 j = 0; j < uniqueChainCount; j++) {
-                if (uniqueChainIds[j] == chainId) {
-                    groupedQuarkOperations[j][currentIndices[j]] = quarkOperations[i];
-                    groupedActions[j][currentIndices[j]] = actions[i];
-                    currentIndices[j]++;
-                    break;
-                }
+            if (!HashMap.contains(groupedQuarkOperations, chainId)) {
+                HashMap.putDynamicList(groupedQuarkOperations, chainId, List.newList());
             }
+            if (!HashMap.contains(groupedActions, chainId)) {
+                HashMap.putDynamicList(groupedActions, chainId, List.newList());
+            }
+
+            HashMap.putDynamicList(
+                groupedQuarkOperations,
+                chainId,
+                List.addQuarkOperation(HashMap.getDynamicList(groupedQuarkOperations, chainId), quarkOperations[i])
+            );
+            HashMap.putDynamicList(
+                groupedActions, chainId, List.addAction(HashMap.getDynamicList(groupedActions, chainId), actions[i])
+            );
         }
 
         // Create new arrays for merged operations and actions
+        uint256[] memory chainIds = HashMap.keysUint256(groupedQuarkOperations);
+        uint256 uniqueChainCount = chainIds.length;
         IQuarkWallet.QuarkOperation[] memory mergedQuarkOperations = new IQuarkWallet.QuarkOperation[](uniqueChainCount);
         Actions.Action[] memory mergedActions = new Actions.Action[](uniqueChainCount);
 
         // Merge operations for each unique chain
         for (uint256 i = 0; i < uniqueChainCount; ++i) {
-            if (operationCounts[i] == 1) {
+            List.DynamicArray memory groupedQuarkOperationsList =
+                HashMap.getDynamicList(groupedQuarkOperations, chainIds[i]);
+            List.DynamicArray memory groupedActionsList = HashMap.getDynamicList(groupedActions, chainIds[i]);
+            if (groupedQuarkOperationsList.length == 1) {
                 // If there's only one operation for this chain, we don't need to merge
-                mergedQuarkOperations[i] = groupedQuarkOperations[i][0];
-                mergedActions[i] = groupedActions[i][0];
+                mergedQuarkOperations[i] = List.getQuarkOperation(groupedQuarkOperationsList, 0);
+                mergedActions[i] = List.getAction(groupedActionsList, 0);
             } else {
                 // Merge multiple operations for this chain
-                (mergedQuarkOperations[i], mergedActions[i]) =
-                    mergeOperations(groupedQuarkOperations[i], groupedActions[i]);
+                (mergedQuarkOperations[i], mergedActions[i]) = mergeOperations(
+                    List.toQuarkOperationArray(groupedQuarkOperationsList), List.toActionArray(groupedActionsList)
+                );
             }
         }
 
