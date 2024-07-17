@@ -696,10 +696,11 @@ library Actions {
         return (quarkOperation, action);
     }
 
-    function cometWithdrawAsset(
-        CometWithdraw memory cometWithdraw,
-        PaymentInfo.Payment memory payment
-    ) internal pure returns (IQuarkWallet.QuarkOperation memory, Action memory) {
+    function cometWithdrawAsset(CometWithdraw memory cometWithdraw, PaymentInfo.Payment memory payment)
+        internal
+        pure
+        returns (IQuarkWallet.QuarkOperation memory, Action memory)
+    {
         bytes[] memory scriptSources = new bytes[](1);
         scriptSources[0] = type(CometWithdrawActions).creationCode;
 
