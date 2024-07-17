@@ -11,7 +11,6 @@ import {CCTPBridgeActions} from "src/BridgeScripts.sol";
 import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
 import {CometWithdrawActions, TransferActions} from "src/DeFiScripts.sol";
 import {Paycall} from "src/Paycall.sol";
-import {Quotecall} from "src/Quotecall.sol";
 
 contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
     function cometWithdraw_(uint256 chainId, address comet, string memory assetSymbol, uint256 amount)
@@ -377,6 +376,93 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
     }
 
+    function testCometWithdrawMax() public {
+        PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
+        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 0.1e6});
+
+        CometPortfolio[] memory cometPortfolios = new CometPortfolio[](1);
+        cometPortfolios[0] = CometPortfolio({
+            comet: cometUsdc_(1),
+            baseSupplied: 1e6,
+            baseBorrowed: 0,
+            collateralAssetSymbols: Arrays.stringArray("LINK"),
+            collateralAssetBalances: Arrays.uintArray(0)
+        });
+
+        ChainPortfolio[] memory chainPortfolios = new ChainPortfolio[](1);
+        chainPortfolios[0] = ChainPortfolio({
+            chainId: 1,
+            account: address(0xa11ce),
+            nextNonce: 12,
+            assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
+            assetBalances: Arrays.uintArray(0, 0, 0, 0),
+            cometPortfolios: cometPortfolios
+        });
+
+        QuarkBuilder builder = new QuarkBuilder();
+        QuarkBuilder.BuilderResult memory result = builder.cometWithdraw(
+            cometWithdraw_(1, cometUsdc_(1), "USDC", type(uint256).max),
+            chainAccountsFromChainPortfolios(chainPortfolios), // user has no assets
+            paymentUsdc_(maxCosts) // but will pay from withdrawn funds
+        );
+
+        address paycallAddress = paycallUsdc_(1);
+        address cometWithdrawActionsAddress = CodeJarHelper.getCodeAddress(type(CometWithdrawActions).creationCode);
+
+        assertEq(result.paymentCurrency, "usdc", "usdc currency");
+
+        // Check the quark operations
+        assertEq(result.quarkOperations.length, 1, "one operation");
+        assertEq(
+            result.quarkOperations[0].scriptAddress,
+            paycallAddress,
+            "script address is correct given the code jar address on mainnet"
+        );
+        assertEq(
+            result.quarkOperations[0].scriptCalldata,
+            abi.encodeWithSelector(
+                Paycall.run.selector,
+                cometWithdrawActionsAddress,
+                abi.encodeWithSelector(
+                    CometWithdrawActions.withdraw.selector, cometUsdc_(1), usdc_(1), type(uint256).max
+                ),
+                0.1e6
+            ),
+            "calldata is Paycall.run(CometWithdrawActions.withdraw(COMET, USDC_1, uint256.max), 0.1e6);"
+        );
+        assertEq(
+            result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
+        );
+
+        // check the actions
+        assertEq(result.actions.length, 1, "one action");
+        assertEq(result.actions[0].chainId, 1, "operation is on chainId 1");
+        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[0].actionType, "WITHDRAW", "action type is 'WITHDRAW'");
+        assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
+        assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
+        assertEq(result.actions[0].paymentMaxCost, 0.1e6, "payment max is set to 0.1e6");
+        assertEq(
+            result.actions[0].actionContext,
+            abi.encode(
+                Actions.WithdrawActionContext({
+                    amount: type(uint256).max, // ?? should this be a different amount?
+                    assetSymbol: "USDC",
+                    chainId: 1,
+                    comet: cometUsdc_(1),
+                    price: USDC_PRICE,
+                    token: usdc_(1)
+                })
+            ),
+            "action context encoded from WithdrawActionContext"
+        );
+
+        // TODO: Check the contents of the EIP712 data
+        assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
+        assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
+        assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
+    }
+
     function testCometWithdrawMaxRevertsMaxCostTooHigh() public {
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
         maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 100e6}); // max cost is very high
@@ -410,95 +496,4 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
             paymentUsdc_(maxCosts) // user will pay for transaction with withdrawn funds, but it is not enough
         );
     }
-
-    function testCometWithdrawMax() public {
-        PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
-        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 0.1e6});
-
-        CometPortfolio[] memory cometPortfolios = new CometPortfolio[](1);
-        cometPortfolios[0] = CometPortfolio({
-            comet: cometUsdc_(1),
-            baseSupplied: 1e6,
-            baseBorrowed: 0,
-            collateralAssetSymbols: Arrays.stringArray("LINK"),
-            collateralAssetBalances: Arrays.uintArray(0)
-        });
-
-        ChainPortfolio[] memory chainPortfolios = new ChainPortfolio[](1);
-        chainPortfolios[0] = ChainPortfolio({
-            chainId: 1,
-            account: address(0xa11ce),
-            nextNonce: 12,
-            assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
-            assetBalances: Arrays.uintArray(0, 0, 0, 0),
-            cometPortfolios: cometPortfolios
-        });
-
-        QuarkBuilder builder = new QuarkBuilder();
-        QuarkBuilder.BuilderResult memory result = builder.cometWithdraw(
-            cometWithdraw_(1, cometUsdc_(1), "USDC", type(uint256).max),
-            chainAccountsFromChainPortfolios(chainPortfolios), // user has no assets
-            paymentUsdc_(maxCosts) // but will pay from withdrawn funds
-        );
-
-        address quoteCallAddress = CodeJarHelper.getCodeAddress(
-            abi.encodePacked(type(Quotecall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
-        );
-        address cometWithdrawActionsAddress = CodeJarHelper.getCodeAddress(type(CometWithdrawActions).creationCode);
-
-        assertEq(result.paymentCurrency, "usdc", "usdc currency");
-
-        // Check the quark operations
-        assertEq(result.quarkOperations.length, 1, "one operation");
-        assertEq(
-            result.quarkOperations[0].scriptAddress,
-            quoteCallAddress,
-            "script address is correct given the code jar address on mainnet"
-        );
-        assertEq(
-            result.quarkOperations[0].scriptCalldata,
-            abi.encodeWithSelector(
-                Quotecall.run.selector,
-                cometWithdrawActionsAddress,
-                abi.encodeWithSelector(
-                    CometWithdrawActions.withdraw.selector, cometUsdc_(1), usdc_(1), type(uint256).max
-                ),
-                0.1e6
-            ),
-            "calldata is Quotecall.run(CometWithdrawActions.withdraw(COMET, USDC_1, uint256.max), 0.1e6);"
-        );
-        assertEq(
-            result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
-        );
-
-        // check the actions
-        assertEq(result.actions.length, 1, "one action");
-        assertEq(result.actions[0].chainId, 1, "operation is on chainId 1");
-        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.actions[0].actionType, "WITHDRAW", "action type is 'WITHDRAW'");
-        assertEq(result.actions[0].paymentMethod, "QUOTE_CALL", "payment method is 'QUOTE_CALL'");
-        assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
-        assertEq(result.actions[0].paymentMaxCost, 0.1e6, "payment max is set to 0.1e6");
-        assertEq(
-            result.actions[0].actionContext,
-            abi.encode(
-                Actions.WithdrawActionContext({
-                    amount: type(uint256).max, // ?? should this be a different amount?
-                    assetSymbol: "USDC",
-                    chainId: 1,
-                    comet: cometUsdc_(1),
-                    price: USDC_PRICE,
-                    token: usdc_(1)
-                })
-            ),
-            "action context encoded from WithdrawActionContext"
-        );
-
-        // TODO: Check the contents of the EIP712 data
-        assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
-        assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
-        assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
-    }
-
-    // XXX reverts if the withdrawn amount is not sufficient to cover the cost of the action
 }

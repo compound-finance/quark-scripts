@@ -698,8 +698,7 @@ library Actions {
 
     function cometWithdrawAsset(
         CometWithdraw memory cometWithdraw,
-        PaymentInfo.Payment memory payment,
-        bool useQuotecall
+        PaymentInfo.Payment memory payment
     ) internal pure returns (IQuarkWallet.QuarkOperation memory, Action memory) {
         bytes[] memory scriptSources = new bytes[](1);
         scriptSources[0] = type(CometWithdrawActions).creationCode;
@@ -744,7 +743,7 @@ library Actions {
             quarkAccount: cometWithdraw.withdrawer,
             actionType: ACTION_TYPE_WITHDRAW,
             actionContext: abi.encode(cometWithdrawActionContext),
-            paymentMethod: PaymentInfo.paymentMethodForPayment(payment, useQuotecall),
+            paymentMethod: PaymentInfo.paymentMethodForPayment(payment, false),
             // Null address for OFFCHAIN payment.
             paymentToken: payment.isToken
                 ? PaymentInfo.knownToken(payment.currency, cometWithdraw.chainId).token

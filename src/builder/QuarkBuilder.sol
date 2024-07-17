@@ -509,7 +509,7 @@ contract QuarkBuilder {
         // XXX confirm that you actually have the amount to withdraw
 
         bool isMaxWithdraw = cometWithdrawIntent.amount == type(uint256).max;
-        bool useQuotecall = payment.isToken && isMaxWithdraw;
+        bool useQuotecall = false; // never use Quotecall
         List.DynamicArray memory actions = List.newList();
         List.DynamicArray memory quarkOperations = List.newList();
 
@@ -559,8 +559,7 @@ contract QuarkBuilder {
                 withdrawer: cometWithdrawIntent.withdrawer,
                 blockTimestamp: cometWithdrawIntent.blockTimestamp
             }),
-            payment,
-            useQuotecall
+            payment
         );
         List.addAction(actions, cometWithdrawAction);
         List.addQuarkOperation(quarkOperations, cometWithdrawQuarkOperation);
