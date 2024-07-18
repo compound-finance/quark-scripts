@@ -799,8 +799,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                 collateralAssetSymbols,
                 collateralAmounts
             ),
-            chainAccountsFromChainPortfolios(chainPortfolios), // user has no assets
-            paymentUsdc_(maxCosts) // but will pay from withdrawn funds
+            chainAccountsFromChainPortfolios(chainPortfolios),
+            paymentUsdc_(maxCosts)
         );
 
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
@@ -929,8 +929,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                 collateralAssetSymbols,
                 collateralAmounts
             ),
-            chainAccountsFromChainPortfolios(chainPortfolios), // user has no assets
-            paymentUsdc_(maxCosts) // but will pay from withdrawn funds
+            chainAccountsFromChainPortfolios(chainPortfolios),
+            paymentUsdc_(maxCosts)
         );
 
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
@@ -961,7 +961,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                 abi.encodeWithSelector(
                     CCTPBridgeActions.bridgeUSDC.selector,
                     address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155),
-                    10.1e6, // 2e6 repaid + 0.2e6 max cost on Base
+                    10.1e6, // 10e6 repaid + 0.1e6 max cost on Base
                     6,
                     bytes32(uint256(uint160(0xa11ce))),
                     usdc_(1)
