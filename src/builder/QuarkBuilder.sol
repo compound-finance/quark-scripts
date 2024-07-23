@@ -1197,11 +1197,10 @@ contract QuarkBuilder {
                 Actions.RepayActionContext memory cometRepayActionContext =
                     abi.decode(nonBridgeAction.actionContext, (Actions.RepayActionContext));
                 if (Strings.stringEqIgnoreCase(cometRepayActionContext.assetSymbol, paymentTokenSymbol)) {
-                    // weird variable placement to avoid stack-too-deep error
-                    uint256 repayAmount = cometRepayMaxAmount(
-                        chainAccountsList, cometRepayActionContext.chainId, cometRepayActionContext.comet, account
-                    );
                     if (cometRepayActionContext.amount == type(uint256).max) {
+                        uint256 repayAmount = cometRepayMaxAmount(
+                            chainAccountsList, cometRepayActionContext.chainId, cometRepayActionContext.comet, account
+                        );
                         paymentTokenCost += repayAmount;
                     } else {
                         paymentTokenCost += cometRepayActionContext.amount;
