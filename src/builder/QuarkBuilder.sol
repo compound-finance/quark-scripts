@@ -19,7 +19,7 @@ import {List} from "./List.sol";
 contract QuarkBuilder {
     /* ===== Constants ===== */
 
-    string constant VERSION = "0.0.2";
+    string constant VERSION = "0.0.3";
 
     /* ===== Custom Errors ===== */
 
