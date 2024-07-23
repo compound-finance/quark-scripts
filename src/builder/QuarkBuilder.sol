@@ -19,7 +19,7 @@ import {List} from "./List.sol";
 contract QuarkBuilder {
     /* ===== Constants ===== */
 
-    string constant VERSION = "0.0.3";
+    string constant VERSION = "0.0.4";
 
     /* ===== Custom Errors ===== */
 
@@ -63,6 +63,17 @@ contract QuarkBuilder {
         address repayer;
     }
 
+    function cometRepayMaxAmount(
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        uint256 chainId,
+        address comet,
+        address repayer
+    ) internal pure returns (uint256) {
+        uint256 totalBorrowForAccount = Accounts.totalBorrowForAccount(chainAccountsList, chainId, comet, repayer);
+        uint256 buffer = totalBorrowForAccount / 1000; // 0.1%
+        return totalBorrowForAccount + buffer;
+    }
+
     function cometRepay(
         CometRepayIntent memory repayIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
@@ -74,22 +85,25 @@ contract QuarkBuilder {
 
         // XXX confirm that the user is not withdrawing beyond their limits
 
-        assertFundsAvailable(
-            repayIntent.chainId, repayIntent.assetSymbol, repayIntent.amount, chainAccountsList, payment
-        );
+        bool isMaxRepay = repayIntent.amount == type(uint256).max;
+        bool useQuotecall = false; // never use Quotecall
+
+        uint256 repayAmount;
+        if (isMaxRepay) {
+            repayAmount =
+                cometRepayMaxAmount(chainAccountsList, repayIntent.chainId, repayIntent.comet, repayIntent.repayer);
+        } else {
+            repayAmount = repayIntent.amount;
+        }
+
+        assertFundsAvailable(repayIntent.chainId, repayIntent.assetSymbol, repayAmount, chainAccountsList, payment);
 
         List.DynamicArray memory actions = List.newList();
         List.DynamicArray memory quarkOperations = List.newList();
 
-        bool useQuotecall = false; // TODO: calculate an actual value for useQuoteCall
-
-        if (
-            needsBridgedFunds(
-                repayIntent.assetSymbol, repayIntent.amount, repayIntent.chainId, chainAccountsList, payment
-            )
-        ) {
+        if (needsBridgedFunds(repayIntent.assetSymbol, repayAmount, repayIntent.chainId, chainAccountsList, payment)) {
             // Note: Assumes that the asset uses the same # of decimals on each chain
-            uint256 amountNeededOnDst = repayIntent.amount;
+            uint256 amountNeededOnDst = repayAmount;
             // If action is paid for with tokens and the payment token is the
             // repay token, we need to add the max cost to the
             // amountNeededOnDst for target chain
@@ -123,7 +137,7 @@ contract QuarkBuilder {
             chainAccountsList,
             payment,
             repayIntent.assetSymbol,
-            repayIntent.amount,
+            repayAmount,
             repayIntent.chainId,
             repayIntent.repayer,
             repayIntent.blockTimestamp,
@@ -165,7 +179,11 @@ contract QuarkBuilder {
             }
 
             assertSufficientPaymentTokenBalances(
-                actionsArray, chainAccountsList, repayIntent.chainId, supplementalPaymentTokenBalance
+                actionsArray,
+                chainAccountsList,
+                repayIntent.chainId,
+                repayIntent.repayer,
+                supplementalPaymentTokenBalance
             );
         }
 
@@ -213,7 +231,7 @@ contract QuarkBuilder {
         List.DynamicArray memory actions = List.newList();
         List.DynamicArray memory quarkOperations = List.newList();
 
-        bool useQuotecall = false; // TODO: calculate an actual value for useQuoteCall
+        bool useQuotecall = false; // never use Quotecall
         bool paymentTokenIsCollateralAsset = false;
 
         for (uint256 i = 0; i < borrowIntent.collateralAssetSymbols.length; ++i) {
@@ -337,7 +355,11 @@ contract QuarkBuilder {
             }
 
             assertSufficientPaymentTokenBalances(
-                actionsArray, chainAccountsList, borrowIntent.chainId, supplementalPaymentTokenBalance
+                actionsArray,
+                chainAccountsList,
+                borrowIntent.chainId,
+                borrowIntent.borrower,
+                supplementalPaymentTokenBalance
             );
         }
 
@@ -370,7 +392,6 @@ contract QuarkBuilder {
         address sender;
     }
 
-    // TODO: handle supply max
     function cometSupply(
         CometSupplyIntent memory cometSupplyIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
@@ -389,8 +410,7 @@ contract QuarkBuilder {
             payment
         );
 
-        // TODO: set this properly
-        bool useQuotecall = false;
+        bool useQuotecall = false; // never use Quotecall
         List.DynamicArray memory actions = List.newList();
         List.DynamicArray memory quarkOperations = List.newList();
 
@@ -469,7 +489,9 @@ contract QuarkBuilder {
 
         // Validate generated actions for affordability
         if (payment.isToken) {
-            assertSufficientPaymentTokenBalances(actionsArray, chainAccountsList, cometSupplyIntent.chainId);
+            assertSufficientPaymentTokenBalances(
+                actionsArray, chainAccountsList, cometSupplyIntent.chainId, cometSupplyIntent.sender
+            );
         }
 
         // Merge operations that are from the same chain into one Multicall operation
@@ -593,7 +615,11 @@ contract QuarkBuilder {
             }
 
             assertSufficientPaymentTokenBalances(
-                actionsArray, chainAccountsList, cometWithdrawIntent.chainId, supplementalPaymentTokenBalance
+                actionsArray,
+                chainAccountsList,
+                cometWithdrawIntent.chainId,
+                cometWithdrawIntent.withdrawer,
+                supplementalPaymentTokenBalance
             );
         }
 
@@ -755,7 +781,9 @@ contract QuarkBuilder {
 
         // Validate generated actions for affordability
         if (payment.isToken) {
-            assertSufficientPaymentTokenBalances(actionsArray, chainAccountsList, transferIntent.chainId);
+            assertSufficientPaymentTokenBalances(
+                actionsArray, chainAccountsList, transferIntent.chainId, transferIntent.sender
+            );
         }
 
         // Merge operations that are from the same chain into one Multicall operation
@@ -916,7 +944,7 @@ contract QuarkBuilder {
         IQuarkWallet.QuarkOperation[] memory quarkOperationsArray = List.toQuarkOperationArray(quarkOperations);
         // Validate generated actions for affordability
         if (payment.isToken) {
-            assertSufficientPaymentTokenBalances(actionsArray, chainAccountsList, swapIntent.chainId);
+            assertSufficientPaymentTokenBalances(actionsArray, chainAccountsList, swapIntent.chainId, swapIntent.sender);
         }
 
         // Merge operations that are from the same chain into one Multicall operation
@@ -1109,15 +1137,17 @@ contract QuarkBuilder {
     function assertSufficientPaymentTokenBalances(
         Actions.Action[] memory actions,
         Accounts.ChainAccounts[] memory chainAccountsList,
-        uint256 targetChainId
+        uint256 targetChainId,
+        address account
     ) internal pure {
-        return assertSufficientPaymentTokenBalances(actions, chainAccountsList, targetChainId, 0);
+        return assertSufficientPaymentTokenBalances(actions, chainAccountsList, targetChainId, account, 0);
     }
 
     function assertSufficientPaymentTokenBalances(
         Actions.Action[] memory actions,
         Accounts.ChainAccounts[] memory chainAccountsList,
         uint256 targetChainId,
+        address account,
         uint256 supplementalPaymentTokenBalance
     ) internal pure {
         Actions.Action[] memory bridgeActions = Actions.findActionsOfType(actions, Actions.ACTION_TYPE_BRIDGE);
@@ -1167,7 +1197,14 @@ contract QuarkBuilder {
                 Actions.RepayActionContext memory cometRepayActionContext =
                     abi.decode(nonBridgeAction.actionContext, (Actions.RepayActionContext));
                 if (Strings.stringEqIgnoreCase(cometRepayActionContext.assetSymbol, paymentTokenSymbol)) {
-                    paymentTokenCost += cometRepayActionContext.amount;
+                    if (cometRepayActionContext.amount == type(uint256).max) {
+                        uint256 repayAmount = cometRepayMaxAmount(
+                            chainAccountsList, cometRepayActionContext.chainId, cometRepayActionContext.comet, account
+                        );
+                        paymentTokenCost += repayAmount;
+                    } else {
+                        paymentTokenCost += cometRepayActionContext.amount;
+                    }
                 }
             } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_SUPPLY)) {
                 Actions.SupplyActionContext memory cometSupplyActionContext =
@@ -1191,6 +1228,7 @@ contract QuarkBuilder {
                 Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_UNWRAP)
                     || Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_WRAP)
             ) {
+                // XXX test that wrapping/unwrapping impacts paymentTokenCost
                 Actions.WrapOrUnwrapActionContext memory wrapOrUnwrapActionContext =
                     abi.decode(nonBridgeAction.actionContext, (Actions.WrapOrUnwrapActionContext));
                 if (Strings.stringEqIgnoreCase(wrapOrUnwrapActionContext.fromAssetSymbol, paymentTokenSymbol)) {
