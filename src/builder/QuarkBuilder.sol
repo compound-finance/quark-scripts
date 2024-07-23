@@ -19,7 +19,7 @@ import {List} from "./List.sol";
 contract QuarkBuilder {
     /* ===== Constants ===== */
 
-    string constant VERSION = "0.0.3";
+    string constant VERSION = "0.0.4";
 
     /* ===== Custom Errors ===== */
 
@@ -86,7 +86,7 @@ contract QuarkBuilder {
         // XXX confirm that the user is not withdrawing beyond their limits
 
         bool isMaxRepay = repayIntent.amount == type(uint256).max;
-        bool useQuotecall = false;
+        bool useQuotecall = false; // never use Quotecall
 
         uint256 repayAmount;
         if (isMaxRepay) {
@@ -1228,6 +1228,7 @@ contract QuarkBuilder {
                 Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_UNWRAP)
                     || Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_WRAP)
             ) {
+                // XXX test that wrapping/unwrapping impacts paymentTokenCost
                 Actions.WrapOrUnwrapActionContext memory wrapOrUnwrapActionContext =
                     abi.decode(nonBridgeAction.actionContext, (Actions.WrapOrUnwrapActionContext));
                 if (Strings.stringEqIgnoreCase(wrapOrUnwrapActionContext.fromAssetSymbol, paymentTokenSymbol)) {
