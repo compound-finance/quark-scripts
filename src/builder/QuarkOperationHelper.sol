@@ -35,19 +35,19 @@ library QuarkOperationHelper {
         for (uint256 i = 0; i < quarkOperations.length; ++i) {
             uint256 chainId = actions[i].chainId;
             if (!HashMap.contains(groupedQuarkOperations, chainId)) {
-                HashMap.putDynamicList(groupedQuarkOperations, chainId, List.newList());
+                HashMap.putDynamicArray(groupedQuarkOperations, chainId, List.newList());
             }
             if (!HashMap.contains(groupedActions, chainId)) {
-                HashMap.putDynamicList(groupedActions, chainId, List.newList());
+                HashMap.putDynamicArray(groupedActions, chainId, List.newList());
             }
 
-            HashMap.putDynamicList(
+            HashMap.putDynamicArray(
                 groupedQuarkOperations,
                 chainId,
-                List.addQuarkOperation(HashMap.getDynamicList(groupedQuarkOperations, chainId), quarkOperations[i])
+                List.addQuarkOperation(HashMap.getDynamicArray(groupedQuarkOperations, chainId), quarkOperations[i])
             );
-            HashMap.putDynamicList(
-                groupedActions, chainId, List.addAction(HashMap.getDynamicList(groupedActions, chainId), actions[i])
+            HashMap.putDynamicArray(
+                groupedActions, chainId, List.addAction(HashMap.getDynamicArray(groupedActions, chainId), actions[i])
             );
         }
 
@@ -60,8 +60,8 @@ library QuarkOperationHelper {
         // Merge operations for each unique chain
         for (uint256 i = 0; i < uniqueChainCount; ++i) {
             List.DynamicArray memory groupedQuarkOperationsList =
-                HashMap.getDynamicList(groupedQuarkOperations, chainIds[i]);
-            List.DynamicArray memory groupedActionsList = HashMap.getDynamicList(groupedActions, chainIds[i]);
+                HashMap.getDynamicArray(groupedQuarkOperations, chainIds[i]);
+            List.DynamicArray memory groupedActionsList = HashMap.getDynamicArray(groupedActions, chainIds[i]);
             if (groupedQuarkOperationsList.length == 1) {
                 // If there's only one operation for this chain, we don't need to merge
                 mergedQuarkOperations[i] = List.getQuarkOperation(groupedQuarkOperationsList, 0);
