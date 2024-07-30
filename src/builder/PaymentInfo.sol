@@ -32,7 +32,7 @@ library PaymentInfo {
     }
 
     function knownTokens() internal pure returns (PaymentToken[] memory) {
-        PaymentToken[] memory paymentTokens = new PaymentToken[](2);
+        PaymentToken[] memory paymentTokens = new PaymentToken[](4);
         paymentTokens[0] = PaymentToken({
             chainId: 1,
             symbol: "USDC",
@@ -49,6 +49,21 @@ library PaymentInfo {
             token: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913,
             priceFeed: 0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70
         });
+
+        // Testnet
+        paymentTokens[2] = PaymentToken({
+            chainId: 11155111,
+            symbol: "USDC",
+            token: 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238,
+            priceFeed: 0x694AA1769357215DE4FAC081bf1f309aDC325306
+        });
+        paymentTokens[3] = PaymentToken({
+            chainId: 84532,
+            symbol: "USDC",
+            token: 0x036CbD53842c5426634e7929541eC2318f3dCF7e,
+            priceFeed: 0x4aDC67696bA383F43DD60A9e78F2C97Fbbfc7cb1
+        });
+
         return paymentTokens;
     }
 
