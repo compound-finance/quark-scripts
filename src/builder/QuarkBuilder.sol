@@ -402,6 +402,14 @@ contract QuarkBuilder {
             chainAccountsList = Accounts.findChainAccountsWithPaymentInfo(chainAccountsList, payment);
         }
 
+        // Initialize comet supply max flag
+        bool isMaxSupply = cometSupplyIntent.amount == type(uint256).max;
+        // Convert transferIntent to user aggregated balance
+        if (isMaxSupply) {
+            cometSupplyIntent.amount =
+                Accounts.totalAvailableAsset(cometSupplyIntent.assetSymbol, chainAccountsList, payment);
+        }
+
         assertFundsAvailable(
             cometSupplyIntent.chainId,
             cometSupplyIntent.assetSymbol,
@@ -410,7 +418,7 @@ contract QuarkBuilder {
             payment
         );
 
-        bool useQuotecall = false; // never use Quotecall
+        bool useQuotecall = isMaxSupply; // never use Quotecall
         List.DynamicArray memory actions = List.newList();
         List.DynamicArray memory quarkOperations = List.newList();
 
@@ -836,10 +844,18 @@ contract QuarkBuilder {
             Accounts.findAssetPositions(swapIntent.buyToken, swapIntent.chainId, chainAccountsList).symbol;
         string memory feeAssetSymbol =
             Accounts.findAssetPositions(swapIntent.feeToken, swapIntent.chainId, chainAccountsList).symbol;
+
+        // Initialize swap max flag (when sell amount is max)
+        bool isMaxSwap = swapIntent.sellAmount == type(uint256).max;
+        // Convert transferIntent to user aggregated balance
+        if (isMaxSwap) {
+            swapIntent.sellAmount = Accounts.totalAvailableAsset(sellAssetSymbol, chainAccountsList, payment);
+        }
+
         assertFundsAvailable(swapIntent.chainId, sellAssetSymbol, swapIntent.sellAmount, chainAccountsList, payment);
 
         // TODO: When should we use quotecall?
-        bool useQuotecall = false;
+        bool useQuotecall = isMaxSwap;
         List.DynamicArray memory actions = List.newList();
         List.DynamicArray memory quarkOperations = List.newList();
 
