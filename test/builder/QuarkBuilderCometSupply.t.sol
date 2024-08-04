@@ -150,6 +150,95 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
     }
 
+    function testSimpleCometSupplyMax() public {
+        QuarkBuilder builder = new QuarkBuilder();
+        Accounts.ChainAccounts[] memory chainAccountsList = new Accounts.ChainAccounts[](3);
+        chainAccountsList[0] = Accounts.ChainAccounts({
+            chainId: 1,
+            quarkStates: quarkStates_(address(0xa11ce), 12),
+            assetPositionsList: assetPositionsList_(1, address(0xa11ce), uint256(3e6)),
+            cometPositions: emptyCometPositions_()
+        });
+        chainAccountsList[1] = Accounts.ChainAccounts({
+            chainId: 8453,
+            quarkStates: quarkStates_(address(0xb0b), 2),
+            assetPositionsList: assetPositionsList_(8453, address(0xb0b), uint256(0)),
+            cometPositions: emptyCometPositions_()
+        });
+        chainAccountsList[2] = Accounts.ChainAccounts({
+            chainId: 7777,
+            quarkStates: quarkStates_(address(0xc0b), 5),
+            assetPositionsList: assetPositionsList_(7777, address(0xc0b), uint256(0)),
+            cometPositions: emptyCometPositions_()
+        });
+        QuarkBuilder.BuilderResult memory result = builder.cometSupply(
+            cometSupply_(1, type(uint256).max),
+            chainAccountsList, // holding 3 USDC in total across chains 1, 8453
+            paymentUsd_()
+        );
+
+        assertEq(result.paymentCurrency, "usd", "usd currency");
+
+        // Check the quark operations
+        assertEq(result.quarkOperations.length, 1, "one operation");
+        assertEq(
+            result.quarkOperations[0].scriptAddress,
+            address(
+                uint160(
+                    uint256(
+                        keccak256(
+                            abi.encodePacked(
+                                bytes1(0xff),
+                                /* codeJar address */
+                                address(CodeJarHelper.CODE_JAR_ADDRESS),
+                                uint256(0),
+                                /* script bytecode */
+                                keccak256(type(CometSupplyActions).creationCode)
+                            )
+                        )
+                    )
+                )
+            ),
+            "script address is correct given the code jar address on mainnet"
+        );
+        assertEq(
+            result.quarkOperations[0].scriptCalldata,
+            abi.encodeCall(CometSupplyActions.supply, (COMET, usdc_(1), 3e6)),
+            "calldata is CometSupplyActions.supply(COMET, usdc, 3);"
+        );
+        assertEq(
+            result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
+        );
+
+        // check the actions
+        assertEq(result.actions.length, 1, "one action");
+        assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
+        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[0].actionType, "SUPPLY", "action type is 'SUPPLY'");
+        assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
+        assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
+        assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
+        assertEq(
+            result.actions[0].actionContext,
+            abi.encode(
+                Actions.SupplyActionContext({
+                    amount: 3e6,
+                    assetSymbol: "USDC",
+                    chainId: 1,
+                    comet: COMET,
+                    price: USDC_PRICE,
+                    token: USDC_1
+                })
+            ),
+            "action context encoded from SupplyActionContext"
+        );
+
+        // // TODO: Check the contents of the EIP712 data
+        assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
+        assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
+        assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
+    }
+
     function testSimpleCometSupplyWithAutoWrapper() public {
         QuarkBuilder builder = new QuarkBuilder();
         address account = address(0xa11ce);
@@ -428,6 +517,141 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
             abi.encode(
                 Actions.SupplyActionContext({
                     amount: 5e6,
+                    assetSymbol: "USDC",
+                    chainId: 8453,
+                    comet: COMET,
+                    price: USDC_PRICE,
+                    token: USDC_8453
+                })
+            ),
+            "action context encoded from SupplyActionContext"
+        );
+
+        // TODO: Check the contents of the EIP712 data
+        assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
+        assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
+        assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
+    }
+
+    function testCometSupplyMaxWithBridge() public {
+        QuarkBuilder builder = new QuarkBuilder();
+        QuarkBuilder.BuilderResult memory result = builder.cometSupply(
+            cometSupply_(8453, type(uint256).max),
+            chainAccountsList_(6e6), // holding 3 USDC in total across chains 1, 8453
+            paymentUsd_()
+        );
+
+        assertEq(result.paymentCurrency, "usd", "usd currency");
+
+        // Check the quark operations
+        // first operation
+        assertEq(result.quarkOperations.length, 2, "two operations");
+        assertEq(
+            result.quarkOperations[0].scriptAddress,
+            address(
+                uint160(
+                    uint256(
+                        keccak256(
+                            abi.encodePacked(
+                                bytes1(0xff),
+                                /* codeJar address */
+                                address(CodeJarHelper.CODE_JAR_ADDRESS),
+                                uint256(0),
+                                /* script bytecode */
+                                keccak256(type(CCTPBridgeActions).creationCode)
+                            )
+                        )
+                    )
+                )
+            ),
+            "script address is correct given the code jar address on mainnet"
+        );
+        assertEq(
+            result.quarkOperations[0].scriptCalldata,
+            abi.encodeCall(
+                CCTPBridgeActions.bridgeUSDC,
+                (
+                    address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155),
+                    3e6,
+                    6,
+                    bytes32(uint256(uint160(0xa11ce))),
+                    usdc_(1)
+                )
+            ),
+            "calldata is CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 3e6, 6, bytes32(uint256(uint160(0xa11ce))), usdc_(1)));"
+        );
+        assertEq(
+            result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
+        );
+
+        // second operation
+        assertEq(
+            result.quarkOperations[1].scriptAddress,
+            address(
+                uint160(
+                    uint256(
+                        keccak256(
+                            abi.encodePacked(
+                                bytes1(0xff),
+                                /* codeJar address */
+                                address(CodeJarHelper.CODE_JAR_ADDRESS),
+                                uint256(0),
+                                /* script bytecode */
+                                keccak256(type(CometSupplyActions).creationCode)
+                            )
+                        )
+                    )
+                )
+            ),
+            "script address for transfer is correct given the code jar address"
+        );
+        assertEq(
+            result.quarkOperations[1].scriptCalldata,
+            abi.encodeCall(CometSupplyActions.supply, (COMET, usdc_(8453), 6e6)),
+            "calldata is CometSupplyActions.supply(COMET, usdc, 5e6);"
+        );
+        assertEq(
+            result.quarkOperations[1].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
+        );
+
+        // check the actions
+        // first action
+        assertEq(result.actions.length, 2, "two actions");
+        assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
+        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[0].actionType, "BRIDGE", "action type is 'BRIDGE'");
+        assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
+        assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
+        assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
+        assertEq(
+            result.actions[0].actionContext,
+            abi.encode(
+                Actions.BridgeActionContext({
+                    amount: 3e6,
+                    price: USDC_PRICE,
+                    token: USDC_1,
+                    assetSymbol: "USDC",
+                    chainId: 1,
+                    recipient: address(0xa11ce),
+                    destinationChainId: 8453,
+                    bridgeType: Actions.BRIDGE_TYPE_CCTP
+                })
+            ),
+            "action context encoded from BridgeActionContext"
+        );
+
+        // second action
+        assertEq(result.actions[1].chainId, 8453, "second action is on chainid 8453");
+        assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[1].actionType, "SUPPLY", "action type is 'SUPPLY'");
+        assertEq(result.actions[1].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
+        assertEq(result.actions[1].paymentToken, address(0), "payment token is null");
+        assertEq(result.actions[1].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
+        assertEq(
+            result.actions[1].actionContext,
+            abi.encode(
+                Actions.SupplyActionContext({
+                    amount: 6e6,
                     assetSymbol: "USDC",
                     chainId: 8453,
                     comet: COMET,

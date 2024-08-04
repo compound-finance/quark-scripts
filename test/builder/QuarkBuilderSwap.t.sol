@@ -396,6 +396,101 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
     }
 
+    function testSwapMaxSucceeds() public {
+        QuarkBuilder builder = new QuarkBuilder();
+        PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
+        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 5e6});
+        Accounts.ChainAccounts[] memory chainAccountsList = new Accounts.ChainAccounts[](3);
+        chainAccountsList[0] = Accounts.ChainAccounts({
+            chainId: 1,
+            quarkStates: quarkStates_(address(0xa11ce), 12),
+            assetPositionsList: assetPositionsList_(1, address(0xa11ce), uint256(9005e6)),
+            cometPositions: emptyCometPositions_()
+        });
+        chainAccountsList[1] = Accounts.ChainAccounts({
+            chainId: 8453,
+            quarkStates: quarkStates_(address(0xb0b), 2),
+            assetPositionsList: assetPositionsList_(8453, address(0xb0b), uint256(0)),
+            cometPositions: emptyCometPositions_()
+        });
+        chainAccountsList[2] = Accounts.ChainAccounts({
+            chainId: 7777,
+            quarkStates: quarkStates_(address(0xc0b), 5),
+            assetPositionsList: assetPositionsList_(7777, address(0xc0b), uint256(0)),
+            cometPositions: emptyCometPositions_()
+        });
+
+        QuarkBuilder.BuilderResult memory result = builder.swap(
+            buyWeth_(1, usdc_(1), type(uint256).max, 3e18, address(0xa11ce), BLOCK_TIMESTAMP), // swap max on chain 1
+            chainAccountsList, // holding 3050 USDC in total chains 1
+            paymentUsdc_(maxCosts)
+        );
+
+        address approveAndSwapAddress = CodeJarHelper.getCodeAddress(type(ApproveAndSwap).creationCode);
+        address quotecallAddress = CodeJarHelper.getCodeAddress(
+            abi.encodePacked(type(Quotecall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
+        );
+
+        assertEq(result.paymentCurrency, "usdc", "usdc currency");
+
+        // Check the quark operations
+        assertEq(result.quarkOperations.length, 1, "one operation");
+        assertEq(
+            result.quarkOperations[0].scriptAddress,
+            quotecallAddress,
+            "script address is correct given the code jar address on mainnet"
+        );
+        assertEq(
+            result.quarkOperations[0].scriptCalldata,
+            abi.encodeWithSelector(
+                Quotecall.run.selector,
+                approveAndSwapAddress,
+                abi.encodeWithSelector(
+                    ApproveAndSwap.run.selector, ZERO_EX_ENTRY_POINT, USDC_1, 9000e6, WETH_1, 3e18, ZERO_EX_SWAP_DATA
+                ),
+                5e6
+            ),
+            "calldata is Quotecall.run(ApproveAndSwap.run(ZERO_EX_ENTRY_POINT, USDC_1, 9000e6, WETH_1, 3e18, ZERO_EX_SWAP_DATA), 5e6);"
+        );
+        assertEq(
+            result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 3 days, "expiry is current blockTimestamp + 3 days"
+        );
+        // check the actions
+        assertEq(result.actions.length, 1, "one action");
+        assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
+        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce does the swap");
+        assertEq(result.actions[0].actionType, "SWAP", "action type is 'SWAP'");
+        assertEq(result.actions[0].paymentMethod, "QUOTE_CALL", "payment method is 'QUOTE_CALL'");
+        assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
+        assertEq(result.actions[0].paymentMaxCost, 5e6, "payment max is set to 5e6 in this test case");
+        assertEq(
+            result.actions[0].actionContext,
+            abi.encode(
+                Actions.SwapActionContext({
+                    chainId: 1,
+                    feeAmount: 10,
+                    feeAssetSymbol: "WETH",
+                    feeToken: WETH_1,
+                    feeTokenPrice: WETH_PRICE,
+                    inputToken: USDC_1,
+                    inputTokenPrice: USDC_PRICE,
+                    inputAssetSymbol: "USDC",
+                    inputAmount: 9000e6,
+                    outputToken: WETH_1,
+                    outputTokenPrice: WETH_PRICE,
+                    outputAssetSymbol: "WETH",
+                    outputAmount: 3e18
+                })
+            ),
+            "action context encoded from SwapActionContext"
+        );
+
+        // TODO: Check the contents of the EIP712 data
+        assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
+        assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
+        assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
+    }
+
     function testBridgeSwapSucceeds() public {
         QuarkBuilder builder = new QuarkBuilder();
         QuarkBuilder.BuilderResult memory result = builder.swap(
@@ -658,6 +753,140 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
                     outputTokenPrice: WETH_PRICE,
                     outputAssetSymbol: "WETH",
                     outputAmount: 1e18
+                })
+            ),
+            "action context encoded from SwapActionContext"
+        );
+
+        // TODO: Check the contents of the EIP712 data
+        assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
+        assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
+        assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
+    }
+
+    function testBridgeSwapMaxWithQuotecallSucceeds() public {
+        QuarkBuilder builder = new QuarkBuilder();
+        PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](2);
+        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 5e6});
+        maxCosts[1] = PaymentInfo.PaymentMaxCost({chainId: 8453, amount: 1e6});
+        QuarkBuilder.BuilderResult memory result = builder.swap(
+            buyWeth_(8453, usdc_(8453), type(uint256).max, 2e18, address(0xa11ce), BLOCK_TIMESTAMP), // swap max on chain 8453 to 4 WETH
+            chainAccountsList_(6010e6), // holding 6010 USDC in total across chains 1, 8453
+            paymentUsdc_(maxCosts)
+        );
+
+        address approveAndSwapAddress = CodeJarHelper.getCodeAddress(type(ApproveAndSwap).creationCode);
+        address quotecallAddress = CodeJarHelper.getCodeAddress(
+            abi.encodePacked(type(Quotecall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
+        );
+        address quotecallAddressBase = CodeJarHelper.getCodeAddress(
+            abi.encodePacked(type(Quotecall).creationCode, abi.encode(ETH_USD_PRICE_FEED_8453, USDC_8453))
+        );
+        address cctpBridgeActionsAddress = CodeJarHelper.getCodeAddress(type(CCTPBridgeActions).creationCode);
+
+        assertEq(result.paymentCurrency, "usdc", "usdc currency");
+
+        // Check the quark operations
+        assertEq(result.quarkOperations.length, 2, "two operations");
+        assertEq(
+            result.quarkOperations[0].scriptAddress,
+            quotecallAddress,
+            "script address[0] has been wrapped with quotecall address"
+        );
+        assertEq(
+            result.quarkOperations[0].scriptCalldata,
+            abi.encodeWithSelector(
+                Quotecall.run.selector,
+                cctpBridgeActionsAddress,
+                abi.encodeWithSelector(
+                    CCTPBridgeActions.bridgeUSDC.selector,
+                    address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155),
+                    3000e6,
+                    6,
+                    bytes32(uint256(uint160(0xa11ce))),
+                    usdc_(1)
+                ),
+                5e6
+            ),
+            "calldata is Quotecall.run(CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 3000e6, 6, bytes32(uint256(uint160(0xa11ce))), usdc_(1))), 5e5);"
+        );
+        assertEq(
+            result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
+        );
+        assertEq(
+            result.quarkOperations[1].scriptAddress,
+            quotecallAddressBase,
+            "script address[1] has been wrapped with quotecall address"
+        );
+        assertEq(
+            result.quarkOperations[1].scriptCalldata,
+            abi.encodeWithSelector(
+                Quotecall.run.selector,
+                approveAndSwapAddress,
+                abi.encodeWithSelector(
+                    ApproveAndSwap.run.selector,
+                    ZERO_EX_ENTRY_POINT,
+                    USDC_8453,
+                    6004e6,
+                    WETH_8453,
+                    2e18,
+                    ZERO_EX_SWAP_DATA
+                ),
+                1e6
+            ),
+            "calldata is Quotecall.run(ApproveAndSwap.run(ZERO_EX_ENTRY_POINT, USDC_8453, 3500e6, WETH_8453, 1e18, ZERO_EX_SWAP_DATA), 5e6);"
+        );
+        assertEq(
+            result.quarkOperations[1].expiry, BLOCK_TIMESTAMP + 3 days, "expiry is current blockTimestamp + 3 days"
+        );
+
+        // Check the actions
+        assertEq(result.actions.length, 2, "one action");
+        assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
+        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[0].actionType, "BRIDGE", "action type is 'BRIDGE'");
+        assertEq(result.actions[0].paymentMethod, "QUOTE_CALL", "payment method is 'QUOTE_CALL'");
+        assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC on mainnet");
+        assertEq(result.actions[0].paymentMaxCost, 5e6, "payment should have max cost of 5e6");
+        assertEq(
+            result.actions[0].actionContext,
+            abi.encode(
+                Actions.BridgeActionContext({
+                    amount: 3000e6,
+                    price: USDC_PRICE,
+                    token: USDC_1,
+                    assetSymbol: "USDC",
+                    chainId: 1,
+                    recipient: address(0xa11ce),
+                    destinationChainId: 8453,
+                    bridgeType: Actions.BRIDGE_TYPE_CCTP
+                })
+            ),
+            "action context encoded from BridgeActionContext"
+        );
+        assertEq(result.actions[1].chainId, 8453, "operation is on chainid 8453");
+        assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[1].actionType, "SWAP", "action type is 'SWAP'");
+        assertEq(result.actions[1].paymentMethod, "QUOTE_CALL", "payment method is 'QUOTE_CALL'");
+        assertEq(result.actions[1].paymentToken, USDC_8453, "payment token is USDC on Base");
+        assertEq(result.actions[1].paymentMaxCost, 1e6, "payment should have max cost of 1e6");
+        assertEq(
+            result.actions[1].actionContext,
+            abi.encode(
+                Actions.SwapActionContext({
+                    chainId: 8453,
+                    feeAmount: 10,
+                    feeAssetSymbol: "WETH",
+                    feeToken: WETH_8453,
+                    feeTokenPrice: WETH_PRICE,
+                    inputToken: USDC_8453,
+                    inputTokenPrice: USDC_PRICE,
+                    inputAssetSymbol: "USDC",
+                    inputAmount: 6004e6,
+                    outputToken: WETH_8453,
+                    outputTokenPrice: WETH_PRICE,
+                    outputAssetSymbol: "WETH",
+                    outputAmount: 2e18
                 })
             ),
             "action context encoded from SwapActionContext"
