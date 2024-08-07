@@ -821,7 +821,7 @@ contract QuarkBuilder {
         address sellToken;
         uint256 sellAmount;
         address buyToken;
-        uint256 expectedBuyAmount;
+        uint256 buyAmount;
         address feeToken;
         uint256 feeAmount;
         address sender;
@@ -940,7 +940,7 @@ contract QuarkBuilder {
                 sellAmount: swapIntent.sellAmount,
                 buyToken: swapIntent.buyToken,
                 buyAssetSymbol: buyAssetSymbol,
-                expectedBuyAmount: swapIntent.expectedBuyAmount,
+                buyAmount: swapIntent.buyAmount,
                 feeToken: swapIntent.feeToken,
                 feeAssetSymbol: feeAssetSymbol,
                 feeAmount: swapIntent.feeAmount,

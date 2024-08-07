@@ -103,7 +103,7 @@ library Actions {
         uint256 sellAmount;
         address buyToken;
         string buyAssetSymbol;
-        uint256 expectedBuyAmount;
+        uint256 buyAmount;
         address feeToken;
         string feeAssetSymbol;
         uint256 feeAmount;
@@ -176,6 +176,7 @@ library Actions {
 
     struct ClaimRewardsActionContext {
         uint256 amount;
+        string assetSymbol;
         uint256 chainId;
         uint256 price;
         address token;
@@ -900,7 +901,7 @@ library Actions {
             swap.sellToken,
             swap.sellAmount,
             swap.buyToken,
-            swap.expectedBuyAmount,
+            swap.buyAmount,
             swap.swapData
         );
 
@@ -924,7 +925,7 @@ library Actions {
             inputAssetSymbol: swap.sellAssetSymbol,
             inputToken: swap.sellToken,
             inputTokenPrice: sellTokenAssetPositions.usdPrice,
-            outputAmount: swap.expectedBuyAmount,
+            outputAmount: swap.buyAmount,
             outputAssetSymbol: swap.buyAssetSymbol,
             outputToken: swap.buyToken,
             outputTokenPrice: buyTokenAssetPositions.usdPrice
