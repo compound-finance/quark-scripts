@@ -422,7 +422,7 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
 
         QuarkBuilder.BuilderResult memory result = builder.swap(
             buyWeth_(1, usdc_(1), type(uint256).max, 3e18, address(0xa11ce), BLOCK_TIMESTAMP), // swap max on chain 1
-            chainAccountsList, // holding 3050 USDC in total chains 1
+            chainAccountsList, // holding 9005 USDC in total chains 1
             paymentUsdc_(maxCosts)
         );
 

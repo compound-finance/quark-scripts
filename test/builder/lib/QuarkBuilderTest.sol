@@ -7,6 +7,7 @@ import "forge-std/console.sol";
 import {Accounts} from "src/builder/Accounts.sol";
 import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
 import {Paycall} from "src/Paycall.sol";
+import {Quotecall} from "src/Quotecall.sol";
 import {PaymentInfo} from "src/builder/PaymentInfo.sol";
 import {QuarkBuilder} from "src/builder/QuarkBuilder.sol";
 import {Strings} from "src/builder/Strings.sol";
@@ -207,6 +208,20 @@ contract QuarkBuilderTest {
             );
         } else {
             revert("no paycall address for chain id");
+        }
+    }
+
+    function quotecallUsdc_(uint256 chainId) internal pure returns (address) {
+        if (chainId == 1) {
+            return CodeJarHelper.getCodeAddress(
+                abi.encodePacked(type(Quotecall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
+            );
+        } else if (chainId == 8453) {
+            return CodeJarHelper.getCodeAddress(
+                abi.encodePacked(type(Quotecall).creationCode, abi.encode(ETH_USD_PRICE_FEED_8453, USDC_8453))
+            );
+        } else {
+            revert("no quotecall address for chain id");
         }
     }
 
