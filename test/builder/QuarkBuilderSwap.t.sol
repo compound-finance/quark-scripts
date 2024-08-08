@@ -28,7 +28,7 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
         uint256 chainId,
         address sellToken,
         uint256 sellAmount,
-        uint256 expectedBuyAmount,
+        uint256 buyAmount,
         address sender,
         uint256 blockTimestamp
     ) internal pure returns (QuarkBuilder.ZeroExSwapIntent memory) {
@@ -40,7 +40,7 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
             sellToken,
             sellAmount,
             usdc,
-            expectedBuyAmount,
+            buyAmount,
             sender,
             blockTimestamp
         );
@@ -50,7 +50,7 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
         uint256 chainId,
         address sellToken,
         uint256 sellAmount,
-        uint256 expectedBuyAmount,
+        uint256 buyAmount,
         address sender,
         uint256 blockTimestamp
     ) internal pure returns (QuarkBuilder.ZeroExSwapIntent memory) {
@@ -62,7 +62,7 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
             sellToken,
             sellAmount,
             weth,
-            expectedBuyAmount,
+            buyAmount,
             sender,
             blockTimestamp
         );
@@ -75,7 +75,7 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
         address sellToken,
         uint256 sellAmount,
         address buyToken,
-        uint256 expectedBuyAmount,
+        uint256 buyAmount,
         address sender,
         uint256 blockTimestamp
     ) internal pure returns (QuarkBuilder.ZeroExSwapIntent memory) {
@@ -86,7 +86,7 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
             sellToken: sellToken,
             sellAmount: sellAmount,
             buyToken: buyToken,
-            expectedBuyAmount: expectedBuyAmount,
+            buyAmount: buyAmount,
             feeToken: buyToken,
             feeAmount: 10,
             sender: sender,

@@ -19,7 +19,7 @@ import {List} from "./List.sol";
 contract QuarkBuilder {
     /* ===== Constants ===== */
 
-    string constant VERSION = "0.0.4";
+    string constant VERSION = "0.0.5";
 
     /* ===== Custom Errors ===== */
 
@@ -821,7 +821,7 @@ contract QuarkBuilder {
         address sellToken;
         uint256 sellAmount;
         address buyToken;
-        uint256 expectedBuyAmount;
+        uint256 buyAmount;
         address feeToken;
         uint256 feeAmount;
         address sender;
@@ -940,7 +940,7 @@ contract QuarkBuilder {
                 sellAmount: swapIntent.sellAmount,
                 buyToken: swapIntent.buyToken,
                 buyAssetSymbol: buyAssetSymbol,
-                expectedBuyAmount: swapIntent.expectedBuyAmount,
+                buyAmount: swapIntent.buyAmount,
                 feeToken: swapIntent.feeToken,
                 feeAssetSymbol: feeAssetSymbol,
                 feeAmount: swapIntent.feeAmount,

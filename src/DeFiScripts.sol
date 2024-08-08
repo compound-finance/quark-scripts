@@ -298,7 +298,7 @@ contract ApproveAndSwap {
      * @param sellToken The token address to approve
      * @param sellAmount The amount to approve
      * @param buyToken The token that is being bought
-     * @param expectedBuyAmount The expected amount of the buy token to receive after the swap
+     * @param buyAmount The amount of the buy token to receive after the swap
      * @param data The data to execute
      */
     function run(
@@ -306,7 +306,7 @@ contract ApproveAndSwap {
         address sellToken,
         uint256 sellAmount,
         address buyToken,
-        uint256 expectedBuyAmount,
+        uint256 buyAmount,
         bytes calldata data
     ) external {
         IERC20(sellToken).forceApprove(to, sellAmount);
@@ -318,8 +318,8 @@ contract ApproveAndSwap {
         }
 
         uint256 buyTokenBalanceAfter = IERC20(buyToken).balanceOf(address(this));
-        uint256 buyAmount = buyTokenBalanceAfter - buyTokenBalanceBefore;
-        if (buyAmount < expectedBuyAmount) {
+        uint256 actualBuyAmount = buyTokenBalanceAfter - buyTokenBalanceBefore;
+        if (actualBuyAmount < buyAmount) {
             revert DeFiScriptErrors.TooMuchSlippage();
         }
 
