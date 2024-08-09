@@ -11,7 +11,7 @@ import {QuarkWallet} from "quark-core/src/QuarkWallet.sol";
 
 import {QuarkMinimalProxy} from "quark-proxy/src/QuarkMinimalProxy.sol";
 
-import {RecurringPurchase} from "./lib/RecurringPurchase.sol";
+import {RecurringPurchase} from "src/RecurringPurchase.sol";
 
 import {YulHelper} from "./lib/YulHelper.sol";
 import {SignatureHelper} from "./lib/SignatureHelper.sol";
@@ -21,10 +21,7 @@ import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
 // TODO: Limit orders
 // TODO: Liquidation protection
-contract ReplayableTransactionsTest is Test {
-    event Ping(uint256);
-    event ClearNonce(address indexed wallet, uint96 nonce);
-
+contract RecurringPurchaseTest is Test {
     CodeJar public codeJar;
     QuarkStateManager public stateManager;
     QuarkWallet public walletImplementation;
@@ -68,40 +65,60 @@ contract ReplayableTransactionsTest is Test {
 
     /* ===== recurring purchase tests ===== */
 
-    function createPurchaseConfig(uint40 purchaseInterval, uint256 timesToPurchase, uint216 totalAmountToPurchase)
+    function createPurchaseConfig(uint40 purchaseInterval, uint256 amount)
         internal
         view
         returns (RecurringPurchase.PurchaseConfig memory)
     {
-        uint256 deadline = block.timestamp + purchaseInterval * (timesToPurchase - 1) + 1;
-        RecurringPurchase.SwapParamsExactOut memory swapParams = RecurringPurchase.SwapParamsExactOut({
+        // Note: We default to exact out here, but it doesn't really matter for the purpose of our tests
+        return createPurchaseConfig(purchaseInterval, amount, 30_000e6, 0);
+    }
+
+    function createPurchaseConfig(
+        uint40 purchaseInterval,
+        uint256 amount,
+        uint256 amountInMaximum,
+        uint256 amountOutMinimum
+    ) internal view returns (RecurringPurchase.PurchaseConfig memory) {
+        bytes memory swapPath;
+        if (amountInMaximum > 0) {
+            // Exact out swap
+            swapPath = abi.encodePacked(WETH, uint24(500), USDC);
+        } else {
+            // Exact in swap
+            swapPath = abi.encodePacked(USDC, uint24(500), WETH);
+        }
+        RecurringPurchase.SwapParams memory swapParams = RecurringPurchase.SwapParams({
             uniswapRouter: uniswapRouter,
             recipient: address(aliceWallet),
             tokenFrom: USDC,
-            amount: uint256(totalAmountToPurchase) / timesToPurchase,
-            amountInMaximum: 30_000e6,
-            deadline: deadline,
-            path: abi.encodePacked(WETH, uint24(500), USDC) // Path: WETH - 0.05% -> USDC
+            amount: amount,
+            amountInMaximum: amountInMaximum,
+            amountOutMinimum: amountOutMinimum,
+            deadline: type(uint256).max,
+            path: swapPath
         });
-        RecurringPurchase.PurchaseConfig memory purchaseConfig = RecurringPurchase.PurchaseConfig({
-            interval: purchaseInterval,
-            totalAmountToPurchase: totalAmountToPurchase,
-            swapParams: swapParams
-        });
+        RecurringPurchase.PurchaseConfig memory purchaseConfig =
+            RecurringPurchase.PurchaseConfig({interval: purchaseInterval, swapParams: swapParams});
         return purchaseConfig;
     }
 
-    // Executes the script once for gas measurement purchases
-    function testRecurringPurchaseHappyPath() public {
+    function testRecurringPurchaseExactInSwap() public {
         // gas: disable gas metering except while executing operations
         vm.pauseGasMetering();
 
-        deal(USDC, address(aliceWallet), 100_000e6);
+        uint256 startingUSDC = 100_000e6;
+        deal(USDC, address(aliceWallet), startingUSDC);
         uint40 purchaseInterval = 86_400; // 1 day interval
-        uint256 timesToPurchase = 1;
-        uint216 totalAmountToPurchase = 10 ether;
-        RecurringPurchase.PurchaseConfig memory purchaseConfig =
-            createPurchaseConfig(purchaseInterval, timesToPurchase, totalAmountToPurchase);
+        uint256 amountToSell = 3_000e6;
+        uint256 amountOutMinimum = 1 ether;
+        // TODO: swap path might be inversed for exact in...
+        RecurringPurchase.PurchaseConfig memory purchaseConfig = createPurchaseConfig({
+            purchaseInterval: purchaseInterval,
+            amount: amountToSell,
+            amountOutMinimum: amountOutMinimum,
+            amountInMaximum: 0
+        });
         QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
             aliceWallet,
             recurringPurchase,
@@ -112,12 +129,50 @@ contract ReplayableTransactionsTest is Test {
         (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 0 ether);
+        assertEq(IERC20(USDC).balanceOf(address(aliceWallet)), startingUSDC);
 
         // gas: meter execute
         vm.resumeGasMetering();
         aliceWallet.executeQuarkOperation(op, v1, r1, s1);
 
-        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), totalAmountToPurchase);
+        assertGt(IERC20(WETH).balanceOf(address(aliceWallet)), amountOutMinimum);
+        assertEq(IERC20(USDC).balanceOf(address(aliceWallet)), startingUSDC - amountToSell);
+    }
+
+    function testRecurringPurchaseExactOutSwap() public {
+        // gas: disable gas metering except while executing operations
+        vm.pauseGasMetering();
+
+        uint256 startingUSDC = 100_000e6;
+        deal(USDC, address(aliceWallet), startingUSDC);
+        uint40 purchaseInterval = 86_400; // 1 day interval
+        uint256 amountToPurchase = 10 ether;
+        uint256 amountInMaximum = 30_000e6;
+        RecurringPurchase.PurchaseConfig memory purchaseConfig = createPurchaseConfig({
+            purchaseInterval: purchaseInterval,
+            amount: amountToPurchase,
+            amountOutMinimum: 0,
+            amountInMaximum: amountInMaximum
+        });
+        QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
+            aliceWallet,
+            recurringPurchase,
+            abi.encodeWithSelector(RecurringPurchase.purchase.selector, purchaseConfig),
+            ScriptType.ScriptAddress
+        );
+        op.expiry = purchaseConfig.swapParams.deadline;
+        (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
+
+        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 0 ether);
+        assertEq(IERC20(USDC).balanceOf(address(aliceWallet)), startingUSDC);
+
+        // gas: meter execute
+        vm.resumeGasMetering();
+        aliceWallet.executeQuarkOperation(op, v1, r1, s1);
+
+        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToPurchase);
+        assertLt(IERC20(USDC).balanceOf(address(aliceWallet)), startingUSDC);
+        assertGt(IERC20(USDC).balanceOf(address(aliceWallet)), startingUSDC - amountInMaximum);
     }
 
     function testRecurringPurchaseMultiplePurchases() public {
@@ -126,10 +181,9 @@ contract ReplayableTransactionsTest is Test {
 
         deal(USDC, address(aliceWallet), 100_000e6);
         uint40 purchaseInterval = 86_400; // 1 day interval
-        uint256 timesToPurchase = 2;
-        uint216 totalAmountToPurchase = 20 ether;
+        uint256 amountToPurchase = 10 ether;
         RecurringPurchase.PurchaseConfig memory purchaseConfig =
-            createPurchaseConfig(purchaseInterval, timesToPurchase, totalAmountToPurchase);
+            createPurchaseConfig(purchaseInterval, amountToPurchase);
         QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
             aliceWallet,
             recurringPurchase,
@@ -146,7 +200,7 @@ contract ReplayableTransactionsTest is Test {
         // 1. Execute recurring purchase for the first time
         aliceWallet.executeQuarkOperation(op, v1, r1, s1);
 
-        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 10 ether);
+        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToPurchase);
 
         // 2a. Cannot buy again unless time interval has passed
         vm.expectRevert(RecurringPurchase.PurchaseConditionNotMet.selector);
@@ -156,7 +210,7 @@ contract ReplayableTransactionsTest is Test {
         vm.warp(block.timestamp + purchaseInterval);
         aliceWallet.executeQuarkOperation(op, v1, r1, s1);
 
-        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 20 ether);
+        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 2 * amountToPurchase);
     }
 
     function testCancelRecurringPurchase() public {
@@ -165,10 +219,9 @@ contract ReplayableTransactionsTest is Test {
 
         deal(USDC, address(aliceWallet), 100_000e6);
         uint40 purchaseInterval = 86_400; // 1 day interval
-        uint256 timesToPurchase = 2;
-        uint216 totalAmountToPurchase = 20 ether;
+        uint256 amountToPurchase = 10 ether;
         RecurringPurchase.PurchaseConfig memory purchaseConfig =
-            createPurchaseConfig(purchaseInterval, timesToPurchase, totalAmountToPurchase);
+            createPurchaseConfig(purchaseInterval, amountToPurchase);
         QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
             aliceWallet,
             recurringPurchase,
@@ -193,7 +246,7 @@ contract ReplayableTransactionsTest is Test {
         // 1. Execute recurring purchase for the first time
         aliceWallet.executeQuarkOperation(op, v1, r1, s1);
 
-        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 10 ether);
+        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToPurchase);
 
         // 2. Cancel replayable transaction
         aliceWallet.executeQuarkOperation(cancelOp, v2, r2, s2);
@@ -203,7 +256,7 @@ contract ReplayableTransactionsTest is Test {
         vm.expectRevert(QuarkStateManager.NonceAlreadySet.selector);
         aliceWallet.executeQuarkOperation(op, v1, r1, s1);
 
-        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 10 ether);
+        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToPurchase);
     }
 
     function testRecurringPurchaseWithDifferentCalldata() public {
@@ -212,17 +265,16 @@ contract ReplayableTransactionsTest is Test {
 
         deal(USDC, address(aliceWallet), 100_000e6);
         uint40 purchaseInterval = 86_400; // 1 day interval
+        uint256 amountToPurchase1 = 10 ether;
+        uint256 amountToPurchase2 = 5 ether;
         QuarkWallet.QuarkOperation memory op1;
         QuarkWallet.QuarkOperation memory op2;
         QuarkWallet.QuarkOperation memory cancelOp;
         // Local scope to avoid stack too deep
         {
-            uint256 timesToPurchase = 3;
-            uint216 totalAmountToPurchase1 = 30 ether; // 10 ETH / day
-            uint216 totalAmountToPurchase2 = 15 ether; // 5 ETH / day
             // Two purchase configs using the same nonce: one to purchase 10 ETH and the other to purchase 5 ETH
             RecurringPurchase.PurchaseConfig memory purchaseConfig1 =
-                createPurchaseConfig(purchaseInterval, timesToPurchase, totalAmountToPurchase1);
+                createPurchaseConfig(purchaseInterval, amountToPurchase1);
             op1 = new QuarkOperationHelper().newBasicOpWithCalldata(
                 aliceWallet,
                 recurringPurchase,
@@ -231,7 +283,7 @@ contract ReplayableTransactionsTest is Test {
             );
             op1.expiry = purchaseConfig1.swapParams.deadline;
             RecurringPurchase.PurchaseConfig memory purchaseConfig2 =
-                createPurchaseConfig(purchaseInterval, timesToPurchase, totalAmountToPurchase2);
+                createPurchaseConfig(purchaseInterval, amountToPurchase2);
             op2 = new QuarkOperationHelper().newBasicOpWithCalldata(
                 aliceWallet,
                 recurringPurchase,
@@ -258,12 +310,12 @@ contract ReplayableTransactionsTest is Test {
         // 1a. Execute recurring purchase order #1
         aliceWallet.executeQuarkOperation(op1, v1, r1, s1);
 
-        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 10 ether);
+        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToPurchase1);
 
         // 1b. Execute recurring purchase order #2
         aliceWallet.executeQuarkOperation(op2, v2, r2, s2);
 
-        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 15 ether);
+        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToPurchase1 + amountToPurchase2);
 
         // 2. Warp until next purchase period
         vm.warp(block.timestamp + purchaseInterval);
@@ -271,12 +323,12 @@ contract ReplayableTransactionsTest is Test {
         // 3a. Execute recurring purchase order #1
         aliceWallet.executeQuarkOperation(op1, v1, r1, s1);
 
-        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 25 ether);
+        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 2 * amountToPurchase1 + amountToPurchase2);
 
         // 3b. Execute recurring purchase order #2
         aliceWallet.executeQuarkOperation(op2, v2, r2, s2);
 
-        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 30 ether);
+        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 2 * amountToPurchase1 + 2 * amountToPurchase2);
 
         // 4. Cancel replayable transaction
         aliceWallet.executeQuarkOperation(cancelOp, v3, r3, s3);
@@ -290,7 +342,43 @@ contract ReplayableTransactionsTest is Test {
         vm.expectRevert(QuarkStateManager.NonceAlreadySet.selector);
         aliceWallet.executeQuarkOperation(op2, v2, r2, s2);
 
-        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 30 ether);
+        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 2 * amountToPurchase1 + 2 * amountToPurchase2);
+    }
+
+    function testRevertsForInvalidInput() public {
+        // gas: disable gas metering except while executing operations
+        vm.pauseGasMetering();
+
+        uint40 purchaseInterval = 86_400; // 1 day interval
+        uint256 amountToPurchase = 10 ether;
+        RecurringPurchase.PurchaseConfig memory invalidPurchaseConfig1 =
+            createPurchaseConfig(purchaseInterval, amountToPurchase, 0, 0);
+        RecurringPurchase.PurchaseConfig memory invalidPurchaseConfig2 =
+            createPurchaseConfig(purchaseInterval, amountToPurchase, 50_000e6, 10e18);
+        QuarkWallet.QuarkOperation memory op1 = new QuarkOperationHelper().newBasicOpWithCalldata(
+            aliceWallet,
+            recurringPurchase,
+            abi.encodeWithSelector(RecurringPurchase.purchase.selector, invalidPurchaseConfig1),
+            ScriptType.ScriptAddress
+        );
+        QuarkWallet.QuarkOperation memory op2 = new QuarkOperationHelper().newBasicOpWithCalldata(
+            aliceWallet,
+            recurringPurchase,
+            abi.encodeWithSelector(RecurringPurchase.purchase.selector, invalidPurchaseConfig2),
+            ScriptType.ScriptAddress
+        );
+        op1.expiry = invalidPurchaseConfig1.swapParams.deadline;
+        op2.expiry = invalidPurchaseConfig2.swapParams.deadline;
+        (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op1);
+        (uint8 v2, bytes32 r2, bytes32 s2) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op2);
+
+        // gas: meter execute
+        vm.resumeGasMetering();
+        vm.expectRevert(RecurringPurchase.InvalidInput.selector);
+        aliceWallet.executeQuarkOperation(op1, v1, r1, s1);
+
+        vm.expectRevert(RecurringPurchase.InvalidInput.selector);
+        aliceWallet.executeQuarkOperation(op2, v2, r2, s2);
     }
 
     function testRevertsForPurchaseBeforeNextPurchasePeriod() public {
@@ -299,10 +387,9 @@ contract ReplayableTransactionsTest is Test {
 
         deal(USDC, address(aliceWallet), 100_000e6);
         uint40 purchaseInterval = 86_400; // 1 day interval
-        uint256 timesToPurchase = 2;
-        uint216 totalAmountToPurchase = 20 ether;
+        uint256 amountToPurchase = 10 ether;
         RecurringPurchase.PurchaseConfig memory purchaseConfig =
-            createPurchaseConfig(purchaseInterval, timesToPurchase, totalAmountToPurchase);
+            createPurchaseConfig(purchaseInterval, amountToPurchase);
         QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
             aliceWallet,
             recurringPurchase,
@@ -319,13 +406,13 @@ contract ReplayableTransactionsTest is Test {
         // 1. Execute recurring purchase for the first time
         aliceWallet.executeQuarkOperation(op, v1, r1, s1);
 
-        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 10 ether);
+        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToPurchase);
 
         // 2. Cannot buy again unless time interval has passed
         vm.expectRevert(RecurringPurchase.PurchaseConditionNotMet.selector);
         aliceWallet.executeQuarkOperation(op, v1, r1, s1);
 
-        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 10 ether);
+        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToPurchase);
     }
 
     function testRevertsForExpiredQuarkOperation() public {
@@ -334,10 +421,9 @@ contract ReplayableTransactionsTest is Test {
 
         deal(USDC, address(aliceWallet), 100_000e6);
         uint40 purchaseInterval = 86_400; // 1 day interval
-        uint256 timesToPurchase = 1;
-        uint216 totalAmountToPurchase = 10 ether;
+        uint256 amountToPurchase = 10 ether;
         RecurringPurchase.PurchaseConfig memory purchaseConfig =
-            createPurchaseConfig(purchaseInterval, timesToPurchase, totalAmountToPurchase);
+            createPurchaseConfig(purchaseInterval, amountToPurchase);
         QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
             aliceWallet,
             recurringPurchase,
@@ -359,10 +445,9 @@ contract ReplayableTransactionsTest is Test {
 
         deal(USDC, address(aliceWallet), 100_000e6);
         uint40 purchaseInterval = 86_400; // 1 day interval
-        uint256 timesToPurchase = 1;
-        uint216 totalAmountToPurchase = 10 ether;
+        uint256 amountToPurchase = 10 ether;
         RecurringPurchase.PurchaseConfig memory purchaseConfig =
-            createPurchaseConfig(purchaseInterval, timesToPurchase, totalAmountToPurchase);
+            createPurchaseConfig(purchaseInterval, amountToPurchase);
         purchaseConfig.swapParams.deadline = block.timestamp - 1; // Set Uniswap deadline to always expire
         QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
             aliceWallet,
@@ -376,44 +461,5 @@ contract ReplayableTransactionsTest is Test {
         vm.resumeGasMetering();
         vm.expectRevert(bytes("Transaction too old"));
         aliceWallet.executeQuarkOperation(op, v1, r1, s1);
-    }
-
-    function testRevertsForPurchasingOverTheLimit() public {
-        // gas: disable gas metering except while executing operations
-        vm.pauseGasMetering();
-
-        deal(USDC, address(aliceWallet), 100_000e6);
-        uint40 purchaseInterval = 86_400; // 1 day interval
-        uint256 timesToPurchase = 2;
-        uint216 totalAmountToPurchase = 20 ether; // 10 ETH / day
-        RecurringPurchase.PurchaseConfig memory purchaseConfig =
-            createPurchaseConfig(purchaseInterval, timesToPurchase, totalAmountToPurchase);
-        purchaseConfig.totalAmountToPurchase = 10 ether; // Will only be able to purchase once
-        QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
-            aliceWallet,
-            recurringPurchase,
-            abi.encodeWithSelector(RecurringPurchase.purchase.selector, purchaseConfig),
-            ScriptType.ScriptAddress
-        );
-        op.expiry = purchaseConfig.swapParams.deadline;
-        (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
-
-        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 0 ether);
-
-        // gas: meter execute
-        vm.resumeGasMetering();
-        // 1. Execute recurring purchase
-        aliceWallet.executeQuarkOperation(op, v1, r1, s1);
-
-        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 10 ether);
-
-        // 2. Warp until next purchase period
-        vm.warp(block.timestamp + purchaseInterval);
-
-        // 3. Purchasing again will go over the `totalAmountToPurchase` cap
-        vm.expectRevert(RecurringPurchase.PurchaseConditionNotMet.selector);
-        aliceWallet.executeQuarkOperation(op, v1, r1, s1);
-
-        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 10 ether);
     }
 }
