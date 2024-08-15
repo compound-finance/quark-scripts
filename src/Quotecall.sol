@@ -15,9 +15,9 @@ contract Quotecall {
 
     event PayForGas(address indexed payer, address indexed payee, address indexed paymentToken, uint256 amount);
 
-    error BadPrice();
+    error BadPrice(int256 price);
     error InvalidCallContext();
-    error QuoteToleranceExceeded();
+    error QuoteToleranceExceeded(uint256 expectedMaxDelta, uint256 actualDelta);
 
     /// @notice Native token (e.g. ETH) based price feed address (e.g. ETH/USD, ETH/BTC)
     address public immutable nativeTokenBasedPriceFeedAddress;
@@ -91,7 +91,7 @@ contract Quotecall {
 
         (, int256 price,,,) = AggregatorV3Interface(nativeTokenBasedPriceFeedAddress).latestRoundData();
         if (price <= 0) {
-            revert BadPrice();
+            revert BadPrice(price);
         }
 
         uint256 gasUsed = gasInitial - gasleft() + GAS_OVERHEAD;
@@ -100,7 +100,7 @@ contract Quotecall {
         uint256 actualDeltaPercentage = actualDelta * PERCENTAGE_SCALE / quotedAmount;
 
         if (actualDeltaPercentage > maxDeltaPercentage) {
-            revert QuoteToleranceExceeded();
+            revert QuoteToleranceExceeded(maxDeltaPercentage, actualDeltaPercentage);
         }
 
         return returnData;

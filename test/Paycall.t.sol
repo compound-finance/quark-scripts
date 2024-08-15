@@ -390,7 +390,7 @@ contract PaycallTest is Test {
         assertApproxEqAbs(IERC20(WBTC).balanceOf(address(wallet)), 99_970_000, 1e3);
     }
 
-    function testRevertsWhenCostIsMoreThanMaxPaymentCost() public {
+    function testRevertWhenCostIsMoreThanMaxPaymentCost() public {
         vm.pauseGasMetering();
         vm.txGasPrice(32 gwei);
         QuarkWallet wallet = QuarkWallet(factory.create(alice, address(0)));
