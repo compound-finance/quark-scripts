@@ -320,7 +320,7 @@ contract ApproveAndSwap {
         uint256 buyTokenBalanceAfter = IERC20(buyToken).balanceOf(address(this));
         uint256 actualBuyAmount = buyTokenBalanceAfter - buyTokenBalanceBefore;
         if (actualBuyAmount < buyAmount) {
-            revert DeFiScriptErrors.TooMuchSlippage();
+            revert DeFiScriptErrors.TooMuchSlippage(actualBuyAmount, buyAmount);
         }
 
         // Approvals to external contracts should always be reset to 0

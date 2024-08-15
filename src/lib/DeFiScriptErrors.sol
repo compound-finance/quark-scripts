@@ -10,5 +10,5 @@ library DeFiScriptErrors {
     error InvalidInput();
     error TransferFailed(bytes data);
     error ApproveAndSwapFailed(bytes data);
-    error TooMuchSlippage();
+    error TooMuchSlippage(uint256 actualBuyAmount, uint256 expectedBuyAmount);
 }

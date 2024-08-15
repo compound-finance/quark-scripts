@@ -17,7 +17,7 @@ contract Paycall {
 
     error BadPrice();
     error InvalidCallContext();
-    error TransactionTooExpensive();
+    error TransactionTooExpensive(uint256 expectedMaxCost, uint256 actualMaxCost);
 
     /// @notice Native token (e.g. ETH) based price feed address (e.g. ETH/USD, ETH/BTC)
     address public immutable nativeTokenBasedPriceFeedAddress;
@@ -88,7 +88,7 @@ contract Paycall {
         uint256 gasUsed = gasInitial - gasleft() + GAS_OVERHEAD;
         uint256 paymentAmount = gasUsed * tx.gasprice * uint256(price) / divisorScale;
         if (paymentAmount > maxPaymentCost) {
-            revert TransactionTooExpensive();
+            revert TransactionTooExpensive(maxPaymentCost, paymentAmount);
         }
         IERC20(paymentTokenAddress).safeTransfer(tx.origin, paymentAmount);
         emit PayForGas(address(this), tx.origin, paymentTokenAddress, paymentAmount);
