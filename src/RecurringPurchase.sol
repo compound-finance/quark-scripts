@@ -3,7 +3,9 @@ pragma solidity 0.8.23;
 
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
+import {IERC20Metadata} from "openzeppelin/token/ERC20/extensions/IERC20Metadata.sol";
 
+import {AggregatorV3Interface} from "src/vendor/chainlink/AggregatorV3Interface.sol";
 import {ISwapRouter} from "v3-periphery/interfaces/ISwapRouter.sol";
 
 import {QuarkWallet} from "quark-core/src/QuarkWallet.sol";
@@ -17,31 +19,55 @@ import {QuarkScript} from "quark-core/src/QuarkScript.sol";
 contract RecurringPurchase is QuarkScript {
     using SafeERC20 for IERC20;
 
+    error BadPrice();
     error InvalidInput();
     error PurchaseConditionNotMet();
 
+    /// @notice The base slippage factor where `1e18` represents 100% slippage tolerance
+    uint256 public constant BASE_SLIPPAGE_FACTOR = 1e18;
+
     /**
-     * @dev Note: This script uses the following storage layout:
+     * @dev Note: This script uses the following storage layout in the QuarkStateManager:
      *         mapping(bytes32 hashedPurchaseConfig => uint256 nextPurchaseTime)
      *             where hashedPurchaseConfig = keccak256(PurchaseConfig)
      */
 
-    /// @notice The configuration for a recurring purchase order
+    /// @notice Parameters for a recurring purchase order
     struct PurchaseConfig {
         uint256 interval;
         SwapParams swapParams;
+        SlippageParams slippageParams;
     }
 
-    /// @notice The set of parameters for performing a swap
+    /// @notice Parameters for performing a swap
     struct SwapParams {
         address uniswapRouter;
         address recipient;
-        address tokenFrom;
+        address tokenIn;
+        address tokenOut;
+        /// @dev The amount for tokenIn if exact in; the amount for tokenOut if exact out
         uint256 amount;
-        uint256 amountInMaximum; // Optional, for "exact out" swaps
-        uint256 amountOutMinimum; // Optional, for "exact in" swaps
+        /// @dev False for exact in; true for exact out
+        bool isExactOut;
         uint256 deadline;
         bytes path;
+    }
+
+    /// @notice Parameters for controlling slippage in a swap operation
+    struct SlippageParams {
+        /// @dev Maximum acceptable slippage, expressed as a percentage where 100% = 1e18
+        uint256 maxSlippage;
+        /// @dev Price feed addresses for determining market exchange rates between token pairs
+        /// Example: For SUSHI -> SNX swap, use [SUSHI/ETH feed, SNX/ETH feed]
+        address[] priceFeeds;
+        /// @dev Flags indicating whether each corresponding price feed should be inverted
+        /// Example: For USDC -> ETH swap, use [true] with [ETH/USD feed] to get ETH per USDC
+        bool[] shouldReverses;
+    }
+
+    /// @notice Cancel the recurring purchase for the current nonce
+    function cancel() external {
+        // Not explicitly clearing the nonce just cancels the replayable txn
     }
 
     /**
@@ -51,15 +77,14 @@ contract RecurringPurchase is QuarkScript {
     function purchase(PurchaseConfig calldata config) public {
         allowReplay();
 
-        // Only one of the optional fields should be set
-        if (config.swapParams.amountInMaximum > 0 && config.swapParams.amountOutMinimum > 0) {
+        if (config.slippageParams.priceFeeds.length == 0) {
             revert InvalidInput();
         }
-        if (config.swapParams.amountInMaximum == 0 && config.swapParams.amountOutMinimum == 0) {
+        if (config.slippageParams.priceFeeds.length != config.slippageParams.shouldReverses.length) {
             revert InvalidInput();
         }
 
-        bytes32 hashedConfig = hashConfig(config);
+        bytes32 hashedConfig = _hashConfig(config);
         uint256 nextPurchaseTime;
         if (read(hashedConfig) == 0) {
             nextPurchaseTime = block.timestamp;
@@ -75,61 +100,153 @@ contract RecurringPurchase is QuarkScript {
         // Update nextPurchaseTime
         write(hashedConfig, bytes32(nextPurchaseTime + config.interval));
 
-        // Perform the swap
+        (uint256 amountIn, uint256 amountOut) = _calculateSwapAmounts(config);
+        _executeSwap(config.swapParams, amountIn, amountOut);
+
+        // TODO: Event for tracking
+    }
+
+    /**
+     * @notice Calculates the amounts of tokens required for a swap based on the given configuration
+     * @param config The configuration for the swap including swap parameters and slippage parameters
+     * @return amountIn The amount of `tokenIn` required for the swap
+     * @return amountOut The amount of `tokenOut` expected from the swap
+     * @dev This function handles both "exact in" and "exact out" scenarios. It adjusts amounts based on price feeds and decimals.
+     *      For "exact out", it calculates the required `amountIn` to achieve the desired `amountOut`.
+     *      For "exact in", it calculates the expected `amountOut` for the provided `amountIn`.
+     *      The function also applies slippage tolerance to the calculated amounts.
+     */
+    function _calculateSwapAmounts(PurchaseConfig calldata config)
+        internal
+        view
+        returns (uint256 amountIn, uint256 amountOut)
+    {
         SwapParams memory swapParams = config.swapParams;
+        amountIn = swapParams.amount;
+        amountOut = swapParams.amount;
+
+        for (uint256 i = 0; i < config.slippageParams.priceFeeds.length; ++i) {
+            (uint256 price, uint256 priceScale) = _getPriceAndScale(config.slippageParams.priceFeeds[i]);
+
         uint256 actualAmountIn;
         uint256 actualAmountOut;
         if (swapParams.amountInMaximum > 0) {
+                // For exact out, we need to adjust amountIn by going backwards through the price feeds
+                amountIn = config.slippageParams.shouldReverses[i]
+                    ? amountIn * price / priceScale
+                    : amountIn * priceScale / price;
+            } else {
+                // For exact in, we need to adjust amountOut by going forwards through price feeds
+                amountOut = config.slippageParams.shouldReverses[i]
+                    ? amountOut * priceScale / price
+                    : amountOut * price / priceScale;
+            }
+        }
+
+        uint256 tokenInDecimals = IERC20Metadata(swapParams.tokenIn).decimals();
+        uint256 tokenOutDecimals = IERC20Metadata(swapParams.tokenOut).decimals();
+
+        // Scale amountIn to the correct amount of decimals and apply a slippage tolerance to it
+        if (swapParams.isExactOut) {
+            amountIn = _scaleDecimals(amountIn, tokenOutDecimals, tokenInDecimals);
+            amountIn = (amountIn * (BASE_SLIPPAGE_FACTOR + config.slippageParams.maxSlippage)) / BASE_SLIPPAGE_FACTOR;
+        } else {
+            amountOut = _scaleDecimals(amountOut, tokenInDecimals, tokenOutDecimals);
+            amountOut = (amountOut * (BASE_SLIPPAGE_FACTOR - config.slippageParams.maxSlippage)) / BASE_SLIPPAGE_FACTOR;
+        }
+    }
+
+    /**
+     * @notice Executes the swap based on the provided parameters
+     * @param swapParams The parameters for the swap including router address, token addresses, and amounts
+     * @param amountIn The amount of `tokenIn` to be used in the swap
+     * @param amountOut The amount of `tokenOut` to be received from the swap
+     * @dev This function performs the swap using either the exact input or exact output method, depending on the configuration.
+     *      It also handles the approval of tokens for the swap router and resets the approval after the swap.
+     */
+    function _executeSwap(SwapParams memory swapParams, uint256 amountIn, uint256 amountOut) internal {
+        IERC20(swapParams.tokenIn).forceApprove(swapParams.uniswapRouter, amountIn);
+
+        if (swapParams.isExactOut) {
             // Exact out swap
-            IERC20(swapParams.tokenFrom).forceApprove(swapParams.uniswapRouter, swapParams.amountInMaximum);
-            actualAmountIn = ISwapRouter(swapParams.uniswapRouter).exactOutput(
+            ISwapRouter(swapParams.uniswapRouter).exactOutput(
                 ISwapRouter.ExactOutputParams({
                     path: swapParams.path,
                     recipient: swapParams.recipient,
                     deadline: swapParams.deadline,
-                    amountOut: swapParams.amount,
-                    amountInMaximum: swapParams.amountInMaximum
+                    amountOut: amountOut,
+                    amountInMaximum: amountIn
                 })
             );
-            actualAmountOut = swapParams.amount;
-        } else if (swapParams.amountOutMinimum > 0) {
+        } else {
             // Exact in swap
-            IERC20(swapParams.tokenFrom).forceApprove(swapParams.uniswapRouter, swapParams.amount);
-            actualAmountOut = ISwapRouter(swapParams.uniswapRouter).exactInput(
+            ISwapRouter(swapParams.uniswapRouter).exactInput(
                 ISwapRouter.ExactInputParams({
                     path: swapParams.path,
                     recipient: swapParams.recipient,
                     deadline: swapParams.deadline,
-                    amountIn: swapParams.amount,
-                    amountOutMinimum: swapParams.amountOutMinimum
+                    amountIn: amountIn,
+                    amountOutMinimum: amountOut
                 })
             );
-            actualAmountIn = swapParams.amount;
         }
 
         // Approvals to external contracts should always be reset to 0
-        IERC20(swapParams.tokenFrom).forceApprove(swapParams.uniswapRouter, 0);
+        IERC20(swapParams.tokenIn).forceApprove(swapParams.uniswapRouter, 0);
     }
 
-    /// @notice Cancel the recurring purchase for the current nonce
-    function cancel() external {
-        // Not explicitly clearing the nonce just cancels the replayable txn
+    /**
+     * @notice Retrieves the current price and scale from a Chainlink price feed
+     * @param priceFeed The address of the Chainlink price feed contract
+     * @return price The current price from the feed
+     * @return priceScale The scale of the price, typically 10^decimals where decimals is the precision of the feed
+     */
+    function _getPriceAndScale(address priceFeed) internal view returns (uint256 price, uint256 priceScale) {
+        AggregatorV3Interface feed = AggregatorV3Interface(priceFeed);
+        (, int256 rawPrice,,,) = feed.latestRoundData();
+        if (rawPrice <= 0) {
+            revert BadPrice();
+        }
+        price = uint256(rawPrice);
+        priceScale = 10 ** uint256(feed.decimals());
+    }
+
+    /**
+     * @notice Scales an amount from one decimal precision to another decision precision
+     * @param amount The amount to be scaled
+     * @param fromDecimals The number of decimals in the source precision
+     * @param toDecimals The number of decimals in the target precision
+     * @return The scaled amount adjusted to the target precision
+     */
+    function _scaleDecimals(uint256 amount, uint256 fromDecimals, uint256 toDecimals) internal pure returns (uint256) {
+        if (fromDecimals < toDecimals) {
+            return amount * (10 ** (toDecimals - fromDecimals));
+        } else if (fromDecimals > toDecimals) {
+            return amount / (10 ** (fromDecimals - toDecimals));
+        }
+
+        return amount;
     }
 
     /// @notice Deterministically hash the purchase configuration
-    function hashConfig(PurchaseConfig calldata config) internal pure returns (bytes32) {
+    function _hashConfig(PurchaseConfig calldata config) internal pure returns (bytes32) {
         return keccak256(
             abi.encodePacked(
                 config.interval,
                 abi.encodePacked(
                     config.swapParams.uniswapRouter,
                     config.swapParams.recipient,
-                    config.swapParams.tokenFrom,
+                    config.swapParams.tokenIn,
+                    config.swapParams.tokenOut,
                     config.swapParams.amount,
-                    config.swapParams.amountInMaximum,
-                    config.swapParams.amountOutMinimum,
+                    config.swapParams.isExactOut,
                     config.swapParams.deadline,
                     config.swapParams.path
+                ),
+                abi.encodePacked(
+                    config.slippageParams.maxSlippage,
+                    keccak256(abi.encodePacked(config.slippageParams.priceFeeds)),
+                    keccak256(abi.encodePacked(config.slippageParams.shouldReverses))
                 )
             )
         );
