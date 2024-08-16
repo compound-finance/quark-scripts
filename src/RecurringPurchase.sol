@@ -146,7 +146,14 @@ contract RecurringPurchase is QuarkScript {
         amountOut = swapParams.amount;
 
         for (uint256 i = 0; i < config.slippageParams.priceFeeds.length; ++i) {
-            (uint256 price, uint256 priceScale) = _getPriceAndScale(config.slippageParams.priceFeeds[i]);
+            // Get price from oracle
+            AggregatorV3Interface priceFeed = AggregatorV3Interface(config.slippageParams.priceFeeds[i]);
+            (, int256 rawPrice,,,) = priceFeed.latestRoundData();
+            if (rawPrice <= 0) {
+                revert BadPrice();
+            }
+            uint256 price = uint256(rawPrice);
+            uint256 priceScale = 10 ** uint256(priceFeed.decimals());
 
             if (swapParams.isExactOut) {
                 // For exact out, we need to adjust amountIn by going backwards through the price feeds
@@ -218,22 +225,6 @@ contract RecurringPurchase is QuarkScript {
 
         // Approvals to external contracts should always be reset to 0
         IERC20(swapParams.tokenIn).forceApprove(swapParams.uniswapRouter, 0);
-    }
-
-    /**
-     * @notice Retrieves the current price and scale from a Chainlink price feed
-     * @param priceFeed The address of the Chainlink price feed contract
-     * @return price The current price from the feed
-     * @return priceScale The scale of the price, typically 10^decimals where decimals is the precision of the feed
-     */
-    function _getPriceAndScale(address priceFeed) internal view returns (uint256 price, uint256 priceScale) {
-        AggregatorV3Interface feed = AggregatorV3Interface(priceFeed);
-        (, int256 rawPrice,,,) = feed.latestRoundData();
-        if (rawPrice <= 0) {
-            revert BadPrice();
-        }
-        price = uint256(rawPrice);
-        priceScale = 10 ** uint256(feed.decimals());
     }
 
     /**
