@@ -390,7 +390,7 @@ contract PaycallTest is Test {
         assertApproxEqAbs(IERC20(WBTC).balanceOf(address(wallet)), 99_970_000, 1e3);
     }
 
-    function testRevertsWhenCostIsMoreThanMaxPaymentCost() public {
+    function testRevertWhenCostIsMoreThanMaxPaymentCost() public {
         vm.pauseGasMetering();
         vm.txGasPrice(32 gwei);
         QuarkWallet wallet = QuarkWallet(factory.create(alice, address(0)));
@@ -419,7 +419,7 @@ contract PaycallTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         vm.resumeGasMetering();
-        vm.expectRevert(abi.encodeWithSelector(Paycall.TransactionTooExpensive.selector));
+        vm.expectRevert(abi.encodeWithSelector(Paycall.TransactionTooExpensive.selector, 5000000, 10485677));
         wallet.executeQuarkOperation(op, v, r, s);
 
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 1000e6);
