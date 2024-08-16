@@ -23,6 +23,17 @@ contract RecurringPurchase is QuarkScript {
     error InvalidInput();
     error PurchaseConditionNotMet();
 
+    /// @notice Emitted when a swap is executed
+    event SwapExecuted(
+        address indexed sender,
+        address indexed recipient,
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn,
+        uint256 amountOut,
+        bytes path
+    );
+
     /// @notice The base slippage factor where `1e18` represents 100% slippage tolerance
     uint256 public constant BASE_SLIPPAGE_FACTOR = 1e18;
 
@@ -101,9 +112,18 @@ contract RecurringPurchase is QuarkScript {
         write(hashedConfig, bytes32(nextPurchaseTime + config.interval));
 
         (uint256 amountIn, uint256 amountOut) = _calculateSwapAmounts(config);
-        _executeSwap(config.swapParams, amountIn, amountOut);
+        (uint256 actualAmountIn, uint256 actualAmountOut) = _executeSwap(config.swapParams, amountIn, amountOut);
 
-        // TODO: Event for tracking
+        // Emit the swap event
+        emit SwapExecuted(
+            msg.sender,
+            config.swapParams.recipient,
+            config.swapParams.tokenIn,
+            config.swapParams.tokenOut,
+            actualAmountIn,
+            actualAmountOut,
+            config.swapParams.path
+        );
     }
 
     /**
@@ -128,9 +148,7 @@ contract RecurringPurchase is QuarkScript {
         for (uint256 i = 0; i < config.slippageParams.priceFeeds.length; ++i) {
             (uint256 price, uint256 priceScale) = _getPriceAndScale(config.slippageParams.priceFeeds[i]);
 
-        uint256 actualAmountIn;
-        uint256 actualAmountOut;
-        if (swapParams.amountInMaximum > 0) {
+            if (swapParams.isExactOut) {
                 // For exact out, we need to adjust amountIn by going backwards through the price feeds
                 amountIn = config.slippageParams.shouldReverses[i]
                     ? amountIn * price / priceScale
@@ -161,15 +179,20 @@ contract RecurringPurchase is QuarkScript {
      * @param swapParams The parameters for the swap including router address, token addresses, and amounts
      * @param amountIn The amount of `tokenIn` to be used in the swap
      * @param amountOut The amount of `tokenOut` to be received from the swap
+     * @return actualAmountIn The actual amount of input tokens used in the swap
+     * @return actualAmountOut The actual amount of output tokens received from the swap
      * @dev This function performs the swap using either the exact input or exact output method, depending on the configuration.
      *      It also handles the approval of tokens for the swap router and resets the approval after the swap.
      */
-    function _executeSwap(SwapParams memory swapParams, uint256 amountIn, uint256 amountOut) internal {
+    function _executeSwap(SwapParams memory swapParams, uint256 amountIn, uint256 amountOut)
+        internal
+        returns (uint256 actualAmountIn, uint256 actualAmountOut)
+    {
         IERC20(swapParams.tokenIn).forceApprove(swapParams.uniswapRouter, amountIn);
 
         if (swapParams.isExactOut) {
             // Exact out swap
-            ISwapRouter(swapParams.uniswapRouter).exactOutput(
+            actualAmountIn = ISwapRouter(swapParams.uniswapRouter).exactOutput(
                 ISwapRouter.ExactOutputParams({
                     path: swapParams.path,
                     recipient: swapParams.recipient,
@@ -178,9 +201,10 @@ contract RecurringPurchase is QuarkScript {
                     amountInMaximum: amountIn
                 })
             );
+            actualAmountOut = amountOut;
         } else {
             // Exact in swap
-            ISwapRouter(swapParams.uniswapRouter).exactInput(
+            actualAmountOut = ISwapRouter(swapParams.uniswapRouter).exactInput(
                 ISwapRouter.ExactInputParams({
                     path: swapParams.path,
                     recipient: swapParams.recipient,
@@ -189,6 +213,7 @@ contract RecurringPurchase is QuarkScript {
                     amountOutMinimum: amountOut
                 })
             );
+            actualAmountIn = amountIn;
         }
 
         // Approvals to external contracts should always be reset to 0

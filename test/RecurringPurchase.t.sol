@@ -19,9 +19,17 @@ import {QuarkOperationHelper, ScriptType} from "./lib/QuarkOperationHelper.sol";
 
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
-// TODO: Limit orders
-// TODO: Liquidation protection
 contract RecurringPurchaseTest is Test {
+    event SwapExecuted(
+        address indexed sender,
+        address indexed recipient,
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn,
+        uint256 amountOut,
+        bytes path
+    );
+
     CodeJar public codeJar;
     QuarkStateManager public stateManager;
     QuarkWallet public walletImplementation;
@@ -38,8 +46,9 @@ contract RecurringPurchaseTest is Test {
     address constant COMP = 0xc00e94Cb662C3520282E6f5717214004A7f26888;
     // Uniswap router info on mainnet
     address constant uniswapRouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
-    // Mainnet ETH / USD pricefeed (price is $1790.45)
-    address constant ETH_USD_PRICE_FEED = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+    // Price feeds
+    address constant ETH_USD_PRICE_FEED = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419; // Price is $1790.45
+    address constant USDC_USD_PRICE_FEED = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
 
     constructor() {
         // Fork setup
@@ -67,68 +76,6 @@ contract RecurringPurchaseTest is Test {
 
     /* ===== recurring purchase tests ===== */
 
-    function array1(address address0) internal pure returns (address[] memory) {
-        address[] memory arr = new address[](1);
-        arr[0] = address0;
-        return arr;
-    }
-
-    function array1(bool bool0) internal pure returns (bool[] memory) {
-        bool[] memory arr = new bool[](1);
-        arr[0] = bool0;
-        return arr;
-    }
-
-    function createPurchaseConfig(uint40 purchaseInterval, uint256 amount, bool isExactOut)
-        internal
-        view
-        returns (RecurringPurchase.PurchaseConfig memory)
-    {
-        RecurringPurchase.SlippageParams memory slippageParams = RecurringPurchase.SlippageParams({
-            maxSlippage: 1e17, // 1%
-            priceFeeds: array1(ETH_USD_PRICE_FEED),
-            shouldReverses: array1(true)
-        });
-        return createPurchaseConfig({
-            purchaseInterval: purchaseInterval,
-            amount: amount,
-            isExactOut: isExactOut,
-            slippageParams: slippageParams
-        });
-    }
-
-    function createPurchaseConfig(
-        uint40 purchaseInterval,
-        uint256 amount,
-        bool isExactOut,
-        RecurringPurchase.SlippageParams memory slippageParams
-    ) internal view returns (RecurringPurchase.PurchaseConfig memory) {
-        bytes memory swapPath;
-        if (isExactOut) {
-            // Exact out swap
-            swapPath = abi.encodePacked(WETH, uint24(500), USDC);
-        } else {
-            // Exact in swap
-            swapPath = abi.encodePacked(USDC, uint24(500), WETH);
-        }
-        RecurringPurchase.SwapParams memory swapParams = RecurringPurchase.SwapParams({
-            uniswapRouter: uniswapRouter,
-            recipient: address(aliceWallet),
-            tokenIn: USDC,
-            tokenOut: WETH,
-            amount: amount,
-            isExactOut: isExactOut,
-            deadline: type(uint256).max,
-            path: swapPath
-        });
-        RecurringPurchase.PurchaseConfig memory purchaseConfig = RecurringPurchase.PurchaseConfig({
-            interval: purchaseInterval,
-            swapParams: swapParams,
-            slippageParams: slippageParams
-        });
-        return purchaseConfig;
-    }
-
     function testRecurringPurchaseExactInSwap() public {
         // gas: disable gas metering except while executing operations
         vm.pauseGasMetering();
@@ -140,7 +87,7 @@ contract RecurringPurchaseTest is Test {
         // Price of ETH is $1,790.45 at the current block
         uint256 expectedAmountOutMinimum = 1.65 ether;
         RecurringPurchase.PurchaseConfig memory purchaseConfig =
-            createPurchaseConfig({purchaseInterval: purchaseInterval, amount: amountToSell, isExactOut: false});
+            _createPurchaseConfig({purchaseInterval: purchaseInterval, amount: amountToSell, isExactOut: false});
 
         QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
             aliceWallet,
@@ -156,6 +103,16 @@ contract RecurringPurchaseTest is Test {
 
         // gas: meter execute
         vm.resumeGasMetering();
+        vm.expectEmit(true, true, true, true);
+        emit SwapExecuted(
+            address(aliceWallet),
+            address(aliceWallet),
+            USDC,
+            WETH,
+            3_000e6,
+            1_674_115_383_192_806_353, // 1.674 WETH
+            abi.encodePacked(USDC, uint24(500), WETH)
+        );
         aliceWallet.executeQuarkOperation(op, v1, r1, s1);
 
         assertGt(IERC20(WETH).balanceOf(address(aliceWallet)), expectedAmountOutMinimum);
@@ -173,7 +130,7 @@ contract RecurringPurchaseTest is Test {
         // Price of ETH is $1,790.45 at the current block
         uint256 expectedAmountInMaximum = 1_800e6 * 10;
         RecurringPurchase.PurchaseConfig memory purchaseConfig =
-            createPurchaseConfig({purchaseInterval: purchaseInterval, amount: amountToPurchase, isExactOut: true});
+            _createPurchaseConfig({purchaseInterval: purchaseInterval, amount: amountToPurchase, isExactOut: true});
 
         QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
             aliceWallet,
@@ -189,6 +146,16 @@ contract RecurringPurchaseTest is Test {
 
         // gas: meter execute
         vm.resumeGasMetering();
+        vm.expectEmit(true, true, true, true);
+        emit SwapExecuted(
+            address(aliceWallet),
+            address(aliceWallet),
+            USDC,
+            WETH,
+            17_920_004_306, // 17,920 USDC
+            10 ether,
+            abi.encodePacked(WETH, uint24(500), USDC)
+        );
         aliceWallet.executeQuarkOperation(op, v1, r1, s1);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToPurchase);
@@ -196,7 +163,132 @@ contract RecurringPurchaseTest is Test {
         assertGt(IERC20(USDC).balanceOf(address(aliceWallet)), startingUSDC - expectedAmountInMaximum);
     }
 
-    function testRecurringPurchaseMultiplePurchases() public {
+    // Note: We test a WETH -> USDC swap here instead of the usual USDC -> WETH swap
+    function testRecurringPurchaseExactInAlternateSwap() public {
+        // gas: disable gas metering except while executing operations
+        vm.pauseGasMetering();
+
+        uint256 startingWETH = 100 ether;
+        deal(WETH, address(aliceWallet), startingWETH);
+        uint40 purchaseInterval = 86_400; // 1 day interval
+        uint256 amountToSell = 10 ether;
+        // Price of ETH is $1,790.45 at the current block
+        uint256 expectedAmountOutMinimum = 17_800e6;
+        RecurringPurchase.SwapParams memory swapParams = RecurringPurchase.SwapParams({
+            uniswapRouter: uniswapRouter,
+            recipient: address(aliceWallet),
+            tokenIn: WETH,
+            tokenOut: USDC,
+            amount: amountToSell,
+            isExactOut: false,
+            deadline: type(uint256).max,
+            path: abi.encodePacked(WETH, uint24(500), USDC)
+        });
+        RecurringPurchase.SlippageParams memory slippageParams = RecurringPurchase.SlippageParams({
+            maxSlippage: 1e17, // 1%
+            priceFeeds: _array1(ETH_USD_PRICE_FEED),
+            shouldReverses: _array1(false)
+        });
+        RecurringPurchase.PurchaseConfig memory purchaseConfig = RecurringPurchase.PurchaseConfig({
+            interval: purchaseInterval,
+            swapParams: swapParams,
+            slippageParams: slippageParams
+        });
+
+        QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
+            aliceWallet,
+            recurringPurchase,
+            abi.encodeWithSelector(RecurringPurchase.purchase.selector, purchaseConfig),
+            ScriptType.ScriptAddress
+        );
+        op.expiry = purchaseConfig.swapParams.deadline;
+        (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
+
+        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), startingWETH);
+        assertEq(IERC20(USDC).balanceOf(address(aliceWallet)), 0e6);
+
+        // gas: meter execute
+        vm.resumeGasMetering();
+        vm.expectEmit(true, true, true, true);
+        emit SwapExecuted(
+            address(aliceWallet),
+            address(aliceWallet),
+            WETH,
+            USDC,
+            amountToSell,
+            17_901_866_835, // 17,901.86 USDC
+            abi.encodePacked(WETH, uint24(500), USDC)
+        );
+        aliceWallet.executeQuarkOperation(op, v1, r1, s1);
+
+        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), startingWETH - amountToSell);
+        assertGt(IERC20(USDC).balanceOf(address(aliceWallet)), expectedAmountOutMinimum);
+    }
+
+    // Note: We test a WETH -> USDC swap here instead of the usual USDC -> WETH swap
+    function testRecurringPurchaseExactOutAlternateSwap() public {
+        // gas: disable gas metering except while executing operations
+        vm.pauseGasMetering();
+
+        uint256 startingWETH = 100 ether;
+        deal(WETH, address(aliceWallet), startingWETH);
+        uint40 purchaseInterval = 86_400; // 1 day interval
+        uint256 amountToPurchase = 1_800e6;
+        // Price of ETH is $1,790.45 at the current block
+        uint256 expectedAmountInMaximum = 1.1 ether;
+        RecurringPurchase.SwapParams memory swapParams = RecurringPurchase.SwapParams({
+            uniswapRouter: uniswapRouter,
+            recipient: address(aliceWallet),
+            tokenIn: WETH,
+            tokenOut: USDC,
+            amount: amountToPurchase,
+            isExactOut: true,
+            deadline: type(uint256).max,
+            path: abi.encodePacked(USDC, uint24(500), WETH)
+        });
+        RecurringPurchase.SlippageParams memory slippageParams = RecurringPurchase.SlippageParams({
+            maxSlippage: 1e17, // 1%
+            priceFeeds: _array1(ETH_USD_PRICE_FEED),
+            shouldReverses: _array1(false)
+        });
+        RecurringPurchase.PurchaseConfig memory purchaseConfig = RecurringPurchase.PurchaseConfig({
+            interval: purchaseInterval,
+            swapParams: swapParams,
+            slippageParams: slippageParams
+        });
+
+        QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
+            aliceWallet,
+            recurringPurchase,
+            abi.encodeWithSelector(RecurringPurchase.purchase.selector, purchaseConfig),
+            ScriptType.ScriptAddress
+        );
+        op.expiry = purchaseConfig.swapParams.deadline;
+        (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
+
+        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), startingWETH);
+        assertEq(IERC20(USDC).balanceOf(address(aliceWallet)), 0e6);
+
+        // gas: meter execute
+        vm.resumeGasMetering();
+        vm.expectEmit(true, true, true, true);
+        emit SwapExecuted(
+            address(aliceWallet),
+            address(aliceWallet),
+            WETH,
+            USDC,
+            1_005_476_123_256_214_692, // 1.005 WETH
+            amountToPurchase,
+            abi.encodePacked(USDC, uint24(500), WETH)
+        );
+        aliceWallet.executeQuarkOperation(op, v1, r1, s1);
+
+        assertLt(IERC20(WETH).balanceOf(address(aliceWallet)), startingWETH);
+        assertGt(IERC20(WETH).balanceOf(address(aliceWallet)), startingWETH - expectedAmountInMaximum);
+        assertEq(IERC20(USDC).balanceOf(address(aliceWallet)), amountToPurchase);
+    }
+
+    function testRecurringPurchaseCanPurchaseMultipleTimes() public {
         // gas: disable gas metering except while executing operations
         vm.pauseGasMetering();
 
@@ -204,7 +296,7 @@ contract RecurringPurchaseTest is Test {
         uint40 purchaseInterval = 86_400; // 1 day interval
         uint256 amountToPurchase = 10 ether;
         RecurringPurchase.PurchaseConfig memory purchaseConfig =
-            createPurchaseConfig({purchaseInterval: purchaseInterval, amount: amountToPurchase, isExactOut: true});
+            _createPurchaseConfig({purchaseInterval: purchaseInterval, amount: amountToPurchase, isExactOut: true});
         QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
             aliceWallet,
             recurringPurchase,
@@ -242,7 +334,7 @@ contract RecurringPurchaseTest is Test {
         uint40 purchaseInterval = 86_400; // 1 day interval
         uint256 amountToPurchase = 10 ether;
         RecurringPurchase.PurchaseConfig memory purchaseConfig =
-            createPurchaseConfig({purchaseInterval: purchaseInterval, amount: amountToPurchase, isExactOut: true});
+            _createPurchaseConfig({purchaseInterval: purchaseInterval, amount: amountToPurchase, isExactOut: true});
         QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
             aliceWallet,
             recurringPurchase,
@@ -280,6 +372,48 @@ contract RecurringPurchaseTest is Test {
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToPurchase);
     }
 
+    function testRecurringPurchaseWithMultiplePriceFeeds() public {
+        // gas: disable gas metering except while executing operations
+        vm.pauseGasMetering();
+
+        uint256 startingUSDC = 100_000e6;
+        deal(USDC, address(aliceWallet), startingUSDC);
+        uint40 purchaseInterval = 86_400; // 1 day interval
+        uint256 amountToSell = 3_000e6;
+        uint256 expectedAmountOutMinimum = 1.65 ether;
+        // We are swapping from USDC -> WETH, so the order of the price feeds should be:
+        // USDC/USD -> USD/WETH (convert from USDC to USD to WETH)
+        RecurringPurchase.SlippageParams memory slippageParams = RecurringPurchase.SlippageParams({
+            maxSlippage: 1e17, // 1% accepted slippage
+            priceFeeds: _array2(USDC_USD_PRICE_FEED, ETH_USD_PRICE_FEED),
+            shouldReverses: _array2(false, true)
+        });
+        RecurringPurchase.PurchaseConfig memory purchaseConfig = _createPurchaseConfig({
+            purchaseInterval: purchaseInterval,
+            amount: amountToSell,
+            isExactOut: false,
+            slippageParams: slippageParams
+        });
+        QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
+            aliceWallet,
+            recurringPurchase,
+            abi.encodeWithSelector(RecurringPurchase.purchase.selector, purchaseConfig),
+            ScriptType.ScriptAddress
+        );
+        op.expiry = purchaseConfig.swapParams.deadline;
+        (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
+
+        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 0 ether);
+        assertEq(IERC20(USDC).balanceOf(address(aliceWallet)), startingUSDC);
+
+        // gas: meter execute
+        vm.resumeGasMetering();
+        aliceWallet.executeQuarkOperation(op, v1, r1, s1);
+
+        assertGt(IERC20(WETH).balanceOf(address(aliceWallet)), expectedAmountOutMinimum);
+        assertEq(IERC20(USDC).balanceOf(address(aliceWallet)), startingUSDC - amountToSell);
+    }
+
     function testRecurringPurchaseWithDifferentCalldata() public {
         // gas: disable gas metering except while executing operations
         vm.pauseGasMetering();
@@ -295,7 +429,7 @@ contract RecurringPurchaseTest is Test {
         {
             // Two purchase configs using the same nonce: one to purchase 10 ETH and the other to purchase 5 ETH
             RecurringPurchase.PurchaseConfig memory purchaseConfig1 =
-                createPurchaseConfig({purchaseInterval: purchaseInterval, amount: amountToPurchase1, isExactOut: true});
+                _createPurchaseConfig({purchaseInterval: purchaseInterval, amount: amountToPurchase1, isExactOut: true});
             op1 = new QuarkOperationHelper().newBasicOpWithCalldata(
                 aliceWallet,
                 recurringPurchase,
@@ -304,7 +438,7 @@ contract RecurringPurchaseTest is Test {
             );
             op1.expiry = purchaseConfig1.swapParams.deadline;
             RecurringPurchase.PurchaseConfig memory purchaseConfig2 =
-                createPurchaseConfig({purchaseInterval: purchaseInterval, amount: amountToPurchase2, isExactOut: true});
+                _createPurchaseConfig({purchaseInterval: purchaseInterval, amount: amountToPurchase2, isExactOut: true});
             op2 = new QuarkOperationHelper().newBasicOpWithCalldata(
                 aliceWallet,
                 recurringPurchase,
@@ -382,13 +516,13 @@ contract RecurringPurchaseTest is Test {
             priceFeeds: new address[](0),
             shouldReverses: new bool[](1)
         });
-        RecurringPurchase.PurchaseConfig memory invalidPurchaseConfig1 = createPurchaseConfig({
+        RecurringPurchase.PurchaseConfig memory invalidPurchaseConfig1 = _createPurchaseConfig({
             purchaseInterval: purchaseInterval,
             amount: amountToPurchase,
             isExactOut: true,
             slippageParams: invalidSlippageParams1
         });
-        RecurringPurchase.PurchaseConfig memory invalidPurchaseConfig2 = createPurchaseConfig({
+        RecurringPurchase.PurchaseConfig memory invalidPurchaseConfig2 = _createPurchaseConfig({
             purchaseInterval: purchaseInterval,
             amount: amountToPurchase,
             isExactOut: true,
@@ -428,7 +562,7 @@ contract RecurringPurchaseTest is Test {
         uint40 purchaseInterval = 86_400; // 1 day interval
         uint256 amountToPurchase = 10 ether;
         RecurringPurchase.PurchaseConfig memory purchaseConfig =
-            createPurchaseConfig({purchaseInterval: purchaseInterval, amount: amountToPurchase, isExactOut: true});
+            _createPurchaseConfig({purchaseInterval: purchaseInterval, amount: amountToPurchase, isExactOut: true});
         QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
             aliceWallet,
             recurringPurchase,
@@ -462,7 +596,7 @@ contract RecurringPurchaseTest is Test {
         uint40 purchaseInterval = 86_400; // 1 day interval
         uint256 amountToPurchase = 10 ether;
         RecurringPurchase.PurchaseConfig memory purchaseConfig =
-            createPurchaseConfig({purchaseInterval: purchaseInterval, amount: amountToPurchase, isExactOut: true});
+            _createPurchaseConfig({purchaseInterval: purchaseInterval, amount: amountToPurchase, isExactOut: true});
         QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
             aliceWallet,
             recurringPurchase,
@@ -486,7 +620,7 @@ contract RecurringPurchaseTest is Test {
         uint40 purchaseInterval = 86_400; // 1 day interval
         uint256 amountToPurchase = 10 ether;
         RecurringPurchase.PurchaseConfig memory purchaseConfig =
-            createPurchaseConfig({purchaseInterval: purchaseInterval, amount: amountToPurchase, isExactOut: true});
+            _createPurchaseConfig({purchaseInterval: purchaseInterval, amount: amountToPurchase, isExactOut: true});
         purchaseConfig.swapParams.deadline = block.timestamp - 1; // Set Uniswap deadline to always expire
         QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
             aliceWallet,
@@ -500,5 +634,153 @@ contract RecurringPurchaseTest is Test {
         vm.resumeGasMetering();
         vm.expectRevert(bytes("Transaction too old"));
         aliceWallet.executeQuarkOperation(op, v1, r1, s1);
+    }
+
+    function testRevertsWhenSlippageTooHigh() public {
+        // gas: disable gas metering except while executing operations
+        vm.pauseGasMetering();
+
+        deal(USDC, address(aliceWallet), 100_000e6);
+        uint40 purchaseInterval = 86_400; // 1 day interval
+        uint256 amountToSell = 3_000e6;
+        RecurringPurchase.SlippageParams memory slippageParams = RecurringPurchase.SlippageParams({
+            maxSlippage: 0e18, // 0% accepted slippage
+            priceFeeds: _array1(ETH_USD_PRICE_FEED),
+            shouldReverses: _array1(true)
+        });
+        RecurringPurchase.PurchaseConfig memory purchaseConfig = _createPurchaseConfig({
+            purchaseInterval: purchaseInterval,
+            amount: amountToSell,
+            isExactOut: false,
+            slippageParams: slippageParams
+        });
+        QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
+            aliceWallet,
+            recurringPurchase,
+            abi.encodeWithSelector(RecurringPurchase.purchase.selector, purchaseConfig),
+            ScriptType.ScriptAddress
+        );
+        op.expiry = purchaseConfig.swapParams.deadline;
+        (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
+
+        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 0 ether);
+
+        // gas: meter execute
+        vm.resumeGasMetering();
+        vm.expectRevert(bytes("Too little received"));
+        aliceWallet.executeQuarkOperation(op, v1, r1, s1);
+    }
+
+    function testRevertsWhenSlippageParamsConfiguredWrong() public {
+        // gas: disable gas metering except while executing operations
+        vm.pauseGasMetering();
+
+        deal(USDC, address(aliceWallet), 100_000e6);
+        uint40 purchaseInterval = 86_400; // 1 day interval
+        uint256 amountToSell = 3_000e6;
+        RecurringPurchase.SlippageParams memory slippageParams = RecurringPurchase.SlippageParams({
+            maxSlippage: 5e17, // 5% accepted slippage
+            priceFeeds: _array1(ETH_USD_PRICE_FEED),
+            shouldReverses: _array1(false) // Should be true because this is a USDC -> ETH swap
+        });
+        RecurringPurchase.PurchaseConfig memory purchaseConfig = _createPurchaseConfig({
+            purchaseInterval: purchaseInterval,
+            amount: amountToSell,
+            isExactOut: false,
+            slippageParams: slippageParams
+        });
+        QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
+            aliceWallet,
+            recurringPurchase,
+            abi.encodeWithSelector(RecurringPurchase.purchase.selector, purchaseConfig),
+            ScriptType.ScriptAddress
+        );
+        op.expiry = purchaseConfig.swapParams.deadline;
+        (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
+
+        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 0 ether);
+
+        // gas: meter execute
+        vm.resumeGasMetering();
+        vm.expectRevert(bytes("Too little received"));
+        aliceWallet.executeQuarkOperation(op, v1, r1, s1);
+    }
+
+    /* ===== helper functions ===== */
+
+    function _array1(address address0) internal pure returns (address[] memory) {
+        address[] memory arr = new address[](1);
+        arr[0] = address0;
+        return arr;
+    }
+
+    function _array1(bool bool0) internal pure returns (bool[] memory) {
+        bool[] memory arr = new bool[](1);
+        arr[0] = bool0;
+        return arr;
+    }
+
+    function _array2(address address0, address address1) internal pure returns (address[] memory) {
+        address[] memory arr = new address[](2);
+        arr[0] = address0;
+        arr[1] = address1;
+        return arr;
+    }
+
+    function _array2(bool bool0, bool bool1) internal pure returns (bool[] memory) {
+        bool[] memory arr = new bool[](2);
+        arr[0] = bool0;
+        arr[1] = bool1;
+        return arr;
+    }
+
+    function _createPurchaseConfig(uint40 purchaseInterval, uint256 amount, bool isExactOut)
+        internal
+        view
+        returns (RecurringPurchase.PurchaseConfig memory)
+    {
+        RecurringPurchase.SlippageParams memory slippageParams = RecurringPurchase.SlippageParams({
+            maxSlippage: 1e17, // 1%
+            priceFeeds: _array1(ETH_USD_PRICE_FEED),
+            shouldReverses: _array1(true)
+        });
+        return _createPurchaseConfig({
+            purchaseInterval: purchaseInterval,
+            amount: amount,
+            isExactOut: isExactOut,
+            slippageParams: slippageParams
+        });
+    }
+
+    function _createPurchaseConfig(
+        uint40 purchaseInterval,
+        uint256 amount,
+        bool isExactOut,
+        RecurringPurchase.SlippageParams memory slippageParams
+    ) internal view returns (RecurringPurchase.PurchaseConfig memory) {
+        bytes memory swapPath;
+        if (isExactOut) {
+            // Exact out swap
+            swapPath = abi.encodePacked(WETH, uint24(500), USDC);
+        } else {
+            // Exact in swap
+            swapPath = abi.encodePacked(USDC, uint24(500), WETH);
+        }
+        RecurringPurchase.SwapParams memory swapParams = RecurringPurchase.SwapParams({
+            uniswapRouter: uniswapRouter,
+            recipient: address(aliceWallet),
+            tokenIn: USDC,
+            tokenOut: WETH,
+            amount: amount,
+            isExactOut: isExactOut,
+            deadline: type(uint256).max,
+            path: swapPath
+        });
+        RecurringPurchase.PurchaseConfig memory purchaseConfig = RecurringPurchase.PurchaseConfig({
+            interval: purchaseInterval,
+            swapParams: swapParams,
+            slippageParams: slippageParams
+        });
+        return purchaseConfig;
     }
 }
