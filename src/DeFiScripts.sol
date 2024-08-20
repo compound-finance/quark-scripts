@@ -343,7 +343,7 @@ contract MorphoVaultActions {
 
     function mint(address vault, address asset, uint256 shares) external returns (uint256 assets) {
         IERC20(asset).forceApprove(vault, type(uint256).max);
-        assets =  IMetaMorpho(vault).mint(shares, address(this));
+        assets = IMetaMorpho(vault).mint(shares, address(this));
         IERC20(asset).forceApprove(vault, 0);
     }
 
@@ -426,10 +426,8 @@ contract MorphoRewardsActions {
         bytes32[][] calldata proofs
     ) external {
         if (
-            distributors.length != accounts.length ||
-            distributors.length != rewards.length ||
-            distributors.length != claimables.length ||
-            distributors.length != proofs.length
+            distributors.length != accounts.length || distributors.length != rewards.length
+                || distributors.length != claimables.length || distributors.length != proofs.length
         ) {
             revert DeFiScriptErrors.InvalidInput();
         }

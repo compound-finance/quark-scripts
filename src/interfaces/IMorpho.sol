@@ -23,6 +23,7 @@ interface IMorpho {
 
     function withdrawCollateral(MarketParams memory marketParams, uint256 assets, address onBehalf, address receiver)
         external;
+    function position(bytes32 id, address account) external view returns (Position memory);
 }
 
 struct MarketParams {
@@ -31,4 +32,10 @@ struct MarketParams {
     address oracle;
     address irm;
     uint256 lltv;
+}
+
+struct Position {
+    uint256 supplyShares;
+    uint128 borrowShares;
+    uint128 collateral;
 }
