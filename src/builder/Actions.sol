@@ -122,6 +122,18 @@ library Actions {
         uint256 blockTimestamp;
     }
 
+    struct MorphoBorrow {
+        Accounts.ChainAccounts[] chainAccountsList;
+        string assetSymbol;
+        uint256 amount;
+        uint256 chainId;
+        address borrower;
+        uint256 blockTimestamp;
+        uint256 collateralAmount;
+        string collateralAssetSymbol;
+        address comet;
+    }
+
     // Note: Mainly to avoid stack too deep errors
     struct BridgeOperationInfo {
         string assetSymbol;

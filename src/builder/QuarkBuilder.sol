@@ -8,6 +8,7 @@ import {Accounts} from "./Accounts.sol";
 import {BridgeRoutes} from "./BridgeRoutes.sol";
 import {EIP712Helper} from "./EIP712Helper.sol";
 import {Math} from "src/lib/Math.sol";
+import {MorphoWellKnown} from "./MorphoWellKnown.sol";
 import {Strings} from "./Strings.sol";
 import {PaycallWrapper} from "./PaycallWrapper.sol";
 import {QuotecallWrapper} from "./QuotecallWrapper.sol";
@@ -980,6 +981,189 @@ contract QuarkBuilder {
             paymentCurrency: payment.currency,
             eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
         });
+    }
+
+    struct MorphoBorrowIntent {
+        uint256 amount;
+        string assetSymbol;
+        uint256 blockTimestamp;
+        address borrower;
+        uint256 chainId;
+        uint256 collateralAmount;
+        string collateralAssetSymbol;
+        string borrowAssetSymbol;
+        address oracle;
+        uint256 lltv;
+    }
+
+    function morphoBorrow(
+        MorphoBorrowIntent memory borrowIntent,
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        PaymentInfo.Payment memory payment
+    ) external pure returns (BuilderResult memory) {
+        List.DynamicArray memory actions = List.newList();
+        List.DynamicArray memory quarkOperations = List.newList();
+
+
+        bool useQuotecall = false; // never use Quotecall
+        bool paymentTokenIsCollateralAsset = false;
+
+        for (uint256 i = 0; i < borrowIntent.collateralAssetSymbols.length; ++i) {
+            string memory assetSymbol = borrowIntent.collateralAssetSymbols[i];
+            uint256 supplyAmount = borrowIntent.collateralAmounts[i];
+
+            assertFundsAvailable(borrowIntent.chainId, assetSymbol, supplyAmount, chainAccountsList, payment);
+
+            if (Strings.stringEqIgnoreCase(assetSymbol, payment.currency)) {
+                paymentTokenIsCollateralAsset = true;
+            }
+
+            if (needsBridgedFunds(assetSymbol, supplyAmount, borrowIntent.chainId, chainAccountsList, payment)) {
+                // Note: Assumes that the asset uses the same # of decimals on each chain
+                uint256 amountNeededOnDst = supplyAmount;
+                // If action is paid for with tokens and the payment token is
+                // the supply token, we need to add the max cost to the
+                // amountNeededOnDst for target chain
+                if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, assetSymbol)) {
+                    amountNeededOnDst += PaymentInfo.findMaxCost(payment, borrowIntent.chainId);
+                }
+                (IQuarkWallet.QuarkOperation[] memory bridgeQuarkOperations, Actions.Action[] memory bridgeActions) =
+                Actions.constructBridgeOperations(
+                    Actions.BridgeOperationInfo({
+                        assetSymbol: assetSymbol,
+                        amountNeededOnDst: amountNeededOnDst,
+                        dstChainId: borrowIntent.chainId,
+                        recipient: borrowIntent.borrower,
+                        blockTimestamp: borrowIntent.blockTimestamp,
+                        useQuotecall: useQuotecall
+                    }),
+                    chainAccountsList,
+                    payment
+                );
+
+                for (uint256 j = 0; j < bridgeQuarkOperations.length; ++j) {
+                    List.addQuarkOperation(quarkOperations, bridgeQuarkOperations[j]);
+                    List.addAction(actions, bridgeActions[j]);
+                }
+            }
+        }
+
+        // when paying with tokens, you may need to bridge the payment token to cover the cost
+        if (payment.isToken && !paymentTokenIsCollateralAsset) {
+            uint256 maxCostOnDstChain = PaymentInfo.findMaxCost(payment, borrowIntent.chainId);
+            // but if you're borrowing the payment token, you can use the
+            // borrowed amount to cover the cost
+
+            if (Strings.stringEqIgnoreCase(payment.currency, borrowIntent.assetSymbol)) {
+                maxCostOnDstChain = Math.subtractFlooredAtZero(maxCostOnDstChain, borrowIntent.amount);
+            }
+
+            if (
+                needsBridgedFunds(payment.currency, maxCostOnDstChain, borrowIntent.chainId, chainAccountsList, payment)
+            ) {
+                (IQuarkWallet.QuarkOperation[] memory bridgeQuarkOperations, Actions.Action[] memory bridgeActions) =
+                Actions.constructBridgeOperations(
+                    Actions.BridgeOperationInfo({
+                        assetSymbol: payment.currency,
+                        amountNeededOnDst: maxCostOnDstChain,
+                        dstChainId: borrowIntent.chainId,
+                        recipient: borrowIntent.borrower,
+                        blockTimestamp: borrowIntent.blockTimestamp,
+                        useQuotecall: useQuotecall
+                    }),
+                    chainAccountsList,
+                    payment
+                );
+
+                for (uint256 i = 0; i < bridgeQuarkOperations.length; ++i) {
+                    List.addQuarkOperation(quarkOperations, bridgeQuarkOperations[i]);
+                    List.addAction(actions, bridgeActions[i]);
+                }
+            }
+        }
+
+        // Auto-wrap on collateral supply
+        for (uint256 i = 0; i < borrowIntent.collateralAssetSymbols.length; ++i) {
+            checkAndInsertWrapOrUnwrapAction(
+                actions,
+                quarkOperations,
+                chainAccountsList,
+                payment,
+                borrowIntent.collateralAssetSymbols[i],
+                borrowIntent.collateralAmounts[i],
+                borrowIntent.chainId,
+                borrowIntent.borrower,
+                borrowIntent.blockTimestamp,
+                useQuotecall
+            );
+        }
+
+        (IQuarkWallet.QuarkOperation memory borrowQuarkOperation, Actions.Action memory borrowAction) = Actions
+            .cometBorrow(
+            Actions.CometBorrowInput({
+                chainAccountsList: chainAccountsList,
+                amount: borrowIntent.amount,
+                assetSymbol: borrowIntent.assetSymbol,
+                blockTimestamp: borrowIntent.blockTimestamp,
+                borrower: borrowIntent.borrower,
+                chainId: borrowIntent.chainId,
+                collateralAmounts: borrowIntent.collateralAmounts,
+                collateralAssetSymbols: borrowIntent.collateralAssetSymbols,
+                comet: borrowIntent.comet
+            }),
+            payment
+        );
+
+        List.addQuarkOperation(quarkOperations, borrowQuarkOperation);
+        List.addAction(actions, borrowAction);
+
+        // Convert actions and quark operations to arrays
+        Actions.Action[] memory actionsArray = List.toActionArray(actions);
+        IQuarkWallet.QuarkOperation[] memory quarkOperationsArray = List.toQuarkOperationArray(quarkOperations);
+
+        // Validate generated actions for affordability
+        if (payment.isToken) {
+            uint256 supplementalPaymentTokenBalance = 0;
+            if (Strings.stringEqIgnoreCase(payment.currency, borrowIntent.assetSymbol)) {
+                supplementalPaymentTokenBalance += borrowIntent.amount;
+            }
+
+            assertSufficientPaymentTokenBalances(
+                actionsArray,
+                chainAccountsList,
+                borrowIntent.chainId,
+                borrowIntent.borrower,
+                supplementalPaymentTokenBalance
+            );
+        }
+
+        // Merge operations that are from the same chain into one Multicall operation
+        (quarkOperationsArray, actionsArray) =
+            QuarkOperationHelper.mergeSameChainOperations(quarkOperationsArray, actionsArray);
+
+        // Wrap operations around Paycall/Quotecall if payment is with token
+        if (payment.isToken) {
+            quarkOperationsArray = QuarkOperationHelper.wrapOperationsWithTokenPayment(
+                quarkOperationsArray, actionsArray, payment, useQuotecall
+            );
+        }
+
+        return BuilderResult({
+            version: VERSION,
+            actions: actionsArray,
+            quarkOperations: quarkOperationsArray,
+            paymentCurrency: payment.currency,
+            eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
+        });
+    }
+
+    struct MorphoSupplyIntent {
+        uint256 amount;
+        string assetSymbol;
+        uint256 blockTimestamp;
+        uint256 chainId;
+        address vault;
+        address sender;
     }
 
     // For some reason, funds that may otherwise be bridgeable or held by the user cannot
