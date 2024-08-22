@@ -12,6 +12,14 @@ library MorphoInfo {
         return 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb;
     }
 
+    // Morpho blue markets
+    // Note: This is a simple key, as one market per chain per borrow asset per collateral asset
+    struct MorphoMarketKey {
+        uint256 chainId;
+        string borrowAssetSymbol;
+        string collateralAssetSymbol;
+    }
+
     function getKnownMorphoMarketsParams() internal pure returns (HashMap.Map memory) {
         HashMap.Map memory knownMarkets = HashMap.newMap();
         // === Mainnet morpho markets ===
@@ -304,13 +312,84 @@ library MorphoInfo {
         );
     }
 
-    // Helpers for map
-
-    // Note: This is a simple key, as one market per chain per borrow asset per collateral asset
-    struct MorphoMarketKey {
+    // Morpho vaults
+    // Note: Potentiall can add other key (i.e. curator) for supporting multiple vaults with same assets
+    struct MorphoVaultKey {
         uint256 chainId;
-        string borrowAssetSymbol;
-        string collateralAssetSymbol;
+        string supplyAssetSymbol;
+    }
+
+    function getKnownMorphoVaultsAddresses() internal pure returns (HashMap.Map memory) {
+        HashMap.Map memory knownVaults = HashMap.newMap();
+        // === Mainnet morpho vaults ===
+        // USDC (Gauntlet USDC Core)
+        addMorphoVaultAddress(
+            knownVaults,
+            MorphoVaultKey({chainId: 1, supplyAssetSymbol: "USDC"}),
+            0x8eB67A509616cd6A7c1B3c8C21D48FF57df3d458
+        );
+        // USDT (Gaunlet USDT Prime)
+        addMorphoVaultAddress(
+            knownVaults,
+            MorphoVaultKey({chainId: 1, supplyAssetSymbol: "USDT"}),
+            0x8CB3649114051cA5119141a34C200D65dc0Faa73
+        );
+        // WETH (Gauntlet WETH Core)
+        addMorphoVaultAddress(
+            knownVaults,
+            MorphoVaultKey({chainId: 1, supplyAssetSymbol: "WETH"}),
+            0x4881Ef0BF6d2365D3dd6499ccd7532bcdBCE0658
+        );
+        // WBTC (Guantlet WBTC Core)
+        addMorphoVaultAddress(
+            knownVaults,
+            MorphoVaultKey({chainId: 1, supplyAssetSymbol: "WBTC"}),
+            0x443df5eEE3196e9b2Dd77CaBd3eA76C3dee8f9b2
+        );
+
+        // === Base morpho vaults ===
+        // USDC (Moonwell Flaghship USDC)
+        addMorphoVaultAddress(
+            knownVaults,
+            MorphoVaultKey({chainId: 8453, supplyAssetSymbol: "USDC"}),
+            0xc1256Ae5FF1cf2719D4937adb3bbCCab2E00A2Ca
+        );
+        // WETH (Moonwell Flaghship ETH)
+        addMorphoVaultAddress(
+            knownVaults,
+            MorphoVaultKey({chainId: 8453, supplyAssetSymbol: "WETH"}),
+            0xa0E430870c4604CcfC7B38Ca7845B1FF653D0ff1
+        );
+
+        // === Sepolia testnet morpho vaults ===
+        // None
+
+        // === Base Sepolia testnet morpho vaults ===
+        // None
+
+        return knownVaults;
+    }
+
+    function getMorphoVaultAddress(uint256 chainId, string memory supplyAssetSymbol) internal pure returns (address) {
+        HashMap.Map memory knownVaults = getKnownMorphoVaultsAddresses();
+        return
+            getMorphoVaultAddress(knownVaults, MorphoVaultKey({chainId: chainId, supplyAssetSymbol: supplyAssetSymbol}));
+    }
+
+    // Helpers for map
+    function addMorphoVaultAddress(HashMap.Map memory knownVaults, MorphoVaultKey memory key, address addr)
+        internal
+        pure
+    {
+        HashMap.put(knownVaults, abi.encode(key), abi.encode(addr));
+    }
+
+    function getMorphoVaultAddress(HashMap.Map memory knownVaults, MorphoVaultKey memory key)
+        internal
+        pure
+        returns (address)
+    {
+        return abi.decode(HashMap.get(knownVaults, abi.encode(key)), (address));
     }
 
     function addMarketParams(HashMap.Map memory knownMarkets, MorphoMarketKey memory key, MarketParams memory params)

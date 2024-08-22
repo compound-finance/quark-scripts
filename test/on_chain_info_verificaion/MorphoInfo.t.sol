@@ -8,11 +8,13 @@ import "forge-std/StdMath.sol";
 
 import {HashMap} from "src/builder/HashMap.sol";
 import {IMorpho, MarketParams} from "src/interfaces/IMorpho.sol";
+import {IMetaMorpho} from "src/interfaces/IMetaMorpho.sol";
 import {MorphoInfo} from "src/builder/MorphoInfo.sol";
+import {IERC4626} from "openzeppelin/interfaces/IERC4626.sol";
+
 /**
  * Verify the MorphoInfo info is correct on-chain
  */
-
 contract MorphoInfoTest is Test {
     function testEthMainnet() public {
         // Fork setup to get on-chain on eth mainnet
@@ -24,6 +26,7 @@ contract MorphoInfoTest is Test {
         );
 
         verifyKnownMarketsParams(1);
+        verifyKnownVaults(1);
     }
 
     function testBaseMainnet() public {
@@ -36,6 +39,7 @@ contract MorphoInfoTest is Test {
         );
 
         verifyKnownMarketsParams(8453);
+        verifyKnownVaults(8453);
     }
 
     function testEthSepolia() public {
@@ -48,6 +52,7 @@ contract MorphoInfoTest is Test {
         );
 
         verifyKnownMarketsParams(11155111);
+        verifyKnownVaults(11155111);
     }
 
     function testBaseSepolia() public {
@@ -60,6 +65,7 @@ contract MorphoInfoTest is Test {
         );
 
         verifyKnownMarketsParams(84532);
+        verifyKnownVaults(84532);
     }
 
     function verifyKnownMarketsParams(uint256 chainId) internal {
@@ -74,13 +80,39 @@ contract MorphoInfoTest is Test {
         for (uint256 i = 0; i < marketKeys.length; ++i) {
             if (marketKeys[i].chainId == chainId) {
                 MarketParams memory marketParams = MorphoInfo.getMarketParams(markets, marketKeys[i]);
-                (uint128 totalSupplyAssets,,,,uint128 lastUpdate,) =
+                (uint128 totalSupplyAssets,,,, uint128 lastUpdate,) =
                     IMorpho(MorphoInfo.getMorphoAddress()).market(marketId(marketParams));
-                assertGt(totalSupplyAssets, 0, "MorphoInfo has markets with NO liquidity, something is wrong and my impact user expereince");
+                assertGt(
+                    totalSupplyAssets,
+                    0,
+                    "MorphoInfo has markets with NO liquidity, something is wrong and may impact user expereince"
+                );
                 assertGt(lastUpdate, 0, "MorphoInfo has markets with NO lastUpdate, the market is never used");
             }
         }
     }
+
+    function verifyKnownVaults(uint256 chainId) internal {
+        HashMap.Map memory vaults = MorphoInfo.getKnownMorphoVaultsAddresses();
+        bytes[] memory keys = HashMap.keys(vaults);
+        MorphoInfo.MorphoVaultKey[] memory vaultKeys = new MorphoInfo.MorphoVaultKey[](keys.length);
+        for (uint256 i = 0; i < keys.length; ++i) {
+            vaultKeys[i] = abi.decode(keys[i], (MorphoInfo.MorphoVaultKey));
+        }
+
+        // Filter and verify
+        for (uint256 i = 0; i < vaultKeys.length; ++i) {
+            if (vaultKeys[i].chainId == chainId) {
+                address vault = MorphoInfo.getMorphoVaultAddress(vaults, vaultKeys[i]);
+                assertGt(
+                    IERC4626(vault).totalAssets(),
+                    0,
+                    "MorphoInfo has vaults with NO assets, empty vault may impact user expereince"
+                );
+            }
+        }
+    }
+
     // Helper function to convert MarketParams to bytes32 Id
     // Reference: https://github.com/morpho-org/morpho-blue/blob/731e3f7ed97cf15f8fe00b86e4be5365eb3802ac/src/libraries/MarketParamsLib.sol
     function marketId(MarketParams memory params) public pure returns (bytes32) {
