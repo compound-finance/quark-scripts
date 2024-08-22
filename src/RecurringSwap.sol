@@ -12,16 +12,16 @@ import {QuarkWallet} from "quark-core/src/QuarkWallet.sol";
 import {QuarkScript} from "quark-core/src/QuarkScript.sol";
 
 /**
- * @title Recurring Purchase Script
+ * @title Recurring Swap Script
  * @notice Quark script that performs a swap on a regular interval.
  * @author Legend Labs, Inc.
  */
-contract RecurringPurchase is QuarkScript {
+contract RecurringSwap is QuarkScript {
     using SafeERC20 for IERC20;
 
     error BadPrice();
     error InvalidInput();
-    error PurchaseConditionNotMet();
+    error SwapWindowNotOpen(uint256 nextSwapTime, uint256 currentTime);
 
     /// @notice Emitted when a swap is executed
     event SwapExecuted(
@@ -37,14 +37,19 @@ contract RecurringPurchase is QuarkScript {
     /// @notice The base slippage factor where `1e18` represents 100% slippage tolerance
     uint256 public constant BASE_SLIPPAGE_FACTOR = 1e18;
 
+    /// @notice The factor to scale up intermediate values by to preserve precision during multiplication and division
+    uint256 public constant PRECISION_FACTOR = 1e18;
+
     /**
      * @dev Note: This script uses the following storage layout in the QuarkStateManager:
-     *         mapping(bytes32 hashedPurchaseConfig => uint256 nextPurchaseTime)
-     *             where hashedPurchaseConfig = keccak256(PurchaseConfig)
+     *         mapping(bytes32 hashedSwapConfig => uint256 nextSwapTime)
+     *             where hashedSwapConfig = keccak256(SwapConfig)
      */
 
-    /// @notice Parameters for a recurring purchase order
-    struct PurchaseConfig {
+    /// @notice Parameters for a recurring swap order
+    struct SwapConfig {
+        uint256 startTime;
+        /// @dev In seconds
         uint256 interval;
         SwapParams swapParams;
         SlippageParams slippageParams;
@@ -73,46 +78,47 @@ contract RecurringPurchase is QuarkScript {
         address[] priceFeeds;
         /// @dev Flags indicating whether each corresponding price feed should be inverted
         /// Example: For USDC -> ETH swap, use [true] with [ETH/USD feed] to get ETH per USDC
-        bool[] shouldReverses;
+        bool[] shouldInvert;
     }
 
-    /// @notice Cancel the recurring purchase for the current nonce
+    /// @notice Cancel the recurring swap for the current nonce
     function cancel() external {
         // Not explicitly clearing the nonce just cancels the replayable txn
     }
 
     /**
-     * @notice Execute a swap given a configuration for a recurring purchase
-     * @param config The configuration for a recurring purchase order
+     * @notice Execute a swap given a configuration for a recurring swap
+     * @param config The configuration for a recurring swap order
      */
-    function purchase(PurchaseConfig calldata config) public {
+    function swap(SwapConfig calldata config) public {
         allowReplay();
 
         if (config.slippageParams.priceFeeds.length == 0) {
             revert InvalidInput();
         }
-        if (config.slippageParams.priceFeeds.length != config.slippageParams.shouldReverses.length) {
+        if (config.slippageParams.priceFeeds.length != config.slippageParams.shouldInvert.length) {
             revert InvalidInput();
         }
 
         bytes32 hashedConfig = _hashConfig(config);
-        uint256 nextPurchaseTime;
+        uint256 nextSwapTime;
         if (read(hashedConfig) == 0) {
-            nextPurchaseTime = block.timestamp;
+            nextSwapTime = config.startTime;
         } else {
-            nextPurchaseTime = uint256(read(hashedConfig));
+            nextSwapTime = uint256(read(hashedConfig));
         }
 
         // Check conditions
-        if (block.timestamp < nextPurchaseTime) {
-            revert PurchaseConditionNotMet();
+        if (block.timestamp < nextSwapTime) {
+            revert SwapWindowNotOpen(nextSwapTime, block.timestamp);
         }
 
-        // Update nextPurchaseTime
-        write(hashedConfig, bytes32(nextPurchaseTime + config.interval));
+        // Update nextSwapTime
+        write(hashedConfig, bytes32(nextSwapTime + config.interval));
 
         (uint256 amountIn, uint256 amountOut) = _calculateSwapAmounts(config);
-        (uint256 actualAmountIn, uint256 actualAmountOut) = _executeSwap(config.swapParams, amountIn, amountOut);
+        (uint256 actualAmountIn, uint256 actualAmountOut) =
+            _executeSwap({swapParams: config.swapParams, amountIn: amountIn, amountOut: amountOut});
 
         // Emit the swap event
         emit SwapExecuted(
@@ -136,14 +142,15 @@ contract RecurringPurchase is QuarkScript {
      *      For "exact in", it calculates the expected `amountOut` for the provided `amountIn`.
      *      The function also applies slippage tolerance to the calculated amounts.
      */
-    function _calculateSwapAmounts(PurchaseConfig calldata config)
+    function _calculateSwapAmounts(SwapConfig calldata config)
         internal
         view
         returns (uint256 amountIn, uint256 amountOut)
     {
         SwapParams memory swapParams = config.swapParams;
-        amountIn = swapParams.amount;
-        amountOut = swapParams.amount;
+        // We multiply intermediate values by 1e18 to preserve precision during multiplication and division
+        amountIn = swapParams.amount * PRECISION_FACTOR;
+        amountOut = swapParams.amount * PRECISION_FACTOR;
 
         for (uint256 i = 0; i < config.slippageParams.priceFeeds.length; ++i) {
             // Get price from oracle
@@ -157,12 +164,12 @@ contract RecurringPurchase is QuarkScript {
 
             if (swapParams.isExactOut) {
                 // For exact out, we need to adjust amountIn by going backwards through the price feeds
-                amountIn = config.slippageParams.shouldReverses[i]
+                amountIn = config.slippageParams.shouldInvert[i]
                     ? amountIn * price / priceScale
                     : amountIn * priceScale / price;
             } else {
                 // For exact in, we need to adjust amountOut by going forwards through price feeds
-                amountOut = config.slippageParams.shouldReverses[i]
+                amountOut = config.slippageParams.shouldInvert[i]
                     ? amountOut * priceScale / price
                     : amountOut * price / priceScale;
             }
@@ -173,11 +180,15 @@ contract RecurringPurchase is QuarkScript {
 
         // Scale amountIn to the correct amount of decimals and apply a slippage tolerance to it
         if (swapParams.isExactOut) {
-            amountIn = _scaleDecimals(amountIn, tokenOutDecimals, tokenInDecimals);
-            amountIn = (amountIn * (BASE_SLIPPAGE_FACTOR + config.slippageParams.maxSlippage)) / BASE_SLIPPAGE_FACTOR;
+            amountIn = _rescale({amount: amountIn, fromDecimals: tokenOutDecimals, toDecimals: tokenInDecimals});
+            amountIn = (amountIn * (BASE_SLIPPAGE_FACTOR + config.slippageParams.maxSlippage)) / BASE_SLIPPAGE_FACTOR
+                / PRECISION_FACTOR;
+            amountOut /= PRECISION_FACTOR;
         } else {
-            amountOut = _scaleDecimals(amountOut, tokenInDecimals, tokenOutDecimals);
-            amountOut = (amountOut * (BASE_SLIPPAGE_FACTOR - config.slippageParams.maxSlippage)) / BASE_SLIPPAGE_FACTOR;
+            amountOut = _rescale({amount: amountOut, fromDecimals: tokenInDecimals, toDecimals: tokenOutDecimals});
+            amountOut = (amountOut * (BASE_SLIPPAGE_FACTOR - config.slippageParams.maxSlippage)) / BASE_SLIPPAGE_FACTOR
+                / PRECISION_FACTOR;
+            amountIn /= PRECISION_FACTOR;
         }
     }
 
@@ -234,7 +245,7 @@ contract RecurringPurchase is QuarkScript {
      * @param toDecimals The number of decimals in the target precision
      * @return The scaled amount adjusted to the target precision
      */
-    function _scaleDecimals(uint256 amount, uint256 fromDecimals, uint256 toDecimals) internal pure returns (uint256) {
+    function _rescale(uint256 amount, uint256 fromDecimals, uint256 toDecimals) internal pure returns (uint256) {
         if (fromDecimals < toDecimals) {
             return amount * (10 ** (toDecimals - fromDecimals));
         } else if (fromDecimals > toDecimals) {
@@ -244,10 +255,11 @@ contract RecurringPurchase is QuarkScript {
         return amount;
     }
 
-    /// @notice Deterministically hash the purchase configuration
-    function _hashConfig(PurchaseConfig calldata config) internal pure returns (bytes32) {
+    /// @notice Deterministically hash the swap configuration
+    function _hashConfig(SwapConfig calldata config) internal pure returns (bytes32) {
         return keccak256(
             abi.encodePacked(
+                config.startTime,
                 config.interval,
                 abi.encodePacked(
                     config.swapParams.uniswapRouter,
@@ -262,7 +274,7 @@ contract RecurringPurchase is QuarkScript {
                 abi.encodePacked(
                     config.slippageParams.maxSlippage,
                     keccak256(abi.encodePacked(config.slippageParams.priceFeeds)),
-                    keccak256(abi.encodePacked(config.slippageParams.shouldReverses))
+                    keccak256(abi.encodePacked(config.slippageParams.shouldInvert))
                 )
             )
         );
