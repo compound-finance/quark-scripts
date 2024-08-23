@@ -8,7 +8,7 @@ import {Accounts} from "./Accounts.sol";
 import {BridgeRoutes} from "./BridgeRoutes.sol";
 import {EIP712Helper} from "./EIP712Helper.sol";
 import {Math} from "src/lib/Math.sol";
-import {MorphoWellKnown} from "./MorphoWellKnown.sol";
+import {MorphoInfo} from "./MorphoInfo.sol";
 import {Strings} from "./Strings.sol";
 import {PaycallWrapper} from "./PaycallWrapper.sol";
 import {QuotecallWrapper} from "./QuotecallWrapper.sol";
@@ -992,8 +992,6 @@ contract QuarkBuilder {
         uint256 collateralAmount;
         string collateralAssetSymbol;
         string borrowAssetSymbol;
-        address oracle;
-        uint256 lltv;
     }
 
     function morphoBorrow(
@@ -1004,47 +1002,51 @@ contract QuarkBuilder {
         List.DynamicArray memory actions = List.newList();
         List.DynamicArray memory quarkOperations = List.newList();
 
-
         bool useQuotecall = false; // never use Quotecall
         bool paymentTokenIsCollateralAsset = false;
 
-        for (uint256 i = 0; i < borrowIntent.collateralAssetSymbols.length; ++i) {
-            string memory assetSymbol = borrowIntent.collateralAssetSymbols[i];
-            uint256 supplyAmount = borrowIntent.collateralAmounts[i];
+        assertFundsAvailable(
+            borrowIntent.chainId,
+            borrowIntent.collateralAssetSymbol,
+            borrowIntent.collateralAmount,
+            chainAccountsList,
+            payment
+        );
 
-            assertFundsAvailable(borrowIntent.chainId, assetSymbol, supplyAmount, chainAccountsList, payment);
+        if (Strings.stringEqIgnoreCase(borrowIntent.collateralAssetSymbol, payment.currency)) {
+            paymentTokenIsCollateralAsset = true;
+        }
 
-            if (Strings.stringEqIgnoreCase(assetSymbol, payment.currency)) {
-                paymentTokenIsCollateralAsset = true;
+        if (
+            needsBridgedFunds(
+                borrowIntent.collateralAssetSymbol,
+                borrowIntent.collateralAmount,
+                borrowIntent.chainId,
+                chainAccountsList,
+                payment
+            )
+        ) {
+            uint256 amountNeededOnDst = borrowIntent.collateralAmount;
+            if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, borrowIntent.collateralAssetSymbol)) {
+                amountNeededOnDst += PaymentInfo.findMaxCost(payment, borrowIntent.chainId);
             }
+            (IQuarkWallet.QuarkOperation[] memory bridgeQuarkOperations, Actions.Action[] memory bridgeActions) =
+            Actions.constructBridgeOperations(
+                Actions.BridgeOperationInfo({
+                    assetSymbol: borrowIntent.collateralAssetSymbol,
+                    amountNeededOnDst: amountNeededOnDst,
+                    dstChainId: borrowIntent.chainId,
+                    recipient: borrowIntent.borrower,
+                    blockTimestamp: borrowIntent.blockTimestamp,
+                    useQuotecall: useQuotecall
+                }),
+                chainAccountsList,
+                payment
+            );
 
-            if (needsBridgedFunds(assetSymbol, supplyAmount, borrowIntent.chainId, chainAccountsList, payment)) {
-                // Note: Assumes that the asset uses the same # of decimals on each chain
-                uint256 amountNeededOnDst = supplyAmount;
-                // If action is paid for with tokens and the payment token is
-                // the supply token, we need to add the max cost to the
-                // amountNeededOnDst for target chain
-                if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, assetSymbol)) {
-                    amountNeededOnDst += PaymentInfo.findMaxCost(payment, borrowIntent.chainId);
-                }
-                (IQuarkWallet.QuarkOperation[] memory bridgeQuarkOperations, Actions.Action[] memory bridgeActions) =
-                Actions.constructBridgeOperations(
-                    Actions.BridgeOperationInfo({
-                        assetSymbol: assetSymbol,
-                        amountNeededOnDst: amountNeededOnDst,
-                        dstChainId: borrowIntent.chainId,
-                        recipient: borrowIntent.borrower,
-                        blockTimestamp: borrowIntent.blockTimestamp,
-                        useQuotecall: useQuotecall
-                    }),
-                    chainAccountsList,
-                    payment
-                );
-
-                for (uint256 j = 0; j < bridgeQuarkOperations.length; ++j) {
-                    List.addQuarkOperation(quarkOperations, bridgeQuarkOperations[j]);
-                    List.addAction(actions, bridgeActions[j]);
-                }
+            for (uint256 j = 0; j < bridgeQuarkOperations.length; ++j) {
+                List.addQuarkOperation(quarkOperations, bridgeQuarkOperations[j]);
+                List.addAction(actions, bridgeActions[j]);
             }
         }
 
@@ -1083,33 +1085,30 @@ contract QuarkBuilder {
         }
 
         // Auto-wrap on collateral supply
-        for (uint256 i = 0; i < borrowIntent.collateralAssetSymbols.length; ++i) {
-            checkAndInsertWrapOrUnwrapAction(
-                actions,
-                quarkOperations,
-                chainAccountsList,
-                payment,
-                borrowIntent.collateralAssetSymbols[i],
-                borrowIntent.collateralAmounts[i],
-                borrowIntent.chainId,
-                borrowIntent.borrower,
-                borrowIntent.blockTimestamp,
-                useQuotecall
-            );
-        }
+        checkAndInsertWrapOrUnwrapAction(
+            actions,
+            quarkOperations,
+            chainAccountsList,
+            payment,
+            borrowIntent.collateralAssetSymbol,
+            borrowIntent.collateralAmount,
+            borrowIntent.chainId,
+            borrowIntent.borrower,
+            borrowIntent.blockTimestamp,
+            useQuotecall
+        );
 
         (IQuarkWallet.QuarkOperation memory borrowQuarkOperation, Actions.Action memory borrowAction) = Actions
-            .cometBorrow(
-            Actions.CometBorrowInput({
+            .morphoBorrow(
+            Actions.MorphoBorrow({
                 chainAccountsList: chainAccountsList,
-                amount: borrowIntent.amount,
                 assetSymbol: borrowIntent.assetSymbol,
-                blockTimestamp: borrowIntent.blockTimestamp,
-                borrower: borrowIntent.borrower,
+                amount: borrowIntent.amount,
                 chainId: borrowIntent.chainId,
-                collateralAmounts: borrowIntent.collateralAmounts,
-                collateralAssetSymbols: borrowIntent.collateralAssetSymbols,
-                comet: borrowIntent.comet
+                borrower: borrowIntent.borrower,
+                blockTimestamp: borrowIntent.blockTimestamp,
+                collateralAmount: borrowIntent.collateralAmount,
+                collateralAssetSymbol: borrowIntent.collateralAssetSymbol
             }),
             payment
         );
@@ -1155,15 +1154,6 @@ contract QuarkBuilder {
             paymentCurrency: payment.currency,
             eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
         });
-    }
-
-    struct MorphoSupplyIntent {
-        uint256 amount;
-        string assetSymbol;
-        uint256 blockTimestamp;
-        uint256 chainId;
-        address vault;
-        address sender;
     }
 
     // For some reason, funds that may otherwise be bridgeable or held by the user cannot

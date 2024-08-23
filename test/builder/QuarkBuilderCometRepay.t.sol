@@ -86,7 +86,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             nextNonce: 12,
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(0.4e6, 0, 0, 1e18), // user does not have enough USDC
-            cometPortfolios: emptyCometPortfolios_()
+            cometPortfolios: emptyCometPortfolios_(),
+            morphoBluePortfolios: emptyMorphoBluePortfolios_()
         });
 
         vm.expectRevert(QuarkBuilder.MaxCostTooHigh.selector);
@@ -112,7 +113,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             nextNonce: 12,
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(1e6, 0, 0, 0), // has 1 USDC
-            cometPortfolios: emptyCometPortfolios_()
+            cometPortfolios: emptyCometPortfolios_(),
+            morphoBluePortfolios: emptyMorphoBluePortfolios_()
         });
         chainPortfolios[1] = ChainPortfolio({
             chainId: 8453,
@@ -120,7 +122,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             nextNonce: 2,
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 0, 0),
-            cometPortfolios: emptyCometPortfolios_()
+            cometPortfolios: emptyCometPortfolios_(),
+            morphoBluePortfolios: emptyMorphoBluePortfolios_()
         });
 
         QuarkBuilder builder = new QuarkBuilder();
@@ -202,7 +205,9 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                     collateralTokens: collateralTokens,
                     comet: cometUsdc_(1),
                     price: USDC_PRICE,
-                    token: usdc_(1)
+                    token: usdc_(1),
+                    morpho: address(0),
+                    morphoMarketId: bytes32(0)
                 })
             ),
             "action context encoded from RepayActionContext"
@@ -234,7 +239,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             nextNonce: 12,
             assetSymbols: Arrays.stringArray("USDC", "ETH", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(0, 1e18, 0, 0), // has 1 ETH
-            cometPortfolios: emptyCometPortfolios_()
+            cometPortfolios: emptyCometPortfolios_(),
+            morphoBluePortfolios: emptyMorphoBluePortfolios_()
         });
         chainPortfolios[1] = ChainPortfolio({
             chainId: 8453,
@@ -242,7 +248,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             nextNonce: 2,
             assetSymbols: Arrays.stringArray("USDC", "ETH", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 0, 0),
-            cometPortfolios: emptyCometPortfolios_()
+            cometPortfolios: emptyCometPortfolios_(),
+            morphoBluePortfolios: emptyMorphoBluePortfolios_()
         });
 
         QuarkBuilder builder = new QuarkBuilder();
@@ -317,7 +324,9 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                     collateralTokens: collateralTokens,
                     comet: cometWeth_(1),
                     price: WETH_PRICE,
-                    token: weth_(1)
+                    token: weth_(1),
+                    morpho: address(0),
+                    morphoMarketId: bytes32(0)
                 })
             ),
             "action context encoded from RepayActionContext"
@@ -343,7 +352,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             nextNonce: 12,
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(2e6, 0, 0, 0),
-            cometPortfolios: emptyCometPortfolios_()
+            cometPortfolios: emptyCometPortfolios_(),
+            morphoBluePortfolios: emptyMorphoBluePortfolios_()
         });
         chainPortfolios[1] = ChainPortfolio({
             chainId: 8453,
@@ -351,7 +361,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             nextNonce: 2,
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 0, 0),
-            cometPortfolios: emptyCometPortfolios_()
+            cometPortfolios: emptyCometPortfolios_(),
+            morphoBluePortfolios: emptyMorphoBluePortfolios_()
         });
 
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
@@ -440,7 +451,9 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                     collateralTokens: collateralTokens,
                     comet: cometUsdc_(1),
                     price: USDC_PRICE,
-                    token: usdc_(1)
+                    token: usdc_(1),
+                    morpho: address(0),
+                    morphoMarketId: bytes32(0)
                 })
             ),
             "action context encoded from RepayActionContext"
@@ -471,7 +484,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             nextNonce: 12,
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 0, 1e18),
-            cometPortfolios: emptyCometPortfolios_()
+            cometPortfolios: emptyCometPortfolios_(),
+            morphoBluePortfolios: emptyMorphoBluePortfolios_()
         });
         chainPortfolios[1] = ChainPortfolio({
             chainId: 8453,
@@ -479,7 +493,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             nextNonce: 2,
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 0, 0),
-            cometPortfolios: emptyCometPortfolios_()
+            cometPortfolios: emptyCometPortfolios_(),
+            morphoBluePortfolios: emptyMorphoBluePortfolios_()
         });
 
         QuarkBuilder.BuilderResult memory result = builder.cometRepay(
@@ -564,7 +579,9 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                     collateralTokens: collateralTokens,
                     comet: cometWeth_(1),
                     price: WETH_PRICE,
-                    token: weth_(1)
+                    token: weth_(1),
+                    morpho: address(0),
+                    morphoMarketId: bytes32(0)
                 })
             ),
             "action context encoded from RepayActionContext"
@@ -596,7 +613,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             nextNonce: 12,
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(4e6, 0, 0, 0), // 4 USDC on mainnet
-            cometPortfolios: emptyCometPortfolios_()
+            cometPortfolios: emptyCometPortfolios_(),
+            morphoBluePortfolios: emptyMorphoBluePortfolios_()
         });
         chainPortfolios[1] = ChainPortfolio({
             chainId: 8453,
@@ -604,7 +622,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             nextNonce: 2,
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 0, 0), // no assets on base
-            cometPortfolios: emptyCometPortfolios_()
+            cometPortfolios: emptyCometPortfolios_(),
+            morphoBluePortfolios: emptyMorphoBluePortfolios_()
         });
 
         QuarkBuilder.BuilderResult memory result = builder.cometRepay(
@@ -749,7 +768,9 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                     collateralTokens: collateralTokens,
                     comet: cometUsdc_(8453),
                     price: USDC_PRICE,
-                    token: usdc_(8453)
+                    token: usdc_(8453),
+                    morpho: address(0),
+                    morphoMarketId: bytes32(0)
                 })
             ),
             "action context encoded from RepayActionContext"
@@ -785,7 +806,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             nextNonce: 12,
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(50e6, 0, 0, 0), // has 50 USDC
-            cometPortfolios: cometPortfolios
+            cometPortfolios: cometPortfolios,
+            morphoBluePortfolios: emptyMorphoBluePortfolios_()
         });
 
         QuarkBuilder builder = new QuarkBuilder();
@@ -870,7 +892,9 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                     collateralTokens: collateralTokens,
                     comet: cometUsdc_(1),
                     price: USDC_PRICE,
-                    token: usdc_(1)
+                    token: usdc_(1),
+                    morpho: address(0),
+                    morphoMarketId: bytes32(0)
                 })
             ),
             "action context encoded from RepayActionContext"
@@ -907,7 +931,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             nextNonce: 12,
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(50e6, 0, 0, 0), // has 50 USDC on mainnet
-            cometPortfolios: emptyCometPortfolios_()
+            cometPortfolios: emptyCometPortfolios_(),
+            morphoBluePortfolios: emptyMorphoBluePortfolios_()
         });
         chainPortfolios[1] = ChainPortfolio({
             chainId: 8453,
@@ -915,7 +940,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             nextNonce: 12,
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 0, 0), // has 0 USDC on base
-            cometPortfolios: cometPortfolios
+            cometPortfolios: cometPortfolios,
+            morphoBluePortfolios: emptyMorphoBluePortfolios_()
         });
 
         QuarkBuilder builder = new QuarkBuilder();
@@ -1060,7 +1086,9 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                     collateralTokens: collateralTokens,
                     comet: cometUsdc_(8453),
                     price: USDC_PRICE,
-                    token: usdc_(8453)
+                    token: usdc_(8453),
+                    morpho: address(0),
+                    morphoMarketId: bytes32(0)
                 })
             ),
             "action context encoded from RepayActionContext"

@@ -406,4 +406,10 @@ library MorphoInfo {
     {
         return abi.decode(HashMap.get(knownMarkets, abi.encode(key)), (MarketParams));
     }
+
+    // Helper function to convert MarketParams to bytes32 Id
+    // Reference: https://github.com/morpho-org/morpho-blue/blob/731e3f7ed97cf15f8fe00b86e4be5365eb3802ac/src/libraries/MarketParamsLib.sol
+    function marketId(MarketParams memory params) public pure returns (bytes32) {
+        return keccak256(abi.encode(params));
+    }
 }
