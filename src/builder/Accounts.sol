@@ -13,6 +13,7 @@ library Accounts {
         QuarkState[] quarkStates;
         AssetPositions[] assetPositionsList;
         CometPositions[] cometPositions;
+        MorphoBluePositions [] morphoBluePositions;
     }
 
     // We map this to the Portfolio data structure that the client will already have.
@@ -55,6 +56,26 @@ library Accounts {
         address asset;
         address[] accounts;
         uint256[] balances;
+    }
+
+    struct MorphoBluePositions {
+        bytes32 marketId;
+        address morpho;
+        address loanToken;
+        address collateralToken;
+        MorphoBlueBorrowPosition borrowPosition;
+        MorphoBlueCollateralPosition collateralPosition;
+    }
+
+    struct MorphoBlueBorrowPosition {
+        address[] accounts;
+        uint256[] borrowedBalances;
+        uint256[] borrowedShares;
+    }
+
+    struct MorphoBlueCollateralPosition {
+        address[] accounts;
+        uint256[] collateralBalances;
     }
 
     function findChainAccounts(uint256 chainId, ChainAccounts[] memory chainAccountsList)

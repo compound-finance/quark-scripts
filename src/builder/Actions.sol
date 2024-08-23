@@ -12,13 +12,17 @@ import {
     CometSupplyActions,
     CometSupplyMultipleAssetsAndBorrow,
     CometWithdrawActions,
-    TransferActions
+    TransferActions,
+    MorphoBlueActions,
+    MorphoRewardsActions,
+    MorphoVaultActions
 } from "../DeFiScripts.sol";
 import {WrapperActions} from "../WrapperScripts.sol";
-
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
+import {IMorpho, Position} from "../interfaces/IMorpho.sol";
 import {PaymentInfo} from "./PaymentInfo.sol";
 import {TokenWrapper} from "./TokenWrapper.sol";
+import {MorphoInfo} from "./MorphoInfo.sol";
 import {List} from "./List.sol";
 
 library Actions {
@@ -122,6 +126,30 @@ library Actions {
         uint256 blockTimestamp;
     }
 
+    struct CometBorrowInput {
+        Accounts.ChainAccounts[] chainAccountsList;
+        uint256 amount;
+        string assetSymbol;
+        uint256 blockTimestamp;
+        address borrower;
+        uint256 chainId;
+        uint256[] collateralAmounts;
+        string[] collateralAssetSymbols;
+        address comet;
+    }
+
+    struct CometRepayInput {
+        Accounts.ChainAccounts[] chainAccountsList;
+        uint256 amount;
+        string assetSymbol;
+        uint256 blockTimestamp;
+        uint256 chainId;
+        uint256[] collateralAmounts;
+        string[] collateralAssetSymbols;
+        address comet;
+        address repayer;
+    }
+
     struct MorphoBorrow {
         Accounts.ChainAccounts[] chainAccountsList;
         string assetSymbol;
@@ -131,7 +159,19 @@ library Actions {
         uint256 blockTimestamp;
         uint256 collateralAmount;
         string collateralAssetSymbol;
-        address comet;
+    }
+
+    struct MorphoRepay {
+        Accounts.ChainAccounts[] chainAccountsList;
+        string assetSymbol;
+        uint256 amount;
+        uint256 chainId;
+        address repayer;
+        uint256 blockTimestamp;
+        uint256 collateralAmount;
+        string collateralAssetSymbol;
+        // Needed for handling max repay
+        uint256 borrowedShares;
     }
 
     // Note: Mainly to avoid stack too deep errors
@@ -173,6 +213,8 @@ library Actions {
         address comet;
         uint256 price;
         address token;
+        address morpho;
+        bytes32 morphoMarketId;
     }
 
     struct BridgeActionContext {
@@ -209,6 +251,8 @@ library Actions {
         address comet;
         uint256 price;
         address token;
+        address morpho;
+        bytes32 morphoMarketId;
     }
 
     struct SupplyActionContext {
@@ -482,18 +526,6 @@ library Actions {
         return (quarkOperation, action);
     }
 
-    struct CometBorrowInput {
-        Accounts.ChainAccounts[] chainAccountsList;
-        uint256 amount;
-        string assetSymbol;
-        uint256 blockTimestamp;
-        address borrower;
-        uint256 chainId;
-        uint256[] collateralAmounts;
-        string[] collateralAssetSymbols;
-        address comet;
-    }
-
     function cometBorrow(CometBorrowInput memory borrowInput, PaymentInfo.Payment memory payment)
         internal
         pure
@@ -540,7 +572,7 @@ library Actions {
         });
 
         // Construct Action
-        BorrowActionContext memory repayActionContext = BorrowActionContext({
+        BorrowActionContext memory borrowActionContext = BorrowActionContext({
             assetSymbol: borrowInput.assetSymbol,
             amount: borrowInput.amount,
             chainId: borrowInput.chainId,
@@ -550,13 +582,15 @@ library Actions {
             collateralAssetSymbols: borrowInput.collateralAssetSymbols,
             comet: borrowInput.comet,
             price: borrowAssetPositions.usdPrice,
-            token: borrowAssetPositions.asset
+            token: borrowAssetPositions.asset,
+            morpho: address(0),
+            morphoMarketId: bytes32(0)
         });
         Action memory action = Actions.Action({
             chainId: borrowInput.chainId,
             quarkAccount: borrowInput.borrower,
             actionType: ACTION_TYPE_BORROW,
-            actionContext: abi.encode(repayActionContext),
+            actionContext: abi.encode(borrowActionContext),
             paymentMethod: PaymentInfo.paymentMethodForPayment(payment, false),
             // Null address for OFFCHAIN payment.
             paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, borrowInput.chainId).token : address(0),
@@ -565,18 +599,6 @@ library Actions {
         });
 
         return (quarkOperation, action);
-    }
-
-    struct CometRepayInput {
-        Accounts.ChainAccounts[] chainAccountsList;
-        uint256 amount;
-        string assetSymbol;
-        uint256 blockTimestamp;
-        uint256 chainId;
-        uint256[] collateralAmounts;
-        string[] collateralAssetSymbols;
-        address comet;
-        address repayer;
     }
 
     function cometRepay(CometRepayInput memory repayInput, PaymentInfo.Payment memory payment)
@@ -635,7 +657,9 @@ library Actions {
             collateralTokens: collateralTokens,
             comet: repayInput.comet,
             price: repayAssetPositions.usdPrice,
-            token: repayAssetPositions.asset
+            token: repayAssetPositions.asset,
+            morpho: address(0),
+            morphoMarketId: bytes32(0)
         });
         Action memory action = Actions.Action({
             chainId: repayInput.chainId,
@@ -826,6 +850,177 @@ library Actions {
             paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, transfer.chainId).token : address(0),
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, transfer.chainId) : 0
+        });
+
+        return (quarkOperation, action);
+    }
+
+    function morphoBorrow(MorphoBorrow memory borrowInput, PaymentInfo.Payment memory payment)
+        internal
+        pure
+        returns (IQuarkWallet.QuarkOperation memory, Action memory)
+    {
+        bytes[] memory scriptSources = new bytes[](1);
+        scriptSources[0] = type(MorphoBlueActions).creationCode;
+
+        Accounts.ChainAccounts memory accounts =
+            Accounts.findChainAccounts(borrowInput.chainId, borrowInput.chainAccountsList);
+
+        Accounts.QuarkState memory accountState = Accounts.findQuarkState(borrowInput.borrower, accounts.quarkStates);
+
+        Accounts.AssetPositions memory borrowAssetPositions =
+            Accounts.findAssetPositions(borrowInput.assetSymbol, accounts.assetPositionsList);
+
+        Accounts.AssetPositions memory assetPositions =
+            Accounts.findAssetPositions(borrowInput.collateralAssetSymbol, accounts.assetPositionsList);
+
+        bytes memory scriptCalldata = abi.encodeWithSelector(
+            MorphoBlueActions.supplyCollateralAndBorrow.selector,
+            MorphoInfo.getMorphoAddress(),
+            MorphoInfo.getMarketParams(borrowInput.chainId, borrowInput.assetSymbol, borrowInput.collateralAssetSymbol),
+            borrowInput.collateralAmount,
+            borrowInput.amount,
+            borrowInput.borrower,
+            borrowInput.borrower
+        );
+
+        // Construct QuarkOperation
+        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
+            nonce: accountState.quarkNextNonce,
+            scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoBlueActions).creationCode),
+            scriptCalldata: scriptCalldata,
+            scriptSources: scriptSources,
+            expiry: borrowInput.blockTimestamp + STANDARD_EXPIRY_BUFFER
+        });
+
+        // Construct Action
+
+        // Single element arrays to fit to existing context format
+        uint256[] memory collateralAmountsArray = new uint256[](1);
+        collateralAmountsArray[0] = borrowInput.collateralAmount;
+        uint256[] memory collateralTokenPricesArray = new uint256[](1);
+        collateralTokenPricesArray[0] = assetPositions.usdPrice;
+        address[] memory collateralTokensArray = new address[](1);
+        collateralTokensArray[0] = assetPositions.asset;
+        string[] memory collateralAssetSymbolsArray = new string[](1);
+        collateralAssetSymbolsArray[0] = borrowInput.collateralAssetSymbol;
+
+        BorrowActionContext memory borrowActionContext = BorrowActionContext({
+            assetSymbol: borrowInput.assetSymbol,
+            amount: borrowInput.amount,
+            chainId: borrowInput.chainId,
+            collateralAmounts: collateralAmountsArray,
+            collateralTokenPrices: collateralTokenPricesArray,
+            collateralTokens: collateralTokensArray,
+            collateralAssetSymbols: collateralAssetSymbolsArray,
+            comet: address(0),
+            price: borrowAssetPositions.usdPrice,
+            token: borrowAssetPositions.asset,
+            morpho: MorphoInfo.getMorphoAddress(),
+            morphoMarketId: MorphoInfo.marketId(
+                MorphoInfo.getMarketParams(borrowInput.chainId, borrowInput.assetSymbol, borrowInput.collateralAssetSymbol)
+                )
+        });
+        Action memory action = Actions.Action({
+            chainId: borrowInput.chainId,
+            quarkAccount: borrowInput.borrower,
+            actionType: ACTION_TYPE_BORROW,
+            actionContext: abi.encode(borrowActionContext),
+            paymentMethod: PaymentInfo.paymentMethodForPayment(payment, false),
+            // Null address for OFFCHAIN payment.
+            paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, borrowInput.chainId).token : address(0),
+            paymentTokenSymbol: payment.currency,
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, borrowInput.chainId) : 0
+        });
+
+        return (quarkOperation, action);
+    }
+
+    function morphoRepay(MorphoRepay memory repayInput, PaymentInfo.Payment memory payment)
+        internal
+        pure
+        returns (IQuarkWallet.QuarkOperation memory, Action memory)
+    {
+        bytes[] memory scriptSources = new bytes[](1);
+        scriptSources[0] = type(MorphoBlueActions).creationCode;
+
+        Accounts.ChainAccounts memory accounts =
+            Accounts.findChainAccounts(repayInput.chainId, repayInput.chainAccountsList);
+
+        Accounts.QuarkState memory accountState = Accounts.findQuarkState(repayInput.repayer, accounts.quarkStates);
+
+        Accounts.AssetPositions memory repayAssetPositions =
+            Accounts.findAssetPositions(repayInput.assetSymbol, accounts.assetPositionsList);
+
+        Accounts.AssetPositions memory assetPositions =
+            Accounts.findAssetPositions(repayInput.collateralAssetSymbol, accounts.assetPositionsList);
+
+        uint256 repayAmount = repayInput.amount;
+        uint256 repayShares = 0;
+
+        if (repayInput.amount == type(uint256).max) {
+            repayAmount = 0;
+            repayShares = repayInput.borrowedShares;
+        }
+        bytes memory scriptCalldata = abi.encodeWithSelector(
+            MorphoBlueActions.repayAndWithdrawCollateral.selector,
+            MorphoInfo.getMorphoAddress(),
+            MorphoInfo.getMarketParams(repayInput.chainId, repayInput.assetSymbol, repayInput.collateralAssetSymbol),
+            repayAmount,
+            repayShares,
+            repayInput.collateralAmount,
+            repayInput.repayer,
+            repayInput.repayer
+        );
+
+        // Construct QuarkOperation
+        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
+            nonce: accountState.quarkNextNonce,
+            scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoBlueActions).creationCode),
+            scriptCalldata: scriptCalldata,
+            scriptSources: scriptSources,
+            expiry: repayInput.blockTimestamp + STANDARD_EXPIRY_BUFFER
+        });
+
+        // Construct Action
+
+        // Single element arrays to fit to existing context format
+        uint256[] memory collateralAmountsArray = new uint256[](1);
+        collateralAmountsArray[0] = repayInput.collateralAmount;
+        string[] memory collateralAssetSymbolsArray = new string[](1);
+        collateralAssetSymbolsArray[0] = repayInput.collateralAssetSymbol;
+        uint256[] memory collateralTokenPricesArray = new uint256[](1);
+        collateralTokenPricesArray[0] = assetPositions.usdPrice;
+        address[] memory collateralTokensArray = new address[](1);
+        collateralTokensArray[0] = assetPositions.asset;
+
+        RepayActionContext memory repayActionContext = RepayActionContext({
+            amount: repayInput.amount,
+            assetSymbol: repayInput.assetSymbol,
+            chainId: repayInput.chainId,
+            collateralAmounts: collateralAmountsArray,
+            collateralAssetSymbols: collateralAssetSymbolsArray,
+            collateralTokenPrices: collateralTokenPricesArray,
+            collateralTokens: collateralTokensArray,
+            comet: address(0),
+            price: repayAssetPositions.usdPrice,
+            token: repayAssetPositions.asset,
+            morpho: MorphoInfo.getMorphoAddress(),
+            morphoMarketId: MorphoInfo.marketId(
+                MorphoInfo.getMarketParams(repayInput.chainId, repayInput.assetSymbol, repayInput.collateralAssetSymbol)
+                )
+        });
+
+        Action memory action = Actions.Action({
+            chainId: repayInput.chainId,
+            quarkAccount: repayInput.repayer,
+            actionType: ACTION_TYPE_REPAY,
+            actionContext: abi.encode(repayActionContext),
+            paymentMethod: PaymentInfo.paymentMethodForPayment(payment, false),
+            // Null address for OFFCHAIN payment.
+            paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, repayInput.chainId).token : address(0),
+            paymentTokenSymbol: payment.currency,
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, repayInput.chainId) : 0
         });
 
         return (quarkOperation, action);

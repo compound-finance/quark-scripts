@@ -255,13 +255,15 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
             chainId: 1,
             quarkStates: quarkStates_(address(0xa11ce), 12),
             assetPositionsList: assetPositionsList_(1, address(0xa11ce), 3e6), // 3 USDC on mainnet
-            cometPositions: emptyCometPositions_()
+            cometPositions: emptyCometPositions_(),
+            morphoBluePositions: emptyMorphoBluePositions_()
         });
         chainAccountsList[1] = Accounts.ChainAccounts({
             chainId: 8453,
             quarkStates: quarkStates_(address(0xb0b), 2),
             assetPositionsList: assetPositionsList_(8453, address(0xb0b), 0), // 0 USDC on base
-            cometPositions: emptyCometPositions_()
+            cometPositions: emptyCometPositions_(),
+            morphoBluePositions: emptyMorphoBluePositions_()
         });
 
         QuarkBuilder.BuilderResult memory result = builder.cometWithdraw(
@@ -396,7 +398,8 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
             nextNonce: 12,
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 0, 0),
-            cometPortfolios: cometPortfolios
+            cometPortfolios: cometPortfolios,
+            morphoBluePortfolios: emptyMorphoBluePortfolios_()
         });
 
         QuarkBuilder builder = new QuarkBuilder();
@@ -483,7 +486,8 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
             nextNonce: 12,
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 0, 0),
-            cometPortfolios: cometPortfolios
+            cometPortfolios: cometPortfolios,
+            morphoBluePortfolios: emptyMorphoBluePortfolios_()
         });
 
         QuarkBuilder builder = new QuarkBuilder();
