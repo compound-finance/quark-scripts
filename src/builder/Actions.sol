@@ -171,6 +171,7 @@ library Actions {
         uint256 collateralAmount;
         string collateralAssetSymbol;
         // Needed for handling max repay
+        bool payInShares;
         uint256 borrowedShares;
     }
 
@@ -958,7 +959,7 @@ library Actions {
         uint256 repayAmount = repayInput.amount;
         uint256 repayShares = 0;
 
-        if (repayInput.amount == type(uint256).max) {
+        if (repayInput.payInShares) {
             repayAmount = 0;
             repayShares = repayInput.borrowedShares;
         }

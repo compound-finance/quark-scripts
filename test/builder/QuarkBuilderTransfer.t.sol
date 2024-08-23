@@ -1248,7 +1248,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             chainId: 1,
             quarkStates: quarkStates_(address(0xa11ce), 12),
             assetPositionsList: assetPositionsList,
-            cometPositions: emptyCometPositions_(), 
+            cometPositions: emptyCometPositions_(),
             morphoBluePositions: emptyMorphoBluePositions_()
         });
 

@@ -11,7 +11,7 @@ import {Quotecall} from "src/Quotecall.sol";
 import {PaymentInfo} from "src/builder/PaymentInfo.sol";
 import {QuarkBuilder} from "src/builder/QuarkBuilder.sol";
 import {Strings} from "src/builder/Strings.sol";
-
+import {MorphoInfo} from "src/builder/MorphoInfo.sol";
 import {Arrays} from "test/builder/lib/Arrays.sol";
 
 contract QuarkBuilderTest {
@@ -84,7 +84,7 @@ contract QuarkBuilderTest {
             chainId: 1,
             quarkStates: quarkStates_(address(0xa11ce), 12),
             assetPositionsList: assetPositionsList_(1, address(0xa11ce), uint256(amount / 2)),
-            cometPositions: emptyCometPositions_(), 
+            cometPositions: emptyCometPositions_(),
             morphoBluePositions: emptyMorphoBluePositions_()
         });
         chainAccountsList[1] = Accounts.ChainAccounts({
@@ -287,9 +287,8 @@ contract QuarkBuilderTest {
 
     struct MorphoBluePortfolio {
         bytes32 marketId;
-        address morpho;
-        address loanToken;
-        address collateralToken;
+        string loanToken;
+        string collateralToken;
         uint256 borrowedBalance;
         uint256 borrowedShares;
         uint256 collateralBalance;
@@ -324,7 +323,7 @@ contract QuarkBuilderTest {
                 // cometPositions: cometPositionsFor
                 cometPositions: cometPositionsForCometPorfolios(
                     chainPortfolios[i].chainId, chainPortfolios[i].account, chainPortfolios[i].cometPortfolios
-                    ), 
+                    ),
                 morphoBluePositions: morphoBluePositionsForMorphoBluePortfolios(
                     chainPortfolios[i].chainId, chainPortfolios[i].account, chainPortfolios[i].morphoBluePortfolios
                     )
@@ -375,15 +374,19 @@ contract QuarkBuilderTest {
         address account,
         MorphoBluePortfolio[] memory morphoBluePortfolios
     ) internal pure returns (Accounts.MorphoBluePositions[] memory) {
-        Accounts.MorphoBluePositions[] memory morphoBluePositions = new Accounts.MorphoBluePositions[](morphoBluePortfolios.length);
+        Accounts.MorphoBluePositions[] memory morphoBluePositions =
+            new Accounts.MorphoBluePositions[](morphoBluePortfolios.length);
 
         for (uint256 i = 0; i < morphoBluePortfolios.length; ++i) {
             MorphoBluePortfolio memory morphoBluePortfolio = morphoBluePortfolios[i];
+            (address loanAsset,,) = assetInfo(morphoBluePortfolio.loanToken, chainId);
+            (address collateralAsset,,) = assetInfo(morphoBluePortfolio.collateralToken, chainId);
+
             morphoBluePositions[i] = Accounts.MorphoBluePositions({
                 marketId: morphoBluePortfolio.marketId,
-                morpho: morphoBluePortfolio.morpho,
-                loanToken: morphoBluePortfolio.loanToken,
-                collateralToken: morphoBluePortfolio.collateralToken,
+                morpho: MorphoInfo.getMorphoAddress(),
+                loanToken: loanAsset,
+                collateralToken: collateralAsset,
                 borrowPosition: Accounts.MorphoBlueBorrowPosition({
                     accounts: Arrays.addressArray(account),
                     borrowedBalances: Arrays.uintArray(morphoBluePortfolio.borrowedBalance),

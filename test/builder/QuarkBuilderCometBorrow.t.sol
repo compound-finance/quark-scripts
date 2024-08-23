@@ -87,7 +87,7 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
             nextNonce: 12,
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 10e18, 0), // user has 10 LINK
-            cometPortfolios: emptyCometPortfolios_(), 
+            cometPortfolios: emptyCometPortfolios_(),
             morphoBluePortfolios: emptyMorphoBluePortfolios_()
         });
         chainPortfolios[1] = ChainPortfolio({
