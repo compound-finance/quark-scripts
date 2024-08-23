@@ -13,7 +13,7 @@ library Accounts {
         QuarkState[] quarkStates;
         AssetPositions[] assetPositionsList;
         CometPositions[] cometPositions;
-        MorphoBluePositions [] morphoBluePositions;
+        MorphoBluePositions[] morphoBluePositions;
     }
 
     // We map this to the Portfolio data structure that the client will already have.
@@ -99,6 +99,23 @@ library Accounts {
         for (uint256 i = 0; i < chainAccounts.cometPositions.length; ++i) {
             if (chainAccounts.cometPositions[i].comet == comet) {
                 return found = chainAccounts.cometPositions[i];
+            }
+        }
+    }
+
+    function findMorphoBluePositions(
+        uint256 chainId,
+        address loanToken,
+        address collateralToken,
+        ChainAccounts[] memory chainAccountsList
+    ) internal pure returns (MorphoBluePositions memory found) {
+        ChainAccounts memory chainAccounts = findChainAccounts(chainId, chainAccountsList);
+        for (uint256 i = 0; i < chainAccounts.morphoBluePositions.length; ++i) {
+            if (
+                chainAccounts.morphoBluePositions[i].loanToken == loanToken
+                    && chainAccounts.morphoBluePositions[i].collateralToken == collateralToken
+            ) {
+                return found = chainAccounts.morphoBluePositions[i];
             }
         }
     }
@@ -271,6 +288,23 @@ library Accounts {
         for (uint256 i = 0; i < cometPositions.basePosition.accounts.length; ++i) {
             if (cometPositions.basePosition.accounts[i] == account) {
                 totalBorrow = cometPositions.basePosition.borrowed[i];
+            }
+        }
+    }
+
+    function totalMorphoBorrowForAccount(
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        uint256 chainId,
+        address loanToken,
+        address collateralToken,
+        address account
+    ) internal pure returns (uint256 totalBorrow, uint256 totalBorrowedShares) {
+        Accounts.MorphoBluePositions memory morphoBluePositions =
+            findMorphoBluePositions(chainId, loanToken, collateralToken, chainAccountsList);
+        for (uint256 i = 0; i < morphoBluePositions.borrowPosition.accounts.length; ++i) {
+            if (morphoBluePositions.borrowPosition.accounts[i] == account) {
+                totalBorrow = morphoBluePositions.borrowPosition.borrowedBalances[i];
+                totalBorrowedShares = morphoBluePositions.borrowPosition.borrowedShares[i];
             }
         }
     }
