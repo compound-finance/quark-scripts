@@ -1187,25 +1187,17 @@ contract QuarkBuilder {
         bool isMaxRepay = repayIntent.amount == type(uint256).max;
         bool useQuotecall = false; // never use Quotecall
 
-        // Note: Need to get the token address of the repay and collateral tokens to find the right morpho market position info (i.e. total borrowed amount and shares)
-        Accounts.AssetPositions memory loanTokenAssetPosition =
-            Accounts.findAssetPositions(repayIntent.assetSymbol, repayIntent.chainId, chainAccountsList);
-        Accounts.AssetPositions memory collateralTokenAssetPosition =
-            Accounts.findAssetPositions(repayIntent.collateralAssetSymbol, repayIntent.chainId, chainAccountsList);
-
-        uint256 repayAmount;
-        uint256 repayShares;
+        uint256 repayAmount = repayIntent.amount;
+        uint256 repayShares = 0; // Default to be 0 and not used, unless mas repay case
         if (isMaxRepay) {
             (repayAmount, repayShares) = morphorRepayMaxAmount(
                 chainAccountsList,
                 repayIntent.chainId,
-                loanTokenAssetPosition.asset,
-                collateralTokenAssetPosition.asset,
+                Accounts.findAssetPositions(repayIntent.assetSymbol, repayIntent.chainId, chainAccountsList).asset,
+                Accounts.findAssetPositions(repayIntent.collateralAssetSymbol, repayIntent.chainId, chainAccountsList)
+                    .asset,
                 repayIntent.repayer
             );
-        } else {
-            repayAmount = repayIntent.amount;
-            repayShares = 0;
         }
 
         assertFundsAvailable(repayIntent.chainId, repayIntent.assetSymbol, repayAmount, chainAccountsList, payment);
