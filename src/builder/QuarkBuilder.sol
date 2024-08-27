@@ -1005,7 +1005,6 @@ contract QuarkBuilder {
         uint256 chainId;
         uint256 collateralAmount;
         string collateralAssetSymbol;
-        string borrowAssetSymbol;
     }
 
     function morphoBorrow(

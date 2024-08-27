@@ -6,6 +6,8 @@ import {HashMap} from "./HashMap.sol";
 
 library MorphoInfo {
     error UnsupportedChainId();
+    error MorphoMarketNotFound();
+    error MorphoVaultNotFound();
 
     // Note: Current Morpho has same address across mainnet and base
     function getMorphoAddress() internal pure returns (address) {
@@ -296,7 +298,7 @@ library MorphoInfo {
         return knownMarkets;
     }
 
-    function getMarketParams(uint256 chainId, string memory borrowAssetSymbol, string memory collateralAssetSymbol)
+    function getMarketParams(uint256 chainId, string memory collateralAssetSymbol, string memory borrowAssetSymbol)
         internal
         pure
         returns (MarketParams memory)
@@ -389,6 +391,9 @@ library MorphoInfo {
         pure
         returns (address)
     {
+        if (!HashMap.contains(knownVaults, abi.encode(key))) {
+            revert MorphoVaultNotFound();
+        }
         return abi.decode(HashMap.get(knownVaults, abi.encode(key)), (address));
     }
 
@@ -404,6 +409,9 @@ library MorphoInfo {
         pure
         returns (MarketParams memory)
     {
+        if (!HashMap.contains(knownMarkets, abi.encode(key))) {
+            revert MorphoMarketNotFound();
+        }
         return abi.decode(HashMap.get(knownMarkets, abi.encode(key)), (MarketParams));
     }
 
