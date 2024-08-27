@@ -81,7 +81,7 @@ contract MorphoInfoTest is Test {
             if (marketKeys[i].chainId == chainId) {
                 MarketParams memory marketParams = MorphoInfo.getMarketParams(markets, marketKeys[i]);
                 (uint128 totalSupplyAssets,,,, uint128 lastUpdate,) =
-                    IMorpho(MorphoInfo.getMorphoAddress()).market(marketId(marketParams));
+                    IMorpho(MorphoInfo.getMorphoAddress()).market(MorphoInfo.marketId(marketParams));
                 assertGt(
                     totalSupplyAssets,
                     0,
@@ -111,11 +111,5 @@ contract MorphoInfoTest is Test {
                 );
             }
         }
-    }
-
-    // Helper function to convert MarketParams to bytes32 Id
-    // Reference: https://github.com/morpho-org/morpho-blue/blob/731e3f7ed97cf15f8fe00b86e4be5365eb3802ac/src/libraries/MarketParamsLib.sol
-    function marketId(MarketParams memory params) public pure returns (bytes32) {
-        return keccak256(abi.encode(params));
     }
 }

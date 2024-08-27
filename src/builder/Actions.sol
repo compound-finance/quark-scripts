@@ -878,7 +878,7 @@ library Actions {
         bytes memory scriptCalldata = abi.encodeWithSelector(
             MorphoBlueActions.supplyCollateralAndBorrow.selector,
             MorphoInfo.getMorphoAddress(),
-            MorphoInfo.getMarketParams(borrowInput.chainId, borrowInput.assetSymbol, borrowInput.collateralAssetSymbol),
+            MorphoInfo.getMarketParams(borrowInput.chainId, borrowInput.collateralAssetSymbol, borrowInput.assetSymbol),
             borrowInput.collateralAmount,
             borrowInput.amount,
             borrowInput.borrower,
@@ -919,7 +919,7 @@ library Actions {
             token: borrowAssetPositions.asset,
             morpho: MorphoInfo.getMorphoAddress(),
             morphoMarketId: MorphoInfo.marketId(
-                MorphoInfo.getMarketParams(borrowInput.chainId, borrowInput.assetSymbol, borrowInput.collateralAssetSymbol)
+                MorphoInfo.getMarketParams(borrowInput.chainId, borrowInput.collateralAssetSymbol, borrowInput.assetSymbol)
                 )
         });
         Action memory action = Actions.Action({
@@ -966,7 +966,7 @@ library Actions {
         bytes memory scriptCalldata = abi.encodeWithSelector(
             MorphoBlueActions.repayAndWithdrawCollateral.selector,
             MorphoInfo.getMorphoAddress(),
-            MorphoInfo.getMarketParams(repayInput.chainId, repayInput.assetSymbol, repayInput.collateralAssetSymbol),
+            MorphoInfo.getMarketParams(repayInput.chainId, repayInput.collateralAssetSymbol, repayInput.assetSymbol),
             repayAmount,
             repayShares,
             repayInput.collateralAmount,
@@ -1008,7 +1008,7 @@ library Actions {
             token: repayAssetPositions.asset,
             morpho: MorphoInfo.getMorphoAddress(),
             morphoMarketId: MorphoInfo.marketId(
-                MorphoInfo.getMarketParams(repayInput.chainId, repayInput.assetSymbol, repayInput.collateralAssetSymbol)
+                MorphoInfo.getMarketParams(repayInput.chainId, repayInput.collateralAssetSymbol, repayInput.assetSymbol)
                 )
         });
 

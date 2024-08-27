@@ -42,6 +42,16 @@ contract QuarkBuilderTest {
     address constant WETH_8453 = 0x4200000000000000000000000000000000000006;
     uint256 constant WETH_PRICE = 3000e8;
 
+    address constant WBTC_1 = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
+    address constant WBTC_7777 = address(0xDEADBEEF);
+    address constant WBTC_8453 = address(0xDEADBEEF);
+    uint256 constant WBTC_PRICE = 66000e8;
+
+    address constant CBETH_1 = 0xBe9895146f7AF43049ca1c1AE358B0541Ea49704;
+    address constant CBETH_7777 = address(0xDEADBEEF);
+    address constant CBETH_8453 = 0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22;
+    uint256 constant CBETH_PRICE = 3300e8;
+
     address constant ETH_USD_PRICE_FEED_1 = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address constant ETH_USD_PRICE_FEED_8453 = 0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70;
 
@@ -171,6 +181,20 @@ contract QuarkBuilderTest {
         Accounts.AccountBalance[] memory accountBalances = new Accounts.AccountBalance[](1);
         accountBalances[0] = Accounts.AccountBalance({account: account, balance: balance});
         return accountBalances;
+    }
+
+    function wbtc_(uint256 chainId) internal pure returns (address) {
+        if (chainId == 1) return WBTC_1;
+        if (chainId == 7777) return WBTC_7777;
+        if (chainId == 8453) return WBTC_8453;
+        revert("no mock WBTC for chain id");
+    }
+
+    function cbEth_(uint256 chainId) internal pure returns (address) {
+        if (chainId == 1) return CBETH_1;
+        if (chainId == 7777) return CBETH_7777;
+        if (chainId == 8453) return CBETH_8453;
+        revert("no mock cbETH for chain id");
     }
 
     function link_(uint256 chainId) internal pure returns (address) {
@@ -445,8 +469,12 @@ contract QuarkBuilderTest {
             return (eth_(), 18, WETH_PRICE);
         } else if (Strings.stringEq(assetSymbol, "LINK")) {
             return (link_(chainId), 18, LINK_PRICE);
+        } else if (Strings.stringEq(assetSymbol, "WBTC")) {
+            return (wbtc_(chainId), 8, WBTC_PRICE);
+        } else if (Strings.stringEq(assetSymbol, "cbETH")) {
+            return (cbEth_(chainId), 18, CBETH_PRICE);
         } else {
-            revert("unknown assetSymbol");
+            revert("[Testlib QuarkBuilderTest]: unknown assetSymbol");
         }
     }
 }
