@@ -31,6 +31,7 @@ contract QuarkBuilder {
     error InvalidInput();
     error MaxCostTooHigh();
     error MissingWrapperCounterpart();
+    error InvalidRepayActionContext();
 
     /* ===== Input Types ===== */
 
@@ -1537,16 +1538,32 @@ contract QuarkBuilder {
             if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_BORROW)) {
                 continue;
             } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_REPAY)) {
-                Actions.RepayActionContext memory cometRepayActionContext =
+                Actions.RepayActionContext memory repayActionContext =
                     abi.decode(nonBridgeAction.actionContext, (Actions.RepayActionContext));
-                if (Strings.stringEqIgnoreCase(cometRepayActionContext.assetSymbol, paymentTokenSymbol)) {
-                    if (cometRepayActionContext.amount == type(uint256).max) {
-                        uint256 repayAmount = cometRepayMaxAmount(
-                            chainAccountsList, cometRepayActionContext.chainId, cometRepayActionContext.comet, account
-                        );
+                if (Strings.stringEqIgnoreCase(repayActionContext.assetSymbol, paymentTokenSymbol)) {
+                    if (repayActionContext.amount == type(uint256).max) {
+                        uint256 repayAmount;
+                        if (repayActionContext.comet != address(0)) {
+                            // Comet repay
+                            repayAmount = cometRepayMaxAmount(
+                                chainAccountsList, repayActionContext.chainId, repayActionContext.comet, account
+                            );
+                        } else if (repayActionContext.morpho != address(0)) {
+                            // Morpho repay
+                            (repayAmount,) = morphorRepayMaxAmount(
+                                chainAccountsList,
+                                repayActionContext.chainId,
+                                repayActionContext.token,
+                                repayActionContext.collateralTokens[0],
+                                account
+                            );
+                        } else {
+                            revert InvalidRepayActionContext();
+                        }
+
                         paymentTokenCost += repayAmount;
                     } else {
-                        paymentTokenCost += cometRepayActionContext.amount;
+                        paymentTokenCost += repayActionContext.amount;
                     }
                 }
             } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_SUPPLY)) {
