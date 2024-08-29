@@ -174,6 +174,15 @@ library Actions {
         address repayer;
     }
 
+    struct MorphoVaultSupply {
+        Accounts.ChainAccounts[] chainAccountsList;
+        string assetSymbol;
+        uint256 amount;
+        uint256 chainId;
+        address sender;
+        uint256 blockTimestamp;
+    }
+
     // Note: Mainly to avoid stack too deep errors
     struct BridgeOperationInfo {
         string assetSymbol;
