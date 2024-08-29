@@ -12,11 +12,9 @@ import {
     CometSupplyActions,
     CometSupplyMultipleAssetsAndBorrow,
     CometWithdrawActions,
-    TransferActions,
-    MorphoBlueActions,
-    MorphoRewardsActions,
-    MorphoVaultActions
+    TransferActions
 } from "../DeFiScripts.sol";
+import {MorphoBlueActions, MorphoRewardsActions, MorphoVaultActions} from "../defi_integrations/MorphoScripts.sol";
 import {WrapperActions} from "../WrapperScripts.sol";
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
 import {IMorpho, Position} from "../interfaces/IMorpho.sol";

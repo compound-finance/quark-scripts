@@ -10,7 +10,7 @@ import {QuarkBuilderTest, Accounts, PaymentInfo, QuarkBuilder} from "test/builde
 import {Actions} from "src/builder/Actions.sol";
 import {CCTPBridgeActions} from "src/BridgeScripts.sol";
 import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
-import {MorphoBlueActions} from "src/DeFiScripts.sol";
+import {MorphoBlueActions} from "src/defi_integrations/MorphoScripts.sol";
 import {Paycall} from "src/Paycall.sol";
 import {Strings} from "src/builder/Strings.sol";
 import {Multicall} from "src/Multicall.sol";
