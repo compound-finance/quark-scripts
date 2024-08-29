@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.23;
 
-import {BridgeRoutes, CCTP} from "./BridgeRoutes.sol";
-import {Strings} from "./Strings.sol";
 import {Accounts} from "./Accounts.sol";
+import {BridgeRoutes, CCTP} from "./BridgeRoutes.sol";
 import {CodeJarHelper} from "./CodeJarHelper.sol";
+import {PriceFeeds} from "./PriceFeeds.sol";
+import {Strings} from "./Strings.sol";
+import {UniswapRouter} from "./UniswapRouter.sol";
 
 import {
     ApproveAndSwap,
@@ -14,6 +16,7 @@ import {
     CometWithdrawActions,
     TransferActions
 } from "../DeFiScripts.sol";
+import {RecurringSwap} from "../RecurringSwap.sol";
 import {WrapperActions} from "../WrapperScripts.sol";
 
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
@@ -27,6 +30,7 @@ library Actions {
     string constant ACTION_TYPE_BRIDGE = "BRIDGE";
     string constant ACTION_TYPE_CLAIM_REWARDS = "CLAIM_REWARDS";
     string constant ACTION_TYPE_DRIP_TOKENS = "DRIP_TOKENS";
+    string constant ACTION_TYPE_RECURRING_SWAP = "RECURRING_SWAP";
     string constant ACTION_TYPE_REPAY = "REPAY";
     string constant ACTION_TYPE_SUPPLY = "SUPPLY";
     string constant ACTION_TYPE_SWAP = "SWAP";
@@ -44,6 +48,8 @@ library Actions {
     uint256 constant BRIDGE_EXPIRY_BUFFER = 7 days;
     uint256 constant SWAP_EXPIRY_BUFFER = 3 days;
     uint256 constant TRANSFER_EXPIRY_BUFFER = 7 days;
+
+    uint256 constant RECURRING_SWAP_MAX_SLIPPAGE = 1e17; // 1%
 
     /* ===== Custom Errors ===== */
 
@@ -107,6 +113,22 @@ library Actions {
         address feeToken;
         string feeAssetSymbol;
         uint256 feeAmount;
+        uint256 chainId;
+        address sender;
+        uint256 blockTimestamp;
+    }
+
+    struct RecurringSwapParams {
+        Accounts.ChainAccounts[] chainAccountsList;
+        address sellToken;
+        string sellAssetSymbol;
+        uint256 sellAmount;
+        address buyToken;
+        string buyAssetSymbol;
+        uint256 buyAmount;
+        bool isExactOut;
+        bytes path;
+        uint256 interval;
         uint256 chainId;
         address sender;
         uint256 blockTimestamp;
@@ -223,6 +245,20 @@ library Actions {
         string outputAssetSymbol;
         address outputToken;
         uint256 outputTokenPrice;
+    }
+
+    struct RecurringSwapActionContext {
+        uint256 chainId;
+        uint256 inputAmount;
+        string inputAssetSymbol;
+        address inputToken;
+        uint256 inputTokenPrice;
+        uint256 outputAmount;
+        string outputAssetSymbol;
+        address outputToken;
+        uint256 outputTokenPrice;
+        bool isExactOut;
+        uint256 interval;
     }
 
     struct TransferActionContext {
@@ -946,6 +982,93 @@ library Actions {
         return (quarkOperation, action);
     }
 
+    function recurringSwap(RecurringSwapParams memory swap, PaymentInfo.Payment memory payment, bool useQuotecall)
+        internal
+        pure
+        returns (IQuarkWallet.QuarkOperation memory, Action memory)
+    {
+        bytes[] memory scriptSources = new bytes[](1);
+        scriptSources[0] = type(RecurringSwap).creationCode;
+
+        Accounts.ChainAccounts memory accounts = Accounts.findChainAccounts(swap.chainId, swap.chainAccountsList);
+
+        Accounts.AssetPositions memory sellTokenAssetPositions =
+            Accounts.findAssetPositions(swap.sellAssetSymbol, accounts.assetPositionsList);
+
+        Accounts.AssetPositions memory buyTokenAssetPositions =
+            Accounts.findAssetPositions(swap.buyAssetSymbol, accounts.assetPositionsList);
+
+        Accounts.QuarkState memory accountState = Accounts.findQuarkState(swap.sender, accounts.quarkStates);
+
+        RecurringSwap.SwapParams memory swapParams = RecurringSwap.SwapParams({
+            uniswapRouter: UniswapRouter.knownRouter(swap.chainId),
+            recipient: swap.sender,
+            tokenIn: swap.buyToken,
+            tokenOut: swap.sellToken,
+            amount: swap.isExactOut ? swap.buyAmount : swap.sellAmount,
+            isExactOut: swap.isExactOut,
+            // The swap never expires and needs to be cancelled explicity
+            deadline: type(uint256).max,
+            path: swap.path
+        });
+        (address[] memory priceFeeds, bool[] memory shouldInvert) = PriceFeeds.findPriceFeedPath({
+            inputAssetSymbol: PriceFeeds.convertToPriceFeedSymbol(swap.sellAssetSymbol),
+            outputAssetSymbol: PriceFeeds.convertToPriceFeedSymbol(swap.buyAssetSymbol),
+            chainId: swap.chainId
+        });
+        RecurringSwap.SlippageParams memory slippageParams = RecurringSwap.SlippageParams({
+            maxSlippage: RECURRING_SWAP_MAX_SLIPPAGE,
+            priceFeeds: priceFeeds,
+            shouldInvert: shouldInvert
+        });
+        RecurringSwap.SwapConfig memory swapConfig = RecurringSwap.SwapConfig({
+            startTime: swap.blockTimestamp,
+            interval: swap.interval,
+            swapParams: swapParams,
+            slippageParams: slippageParams
+        });
+        // TODO: Handle wrapping ETH? Do we need to?
+        bytes memory scriptCalldata = abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig);
+
+        // Construct QuarkOperation
+        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
+            nonce: accountState.quarkNextNonce,
+            scriptAddress: CodeJarHelper.getCodeAddress(type(RecurringSwap).creationCode),
+            scriptCalldata: scriptCalldata,
+            scriptSources: scriptSources,
+            expiry: type(uint256).max
+        });
+
+        // Construct Action
+        RecurringSwapActionContext memory recurringSwapActionContext = RecurringSwapActionContext({
+            chainId: swap.chainId,
+            inputAmount: swap.sellAmount,
+            inputAssetSymbol: swap.sellAssetSymbol,
+            inputToken: swap.sellToken,
+            inputTokenPrice: sellTokenAssetPositions.usdPrice,
+            outputAmount: swap.buyAmount,
+            outputAssetSymbol: swap.buyAssetSymbol,
+            outputToken: swap.buyToken,
+            outputTokenPrice: buyTokenAssetPositions.usdPrice,
+            isExactOut: swap.isExactOut,
+            interval: swap.interval
+        });
+
+        Action memory action = Actions.Action({
+            chainId: swap.chainId,
+            quarkAccount: swap.sender,
+            actionType: ACTION_TYPE_RECURRING_SWAP,
+            actionContext: abi.encode(recurringSwapActionContext),
+            paymentMethod: PaymentInfo.paymentMethodForPayment(payment, useQuotecall),
+            // Null address for OFFCHAIN payment.
+            paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, swap.chainId).token : address(0),
+            paymentTokenSymbol: payment.currency,
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, swap.chainId) : 0
+        });
+
+        return (quarkOperation, action);
+    }
+
     function findActionsOfType(Action[] memory actions, string memory actionType)
         internal
         pure
@@ -1019,6 +1142,11 @@ library Actions {
     function emptyDripTokensActionContext() external pure returns (DripTokensActionContext memory) {
         DripTokensActionContext[] memory ds = new DripTokensActionContext[](1);
         return ds[0];
+    }
+
+    function emptyRecurringSwapActionContext() external pure returns (RecurringSwapActionContext memory) {
+        RecurringSwapActionContext[] memory rs = new RecurringSwapActionContext[](1);
+        return rs[0];
     }
 
     function emptyRepayActionContext() external pure returns (RepayActionContext memory) {
