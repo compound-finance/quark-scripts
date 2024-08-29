@@ -1144,6 +1144,11 @@ library Actions {
         return ds[0];
     }
 
+    function emptyRecurringSwapActionContext() external pure returns (RecurringSwapActionContext memory) {
+        RecurringSwapActionContext[] memory rs = new RecurringSwapActionContext[](1);
+        return rs[0];
+    }
+
     function emptyRepayActionContext() external pure returns (RepayActionContext memory) {
         RepayActionContext[] memory rs = new RepayActionContext[](1);
         return rs[0];
