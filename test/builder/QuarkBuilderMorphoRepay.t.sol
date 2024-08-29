@@ -102,7 +102,7 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
                 "USDC",
                 1e6, // repaying 1 USDC
                 "WBTC",
-                0e8
+                1e8 // withdraw WBTC
             ),
             chainAccountsFromChainPortfolios(chainPortfolios),
             paymentUsd_()
@@ -141,12 +141,12 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
                     MorphoInfo.getMarketParams(1, "WBTC", "USDC"),
                     1e6,
                     0,
-                    0e8,
+                    1e8,
                     address(0xa11ce),
                     address(0xa11ce)
                 )
             ),
-            "calldata is MorphoBlueActions.repayAndWithdrawCollateral(MorphoInfo.getMorphoAddress(), MorphoInfo.getMarketParams(1, WBTC, USDC), 1e6, 0, 0e8,  address(0xa11ce),  address(0xa11ce));"
+            "calldata is MorphoBlueActions.repayAndWithdrawCollateral(MorphoInfo.getMorphoAddress(), MorphoInfo.getMarketParams(1, WBTC, USDC), 1e6, 0, 1e8,  address(0xa11ce),  address(0xa11ce));"
         );
         assertEq(result.quarkOperations[0].scriptSources.length, 1);
         assertEq(result.quarkOperations[0].scriptSources[0], type(MorphoBlueActions).creationCode);
@@ -164,7 +164,7 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
 
         uint256[] memory collateralAmounts = new uint256[](1);
-        collateralAmounts[0] = 0e8;
+        collateralAmounts[0] = 1e8;
         uint256[] memory collateralTokenPrices = new uint256[](1);
         collateralTokenPrices[0] = WBTC_PRICE;
         address[] memory collateralTokens = new address[](1);
