@@ -20,6 +20,7 @@ import {QuarkOperationHelper, ScriptType} from "./lib/QuarkOperationHelper.sol";
 import {DeFiScriptErrors} from "src/lib/DeFiScriptErrors.sol";
 
 import "src/DeFiScripts.sol";
+import "src/defi_integrations/MorphoScripts.sol";
 
 /**
  * Tests for supplying assets to Morpho Vault
@@ -32,7 +33,7 @@ contract MorphoVaultActionsTest is Test {
     // Contracts address on mainnet
     address constant morphoVault = 0x8eB67A509616cd6A7c1B3c8C21D48FF57df3d458;
     address constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-    bytes morphoVaultActionsScripts = new YulHelper().getCode("DeFiScripts.sol/MorphoVaultActions.json");
+    bytes morphoVaultActionsScripts = new YulHelper().getCode("MorphoScripts.sol/MorphoVaultActions.json");
 
     function setUp() public {
         // Fork setup

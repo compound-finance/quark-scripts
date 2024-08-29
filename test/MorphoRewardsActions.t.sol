@@ -22,6 +22,7 @@ import {QuarkOperationHelper, ScriptType} from "./lib/QuarkOperationHelper.sol";
 import {DeFiScriptErrors} from "src/lib/DeFiScriptErrors.sol";
 
 import "src/DeFiScripts.sol";
+import "src/defi_integrations/MorphoScripts.sol";
 
 /**
  * Tests for Morpho Rewards Claim
@@ -38,8 +39,8 @@ contract MorphoRewardsActionsTest is Test {
     address constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address constant wstETH = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
     MarketParams marketParams = MarketParams(USDC, wstETH, morphoOracle, adaptiveCurveIrm, 0.86e18);
-    bytes morphoRewardsActionsScripts = new YulHelper().getCode("DeFiScripts.sol/MorphoRewardsActions.json");
-    bytes morphoBlueActionsScripts = new YulHelper().getCode("DeFiScripts.sol/MorphoBlueActions.json");
+    bytes morphoRewardsActionsScripts = new YulHelper().getCode("MorphoScripts.sol/MorphoRewardsActions.json");
+    bytes morphoBlueActionsScripts = new YulHelper().getCode("MorphoScripts.sol/MorphoBlueActions.json");
 
     // Just a list of data from Morpho rewards api for ease of testing on sample account
     address sampleAccount = 0x87E0b41CB4d65d788f08c8D82589eA7923D73BA5;

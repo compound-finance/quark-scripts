@@ -19,9 +19,7 @@ import {YulHelper} from "./lib/YulHelper.sol";
 import {SignatureHelper} from "./lib/SignatureHelper.sol";
 import {QuarkOperationHelper, ScriptType} from "./lib/QuarkOperationHelper.sol";
 
-import {DeFiScriptErrors} from "src/lib/DeFiScriptErrors.sol";
-
-import "src/DeFiScripts.sol";
+import "src/defi_integrations/MorphoScripts.sol";
 
 /**
  * Tests for Morpho Blue market
@@ -38,7 +36,7 @@ contract MorphoBlueActionsTest is Test {
     address constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address constant wstETH = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
     MarketParams marketParams = MarketParams(USDC, wstETH, morphoOracle, adaptiveCurveIrm, 0.86e18);
-    bytes morphoBlueActionsScripts = new YulHelper().getCode("DeFiScripts.sol/MorphoBlueActions.json");
+    bytes morphoBlueActionsScripts = new YulHelper().getCode("MorphoScripts.sol/MorphoBlueActions.json");
 
     function setUp() public {
         // Fork setup
