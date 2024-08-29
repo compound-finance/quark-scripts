@@ -14,6 +14,7 @@ library Accounts {
         AssetPositions[] assetPositionsList;
         CometPositions[] cometPositions;
         MorphoPositions[] morphoPositions;
+        MorphoVaultPosition[] morphoVaultPositions;
     }
 
     // We map this to the Portfolio data structure that the client will already have.
@@ -75,6 +76,13 @@ library Accounts {
     struct MorphoCollateralPosition {
         address[] accounts;
         uint256[] collateralBalances;
+    }
+
+    struct MorphoVaultPosition {
+        address vault;
+        address asset;
+        address[] accounts;
+        uint256[] balances;
     }
 
     function findChainAccounts(uint256 chainId, ChainAccounts[] memory chainAccountsList)
