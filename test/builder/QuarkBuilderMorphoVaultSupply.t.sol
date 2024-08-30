@@ -807,7 +807,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         assertEq(result.actions[1].chainId, 8453, "operation is on chainid 8453");
         assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
         assertEq(result.actions[1].actionType, "SUPPLY", "action type is 'SUPPLY'");
-        assertEq(result.actions[1].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
+        assertEq(result.actions[1].paymentMethod, "QUOTE_CALL", "payment method is 'QUOTE_CALL'");
         assertEq(result.actions[1].paymentToken, USDC_8453, "payment token is USDC on Base");
         assertEq(result.actions[1].paymentMaxCost, 0.1e6, "payment should have max cost of 0.1e6");
         assertEq(
@@ -831,7 +831,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
     }
 
-    function testCometSupplyWithBridgeAndPaycall() public {
+    function testMorphoVaultSupplyWithBridgeAndPaycall() public {
         QuarkBuilder builder = new QuarkBuilder();
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](2);
         maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 0.5e6});
