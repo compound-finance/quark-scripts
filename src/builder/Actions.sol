@@ -49,6 +49,7 @@ library Actions {
     uint256 constant SWAP_EXPIRY_BUFFER = 3 days;
     uint256 constant TRANSFER_EXPIRY_BUFFER = 7 days;
 
+    uint256 constant AVERAGE_BLOCK_TIME = 12 seconds;
     uint256 constant RECURRING_SWAP_MAX_SLIPPAGE = 1e17; // 1%
 
     /* ===== Custom Errors ===== */
@@ -1003,8 +1004,8 @@ library Actions {
         RecurringSwap.SwapParams memory swapParams = RecurringSwap.SwapParams({
             uniswapRouter: UniswapRouter.knownRouter(swap.chainId),
             recipient: swap.sender,
-            tokenIn: swap.buyToken,
-            tokenOut: swap.sellToken,
+            tokenIn: swap.sellToken,
+            tokenOut: swap.buyToken,
             amount: swap.isExactOut ? swap.buyAmount : swap.sellAmount,
             isExactOut: swap.isExactOut,
             // The swap never expires and needs to be cancelled explicity
@@ -1022,7 +1023,7 @@ library Actions {
             shouldInvert: shouldInvert
         });
         RecurringSwap.SwapConfig memory swapConfig = RecurringSwap.SwapConfig({
-            startTime: swap.blockTimestamp,
+            startTime: swap.blockTimestamp - AVERAGE_BLOCK_TIME,
             interval: swap.interval,
             swapParams: swapParams,
             slippageParams: slippageParams

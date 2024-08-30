@@ -82,8 +82,8 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
         RecurringSwap.SwapParams memory swapParams = RecurringSwap.SwapParams({
             uniswapRouter: UniswapRouter.knownRouter(swap.chainId),
             recipient: swap.sender,
-            tokenIn: swap.buyToken,
-            tokenOut: swap.sellToken,
+            tokenIn: swap.sellToken,
+            tokenOut: swap.buyToken,
             amount: swap.isExactOut ? swap.buyAmount : swap.sellAmount,
             isExactOut: swap.isExactOut,
             deadline: type(uint256).max,
@@ -97,7 +97,7 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
             shouldInvert: shouldInvert
         });
         return RecurringSwap.SwapConfig({
-            startTime: swap.blockTimestamp,
+            startTime: swap.blockTimestamp - Actions.AVERAGE_BLOCK_TIME,
             interval: swap.interval,
             swapParams: swapParams,
             slippageParams: slippageParams
