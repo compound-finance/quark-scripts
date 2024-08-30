@@ -1335,6 +1335,263 @@ contract QuarkBuilder {
         });
     }
 
+    struct MorphoVaultSupplyIntent {
+        uint256 amount;
+        string assetSymbol;
+        uint256 blockTimestamp;
+        address sender;
+        uint256 chainId;
+    }
+
+    function morphoVaultSupply(
+        MorphoVaultSupplyIntent memory supplyIntent,
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        PaymentInfo.Payment memory payment
+    ) external pure returns (BuilderResult memory) {
+        // If the action is paid for with tokens, filter out any chain accounts that do not have corresponding payment information
+        if (payment.isToken) {
+            chainAccountsList = Accounts.findChainAccountsWithPaymentInfo(chainAccountsList, payment);
+        }
+
+        // Initialize supply max flag
+        bool isMaxSupply = supplyIntent.amount == type(uint256).max;
+        // Convert supplyIntent to user aggregated balance
+        if (isMaxSupply) {
+            supplyIntent.amount = Accounts.totalAvailableAsset(supplyIntent.assetSymbol, chainAccountsList, payment);
+        }
+
+        assertFundsAvailable(
+            supplyIntent.chainId, supplyIntent.assetSymbol, supplyIntent.amount, chainAccountsList, payment
+        );
+
+        bool useQuotecall = isMaxSupply;
+        List.DynamicArray memory actions = List.newList();
+        List.DynamicArray memory quarkOperations = List.newList();
+
+        if (
+            needsBridgedFunds(
+                supplyIntent.assetSymbol, supplyIntent.amount, supplyIntent.chainId, chainAccountsList, payment
+            )
+        ) {
+            // Note: Assumes that the asset uses the same # of decimals on each chain
+            uint256 amountNeededOnDst = supplyIntent.amount;
+            // If action is paid for with tokens and the payment token is the
+            // transfer token, we need to add the max cost to the
+            // amountNeededOnDst for target chain
+            if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, supplyIntent.assetSymbol)) {
+                amountNeededOnDst += PaymentInfo.findMaxCost(payment, supplyIntent.chainId);
+            }
+            (IQuarkWallet.QuarkOperation[] memory bridgeQuarkOperations, Actions.Action[] memory bridgeActions) =
+            Actions.constructBridgeOperations(
+                Actions.BridgeOperationInfo({
+                    assetSymbol: supplyIntent.assetSymbol,
+                    amountNeededOnDst: amountNeededOnDst,
+                    dstChainId: supplyIntent.chainId,
+                    recipient: supplyIntent.sender,
+                    blockTimestamp: supplyIntent.blockTimestamp,
+                    useQuotecall: useQuotecall
+                }),
+                chainAccountsList,
+                payment
+            );
+
+            for (uint256 i = 0; i < bridgeQuarkOperations.length; ++i) {
+                List.addAction(actions, bridgeActions[i]);
+                List.addQuarkOperation(quarkOperations, bridgeQuarkOperations[i]);
+            }
+        }
+
+        // Auto-wrap
+        checkAndInsertWrapOrUnwrapAction(
+            actions,
+            quarkOperations,
+            chainAccountsList,
+            payment,
+            supplyIntent.assetSymbol,
+            supplyIntent.amount,
+            supplyIntent.chainId,
+            supplyIntent.sender,
+            supplyIntent.blockTimestamp,
+            useQuotecall
+        );
+
+        (IQuarkWallet.QuarkOperation memory supplyQuarkOperation, Actions.Action memory supplyAction) = Actions
+            .morphoVaultSupply(
+            Actions.MorphoVaultSupply({
+                chainAccountsList: chainAccountsList,
+                assetSymbol: supplyIntent.assetSymbol,
+                amount: supplyIntent.amount,
+                blockTimestamp: supplyIntent.blockTimestamp,
+                chainId: supplyIntent.chainId,
+                sender: supplyIntent.sender
+            }),
+            payment,
+            useQuotecall
+        );
+
+        List.addQuarkOperation(quarkOperations, supplyQuarkOperation);
+        List.addAction(actions, supplyAction);
+
+        // Convert actions and quark operations to array
+        Actions.Action[] memory actionsArray = List.toActionArray(actions);
+        IQuarkWallet.QuarkOperation[] memory quarkOperationsArray = List.toQuarkOperationArray(quarkOperations);
+
+        // Validate generated actions for affordability
+        if (payment.isToken) {
+            assertSufficientPaymentTokenBalances(
+                actionsArray, chainAccountsList, supplyIntent.chainId, supplyIntent.sender
+            );
+        }
+
+        // Merge operations that are from the same chain into one Multicall operation
+        (quarkOperationsArray, actionsArray) =
+            QuarkOperationHelper.mergeSameChainOperations(quarkOperationsArray, actionsArray);
+
+        // Wrap operations around Paycall/Quotecall if payment is with token
+        if (payment.isToken) {
+            quarkOperationsArray = QuarkOperationHelper.wrapOperationsWithTokenPayment(
+                quarkOperationsArray, actionsArray, payment, useQuotecall
+            );
+        }
+
+        return BuilderResult({
+            version: VERSION,
+            actions: actionsArray,
+            quarkOperations: quarkOperationsArray,
+            paymentCurrency: payment.currency,
+            eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
+        });
+    }
+
+    struct MorphoVaultWithdrawIntent {
+        uint256 amount;
+        string assetSymbol;
+        uint256 blockTimestamp;
+        uint256 chainId;
+        address withdrawer;
+    }
+
+    function morphoVaultWithdraw(
+        MorphoVaultWithdrawIntent memory withdrawIntent,
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        PaymentInfo.Payment memory payment
+    ) external pure returns (BuilderResult memory) {
+        // XXX confirm that you actually have the amount to withdraw
+
+        bool isMaxWithdraw = withdrawIntent.amount == type(uint256).max;
+        bool useQuotecall = false; // never use Quotecall
+        List.DynamicArray memory actions = List.newList();
+        List.DynamicArray memory quarkOperations = List.newList();
+
+        // when paying with tokens, you may need to bridge the payment token to cover the cost
+        if (payment.isToken) {
+            uint256 maxCostOnDstChain = PaymentInfo.findMaxCost(payment, withdrawIntent.chainId);
+            // if you're withdrawing the payment token, you can use the withdrawn amount to cover the cost
+            if (Strings.stringEqIgnoreCase(payment.currency, withdrawIntent.assetSymbol)) {
+                // XXX in the withdrawMax case, use the Comet balance
+                maxCostOnDstChain = Math.subtractFlooredAtZero(maxCostOnDstChain, withdrawIntent.amount);
+            }
+
+            if (
+                needsBridgedFunds(
+                    payment.currency, maxCostOnDstChain, withdrawIntent.chainId, chainAccountsList, payment
+                )
+            ) {
+                (IQuarkWallet.QuarkOperation[] memory bridgeQuarkOperations, Actions.Action[] memory bridgeActions) =
+                Actions.constructBridgeOperations(
+                    Actions.BridgeOperationInfo({
+                        assetSymbol: payment.currency,
+                        amountNeededOnDst: maxCostOnDstChain,
+                        dstChainId: withdrawIntent.chainId,
+                        recipient: withdrawIntent.withdrawer,
+                        blockTimestamp: withdrawIntent.blockTimestamp,
+                        useQuotecall: useQuotecall
+                    }),
+                    chainAccountsList,
+                    payment
+                );
+
+                for (uint256 i = 0; i < bridgeQuarkOperations.length; ++i) {
+                    List.addQuarkOperation(quarkOperations, bridgeQuarkOperations[i]);
+                    List.addAction(actions, bridgeActions[i]);
+                }
+            }
+        }
+
+        (IQuarkWallet.QuarkOperation memory cometWithdrawQuarkOperation, Actions.Action memory cometWithdrawAction) =
+        Actions.morphoVaultWithdraw(
+            Actions.MorphoVaultWithdraw({
+                chainAccountsList: chainAccountsList,
+                assetSymbol: withdrawIntent.assetSymbol,
+                amount: withdrawIntent.amount,
+                blockTimestamp: withdrawIntent.blockTimestamp,
+                chainId: withdrawIntent.chainId,
+                withdrawer: withdrawIntent.withdrawer
+            }),
+            payment,
+            isMaxWithdraw
+        );
+        List.addAction(actions, cometWithdrawAction);
+        List.addQuarkOperation(quarkOperations, cometWithdrawQuarkOperation);
+
+        // Convert actions and quark operations to arrays
+        Actions.Action[] memory actionsArray = List.toActionArray(actions);
+        IQuarkWallet.QuarkOperation[] memory quarkOperationsArray = List.toQuarkOperationArray(quarkOperations);
+
+        // Validate generated actions for affordability
+        if (payment.isToken) {
+            uint256 supplementalPaymentTokenBalance = 0;
+            if (Strings.stringEqIgnoreCase(payment.currency, withdrawIntent.assetSymbol)) {
+                if (isMaxWithdraw) {
+                    // when doing a maxWithdraw of the payment token, add the account's supplied balance
+                    // as supplemental payment token balance
+                    Accounts.MorphoVaultPositions memory morphoVaultPositions = Accounts.findMorphoVaultPositions(
+                        withdrawIntent.chainId,
+                        Accounts.findAssetPositions(
+                            withdrawIntent.assetSymbol, withdrawIntent.chainId, chainAccountsList
+                        ).asset,
+                        chainAccountsList
+                    );
+
+                    for (uint256 i = 0; i < morphoVaultPositions.accounts.length; ++i) {
+                        if (morphoVaultPositions.accounts[i] == withdrawIntent.withdrawer) {
+                            supplementalPaymentTokenBalance += morphoVaultPositions.balances[i];
+                        }
+                    }
+                } else {
+                    supplementalPaymentTokenBalance += withdrawIntent.amount;
+                }
+            }
+
+            assertSufficientPaymentTokenBalances(
+                actionsArray,
+                chainAccountsList,
+                withdrawIntent.chainId,
+                withdrawIntent.withdrawer,
+                supplementalPaymentTokenBalance
+            );
+        }
+
+        // Merge operations that are from the same chain into one Multicall operation
+        (quarkOperationsArray, actionsArray) =
+            QuarkOperationHelper.mergeSameChainOperations(quarkOperationsArray, actionsArray);
+
+        // Wrap operations around Paycall/Quotecall if payment is with token
+        if (payment.isToken) {
+            quarkOperationsArray = QuarkOperationHelper.wrapOperationsWithTokenPayment(
+                quarkOperationsArray, actionsArray, payment, useQuotecall
+            );
+        }
+
+        return BuilderResult({
+            version: VERSION,
+            actions: actionsArray,
+            quarkOperations: quarkOperationsArray,
+            paymentCurrency: payment.currency,
+            eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
+        });
+    }
+
     // For some reason, funds that may otherwise be bridgeable or held by the user cannot
     // be made available to fulfill the transaction.
     // Funds cannot be bridged, e.g. no bridge exists

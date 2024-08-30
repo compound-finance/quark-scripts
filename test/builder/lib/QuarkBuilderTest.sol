@@ -95,21 +95,24 @@ contract QuarkBuilderTest {
             quarkStates: quarkStates_(address(0xa11ce), 12),
             assetPositionsList: assetPositionsList_(1, address(0xa11ce), uint256(amount / 2)),
             cometPositions: emptyCometPositions_(),
-            morphoPositions: emptyMorphoPositions_()
+            morphoPositions: emptyMorphoPositions_(),
+            morphoVaultPositions: emptyMorphoVaultPositions_()
         });
         chainAccountsList[1] = Accounts.ChainAccounts({
             chainId: 8453,
             quarkStates: quarkStates_(address(0xb0b), 2),
             assetPositionsList: assetPositionsList_(8453, address(0xb0b), uint256(amount / 2)),
             cometPositions: emptyCometPositions_(),
-            morphoPositions: emptyMorphoPositions_()
+            morphoPositions: emptyMorphoPositions_(),
+            morphoVaultPositions: emptyMorphoVaultPositions_()
         });
         chainAccountsList[2] = Accounts.ChainAccounts({
             chainId: 7777,
             quarkStates: quarkStates_(address(0xc0b), 5),
             assetPositionsList: assetPositionsList_(7777, address(0xc0b), uint256(0)),
             cometPositions: emptyCometPositions_(),
-            morphoPositions: emptyMorphoPositions_()
+            morphoPositions: emptyMorphoPositions_(),
+            morphoVaultPositions: emptyMorphoVaultPositions_()
         });
         return chainAccountsList;
     }
@@ -122,6 +125,11 @@ contract QuarkBuilderTest {
     function emptyMorphoPositions_() internal pure returns (Accounts.MorphoPositions[] memory) {
         Accounts.MorphoPositions[] memory emptyMorphoPositions = new Accounts.MorphoPositions[](0);
         return emptyMorphoPositions;
+    }
+
+    function emptyMorphoVaultPositions_() internal pure returns (Accounts.MorphoVaultPositions[] memory) {
+        Accounts.MorphoVaultPositions[] memory emptyMorphoVaultPositions = new Accounts.MorphoVaultPositions[](0);
+        return emptyMorphoVaultPositions;
     }
 
     function quarkStates_() internal pure returns (Accounts.QuarkState[] memory) {
@@ -299,6 +307,7 @@ contract QuarkBuilderTest {
         uint256[] assetBalances;
         CometPortfolio[] cometPortfolios;
         MorphoPortfolio[] morphoPortfolios;
+        MorphoVaultPortfolio[] morphoVaultPortfolios;
     }
 
     struct CometPortfolio {
@@ -317,6 +326,12 @@ contract QuarkBuilderTest {
         uint256 collateralBalance;
     }
 
+    struct MorphoVaultPortfolio {
+        string assetSymbol;
+        uint256 balance;
+        address vault;
+    }
+
     function emptyCometPortfolios_() internal pure returns (CometPortfolio[] memory) {
         CometPortfolio[] memory emptyCometPortfolios = new CometPortfolio[](0);
         return emptyCometPortfolios;
@@ -325,6 +340,11 @@ contract QuarkBuilderTest {
     function emptyMorphoPortfolios_() internal pure returns (MorphoPortfolio[] memory) {
         MorphoPortfolio[] memory emptyMorphoPortfolios = new MorphoPortfolio[](0);
         return emptyMorphoPortfolios;
+    }
+
+    function emptyMorphoVaultPortfolios_() internal pure returns (MorphoVaultPortfolio[] memory) {
+        MorphoVaultPortfolio[] memory emptyMorphoVaultPortfolios = new MorphoVaultPortfolio[](0);
+        return emptyMorphoVaultPortfolios;
     }
 
     function chainAccountsFromChainPortfolios(ChainPortfolio[] memory chainPortfolios)
@@ -348,7 +368,9 @@ contract QuarkBuilderTest {
                     chainPortfolios[i].chainId, chainPortfolios[i].account, chainPortfolios[i].cometPortfolios
                     ),
                 morphoPositions: morphoPositionsForMorphoPortfolios(
-                    chainPortfolios[i].chainId, chainPortfolios[i].account, chainPortfolios[i].morphoPortfolios
+                    chainPortfolios[i].chainId, chainPortfolios[i].account, chainPortfolios[i].morphoPortfolios,
+                morphoVaultPositions: morphoVaultPositionsForMorphoVaultPortfolios(
+                    chainPortfolios[i].chainId, chainPortfolios[i].account, chainPortfolios[i].morphoVaultPortfolios
                     )
             });
         }
@@ -421,6 +443,27 @@ contract QuarkBuilderTest {
         }
 
         return morphoPositions;
+    }
+
+    function morphoVaultPositionsForMorphoVaultPortfolios(
+        uint256 chainId,
+        address account,
+        MorphoVaultPortfolio[] memory morphoVaultPortfolios
+    ) internal pure returns (Accounts.MorphoVaultPositions[] memory) {
+        Accounts.MorphoVaultPositions[] memory morphoVaultPositions =
+            new Accounts.MorphoVaultPositions[](morphoVaultPortfolios.length);
+        for (uint256 i = 0; i < morphoVaultPortfolios.length; ++i) {
+            MorphoVaultPortfolio memory morphoVaultPortfolio = morphoVaultPortfolios[i];
+            (address asset,,) = assetInfo(morphoVaultPortfolio.assetSymbol, chainId);
+            morphoVaultPositions[i] = Accounts.MorphoVaultPositions({
+                asset: asset,
+                accounts: Arrays.addressArray(account),
+                balances: Arrays.uintArray(morphoVaultPortfolio.balance),
+                vault: morphoVaultPortfolio.vault
+            });
+        }
+
+        return morphoVaultPositions;
     }
 
     function baseAssetForComet(uint256 chainId, address comet) internal pure returns (address) {
