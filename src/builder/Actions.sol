@@ -349,6 +349,15 @@ library Actions {
         address token;
     }
 
+    struct MorphoVaultSupplyContext {
+        uint256 amount;
+        string assetSymbol;
+        uint256 chainId;
+        address morphoVault;
+        uint256 price;
+        address token;
+    }
+
     struct MorphoBorrowActionContext {
         uint256 amount;
         string assetSymbol;
@@ -359,6 +368,15 @@ library Actions {
         address collateralToken;
         address morpho;
         bytes32 morphoMarketId;
+        uint256 price;
+        address token;
+    }
+    
+    struct MorphoVaultWithdrawContext {
+        uint256 amount;
+        string assetSymbol;
+        uint256 chainId;
+        address morphoVault;
         uint256 price;
         address token;
     }
@@ -1069,14 +1087,13 @@ library Actions {
         });
 
         // Construct Action
-        SupplyActionContext memory vaultSupplyActionContext = SupplyActionContext({
+        MorphoVaultSupplyContext memory vaultSupplyActionContext = MorphoVaultSupplyContext({
             amount: vaultSupply.amount,
-            chainId: vaultSupply.chainId,
-            comet: address(0),
-            price: assetPositions.usdPrice,
-            token: assetPositions.asset,
             assetSymbol: assetPositions.symbol,
-            morphoVault: MorphoInfo.getMorphoVaultAddress(vaultSupply.chainId, vaultSupply.assetSymbol)
+            chainId: vaultSupply.chainId,
+            morphoVault: MorphoInfo.getMorphoVaultAddress(vaultSupply.chainId, vaultSupply.assetSymbol),
+            price: assetPositions.usdPrice,
+            token: assetPositions.asset
         });
 
         Action memory action = Actions.Action({
@@ -1136,14 +1153,13 @@ library Actions {
         });
 
         // Construct Action
-        WithdrawActionContext memory vaultWithdrawActionContext = WithdrawActionContext({
+        MorphoVaultWithdrawContext memory vaultWithdrawActionContext = MorphoVaultWithdrawContext({
             amount: vaultWithdraw.amount,
+            assetSymbol: assetPositions.symbol,
             chainId: vaultWithdraw.chainId,
-            comet: address(0),
             morphoVault: MorphoInfo.getMorphoVaultAddress(vaultWithdraw.chainId, vaultWithdraw.assetSymbol),
             price: assetPositions.usdPrice,
-            token: assetPositions.asset,
-            assetSymbol: assetPositions.symbol
+            token: assetPositions.asset
         });
 
         Action memory action = Actions.Action({
