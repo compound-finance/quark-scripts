@@ -138,6 +138,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     assetSymbol: "USDC",
                     chainId: 1,
                     comet: COMET,
+                    morphoVault: address(0),
                     price: USDC_PRICE,
                     token: USDC_1
                 })
@@ -159,7 +160,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
             quarkStates: quarkStates_(address(0xa11ce), 12),
             assetPositionsList: assetPositionsList_(1, address(0xa11ce), uint256(3e6)),
             cometPositions: emptyCometPositions_(),
-            morphoPositions: emptyMorphoPositions_()
+            morphoPortfolios: emptyMorphoPortfolios_(),
+            morphoVaultPortfolios: emptyMorphoVaultPortfolios_()
         });
 
         QuarkBuilder.BuilderResult memory result = builder.cometSupply(
@@ -217,6 +219,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     assetSymbol: "USDC",
                     chainId: 1,
                     comet: COMET,
+                    morphoVault: address(0),
                     price: USDC_PRICE,
                     token: USDC_1
                 })
@@ -262,7 +265,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
             quarkStates: quarkStates_(address(0xa11ce), 12),
             assetPositionsList: assetPositionsList,
             cometPositions: emptyCometPositions_(),
-            morphoPositions: emptyMorphoPositions_()
+            morphoPortfolios: emptyMorphoPortfolios_(),
+            morphoVaultPortfolios: emptyMorphoVaultPortfolios_()
         });
 
         QuarkBuilder.BuilderResult memory result =
@@ -312,6 +316,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     assetSymbol: "WETH",
                     chainId: 1,
                     comet: COMET_ETH,
+                    morphoVault: address(0),
                     price: WETH_PRICE,
                     token: WETH_1
                 })
@@ -377,6 +382,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     assetSymbol: "USDC",
                     chainId: 1,
                     comet: COMET,
+                    morphoVault: address(0),
                     price: USDC_PRICE,
                     token: USDC_1
                 })
@@ -512,6 +518,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     assetSymbol: "USDC",
                     chainId: 8453,
                     comet: COMET,
+                    morphoVault: address(0),
                     price: USDC_PRICE,
                     token: USDC_8453
                 })
@@ -647,6 +654,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     assetSymbol: "USDC",
                     chainId: 8453,
                     comet: COMET,
+                    morphoVault: address(0),
                     price: USDC_PRICE,
                     token: USDC_8453
                 })
@@ -768,6 +776,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     assetSymbol: "USDC",
                     chainId: 8453,
                     comet: COMET,
+                    morphoVault: address(0),
                     price: USDC_PRICE,
                     token: USDC_8453
                 })
@@ -889,6 +898,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     assetSymbol: "USDC",
                     chainId: 8453,
                     comet: COMET,
+                    morphoVault: address(0),
                     price: USDC_PRICE,
                     token: USDC_8453
                 })

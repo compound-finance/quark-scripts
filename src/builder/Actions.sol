@@ -176,9 +176,18 @@ library Actions {
         Accounts.ChainAccounts[] chainAccountsList;
         string assetSymbol;
         uint256 amount;
+        uint256 blockTimestamp;
         uint256 chainId;
         address sender;
+    }
+
+    struct MorphoVaultWithdraw {
+        Accounts.ChainAccounts[] chainAccountsList;
+        string assetSymbol;
+        uint256 amount;
         uint256 blockTimestamp;
+        uint256 chainId;
+        address withdrawer;
     }
 
     // Note: Mainly to avoid stack too deep errors
@@ -263,6 +272,7 @@ library Actions {
         string assetSymbol;
         uint256 chainId;
         address comet;
+        address morphoVault;
         uint256 price;
         address token;
     }
@@ -298,6 +308,7 @@ library Actions {
         string assetSymbol;
         uint256 chainId;
         address comet;
+        address morphoVault;
         uint256 price;
         address token;
     }
@@ -741,6 +752,7 @@ library Actions {
             amount: cometSupply.amount,
             chainId: cometSupply.chainId,
             comet: cometSupply.comet,
+            morphoVault: address(0),
             price: assetPositions.usdPrice,
             token: assetPositions.asset,
             assetSymbol: assetPositions.symbol
@@ -800,6 +812,7 @@ library Actions {
             assetSymbol: cometWithdraw.assetSymbol,
             chainId: cometWithdraw.chainId,
             comet: cometWithdraw.comet,
+            morphoVault: address(0),
             price: assetPositions.usdPrice,
             token: assetPositions.asset
         });
@@ -1011,6 +1024,133 @@ library Actions {
             paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, repayInput.chainId).token : address(0),
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, repayInput.chainId) : 0
+        });
+
+        return (quarkOperation, action);
+    }
+
+    function morphoVaultSupply(
+        MorphoVaultSupply memory vaultSupply,
+        PaymentInfo.Payment memory payment,
+        bool useQuotecall
+    ) internal pure returns (IQuarkWallet.QuarkOperation memory, Action memory) {
+        bytes[] memory scriptSources = new bytes[](1);
+        scriptSources[0] = type(MorphoVaultActions).creationCode;
+
+        Accounts.ChainAccounts memory accounts =
+            Accounts.findChainAccounts(vaultSupply.chainId, vaultSupply.chainAccountsList);
+
+        Accounts.AssetPositions memory assetPositions =
+            Accounts.findAssetPositions(vaultSupply.assetSymbol, accounts.assetPositionsList);
+
+        Accounts.QuarkState memory accountState = Accounts.findQuarkState(vaultSupply.sender, accounts.quarkStates);
+
+        bytes memory scriptCalldata = abi.encodeWithSelector(
+            MorphoVaultActions.deposit.selector,
+            MorphoInfo.getMorphoVaultAddress(vaultSupply.chainId, vaultSupply.assetSymbol),
+            assetPositions.asset,
+            vaultSupply.amount
+        );
+
+        // Construct QuarkOperation
+        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
+            nonce: accountState.quarkNextNonce,
+            scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoVaultActions).creationCode),
+            scriptCalldata: scriptCalldata,
+            scriptSources: scriptSources,
+            expiry: vaultSupply.blockTimestamp + STANDARD_EXPIRY_BUFFER
+        });
+
+        // Construct Action
+        SupplyActionContext memory vaultSupplyActionContext = SupplyActionContext({
+            amount: vaultSupply.amount,
+            chainId: vaultSupply.chainId,
+            comet: address(0),
+            price: assetPositions.usdPrice,
+            token: assetPositions.asset,
+            assetSymbol: assetPositions.symbol,
+            morphoVault: MorphoInfo.getMorphoVaultAddress(vaultSupply.chainId, vaultSupply.assetSymbol)
+        });
+
+        Action memory action = Actions.Action({
+            chainId: vaultSupply.chainId,
+            quarkAccount: vaultSupply.sender,
+            actionType: ACTION_TYPE_SUPPLY,
+            actionContext: abi.encode(vaultSupplyActionContext),
+            paymentMethod: PaymentInfo.paymentMethodForPayment(payment, useQuotecall),
+            // Null address for OFFCHAIN payment.
+            paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, vaultSupply.chainId).token : address(0),
+            paymentTokenSymbol: payment.currency,
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, vaultSupply.chainId) : 0
+        });
+
+        return (quarkOperation, action);
+    }
+
+    function morphoVaultWithdraw(
+        MorphoVaultWithdraw memory vaultWithdraw,
+        PaymentInfo.Payment memory payment,
+        bool withdrawMax
+    ) internal pure returns (IQuarkWallet.QuarkOperation memory, Action memory) {
+        bytes[] memory scriptSources = new bytes[](1);
+        scriptSources[0] = type(MorphoVaultActions).creationCode;
+
+        Accounts.ChainAccounts memory accounts =
+            Accounts.findChainAccounts(vaultWithdraw.chainId, vaultWithdraw.chainAccountsList);
+
+        Accounts.AssetPositions memory assetPositions =
+            Accounts.findAssetPositions(vaultWithdraw.assetSymbol, accounts.assetPositionsList);
+
+        Accounts.QuarkState memory accountState =
+            Accounts.findQuarkState(vaultWithdraw.withdrawer, accounts.quarkStates);
+
+        bytes memory scriptCalldata;
+        if (withdrawMax) {
+            scriptCalldata = abi.encodeWithSelector(
+                MorphoVaultActions.redeemAll.selector,
+                MorphoInfo.getMorphoVaultAddress(vaultWithdraw.chainId, vaultWithdraw.assetSymbol)
+            );
+        } else {
+            scriptCalldata = abi.encodeWithSelector(
+                MorphoVaultActions.withdraw.selector,
+                MorphoInfo.getMorphoVaultAddress(vaultWithdraw.chainId, vaultWithdraw.assetSymbol),
+                assetPositions.asset,
+                vaultWithdraw.amount
+            );
+        }
+
+        // Construct QuarkOperation
+        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
+            nonce: accountState.quarkNextNonce,
+            scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoVaultActions).creationCode),
+            scriptCalldata: scriptCalldata,
+            scriptSources: scriptSources,
+            expiry: vaultWithdraw.blockTimestamp + STANDARD_EXPIRY_BUFFER
+        });
+
+        // Construct Action
+        WithdrawActionContext memory vaultWithdrawActionContext = WithdrawActionContext({
+            amount: vaultWithdraw.amount,
+            chainId: vaultWithdraw.chainId,
+            comet: address(0),
+            morphoVault: MorphoInfo.getMorphoVaultAddress(vaultWithdraw.chainId, vaultWithdraw.assetSymbol),
+            price: assetPositions.usdPrice,
+            token: assetPositions.asset,
+            assetSymbol: assetPositions.symbol
+        });
+
+        Action memory action = Actions.Action({
+            chainId: vaultWithdraw.chainId,
+            quarkAccount: vaultWithdraw.withdrawer,
+            actionType: ACTION_TYPE_WITHDRAW,
+            actionContext: abi.encode(vaultWithdrawActionContext),
+            paymentMethod: PaymentInfo.paymentMethodForPayment(payment, false),
+            // Null address for OFFCHAIN payment.
+            paymentToken: payment.isToken
+                ? PaymentInfo.knownToken(payment.currency, vaultWithdraw.chainId).token
+                : address(0),
+            paymentTokenSymbol: payment.currency,
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, vaultWithdraw.chainId) : 0
         });
 
         return (quarkOperation, action);
