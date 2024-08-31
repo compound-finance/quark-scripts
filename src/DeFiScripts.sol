@@ -9,9 +9,6 @@ import {QuarkScript} from "quark-core/src/QuarkScript.sol";
 
 import {IComet} from "./interfaces/IComet.sol";
 import {ICometRewards} from "./interfaces/ICometRewards.sol";
-import {IMorpho, MarketParams} from "./interfaces/IMorpho.sol";
-import {IMetaMorpho} from "./interfaces/IMetaMorpho.sol";
-import {IMorphoUniversalRewardsDistributor} from "./interfaces/IMorphoUniversalRewardsDistributor.sol";
 import {DeFiScriptErrors} from "./lib/DeFiScriptErrors.sol";
 
 contract CometSupplyActions {
