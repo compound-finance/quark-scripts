@@ -1131,7 +1131,6 @@ library Actions {
             scriptCalldata = abi.encodeWithSelector(
                 MorphoVaultActions.withdraw.selector,
                 MorphoInfo.getMorphoVaultAddress(vaultWithdraw.chainId, vaultWithdraw.assetSymbol),
-                assetPositions.asset,
                 vaultWithdraw.amount
             );
         }
