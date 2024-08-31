@@ -177,12 +177,10 @@ contract MorphoBlueActions {
             if (repayAmount > 0) {
                 IERC20(marketParams.loanToken).forceApprove(morpho, repayAmount);
                 IMorpho(morpho).repay(marketParams, repayAmount, 0, onBehalf, new bytes(0));
-            } else if (repayShares > 0) {
+            } else {
                 IERC20(marketParams.loanToken).forceApprove(morpho, type(uint256).max);
                 IMorpho(morpho).repay(marketParams, 0, repayShares, onBehalf, new bytes(0));
                 IERC20(marketParams.loanToken).forceApprove(morpho, 0);
-            } else {
-                revert InvalidInput();
             }
         }
         if (withdrawAmount > 0) {
