@@ -274,7 +274,6 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         QuarkBuilder builder = new QuarkBuilder();
         address account = address(0xa11ce);
         Accounts.ChainAccounts[] memory chainAccountsList = new Accounts.ChainAccounts[](1);
-        // Custom setup to hold ETH (for auto wrap later when supply WETH to comet)
         Accounts.AssetPositions[] memory assetPositionsList = new Accounts.AssetPositions[](3);
         assetPositionsList[0] = Accounts.AssetPositions({
             asset: eth_(),
