@@ -20,7 +20,7 @@ import {QuarkOperationHelper, ScriptType} from "./lib/QuarkOperationHelper.sol";
 import {DeFiScriptErrors} from "src/lib/DeFiScriptErrors.sol";
 
 import "src/DeFiScripts.sol";
-import "src/defi_integrations/MorphoScripts.sol";
+import "src/MorphoScripts.sol";
 
 /**
  * Tests for supplying assets to Morpho Vault

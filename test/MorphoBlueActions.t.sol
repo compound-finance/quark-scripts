@@ -19,7 +19,7 @@ import {YulHelper} from "./lib/YulHelper.sol";
 import {SignatureHelper} from "./lib/SignatureHelper.sol";
 import {QuarkOperationHelper, ScriptType} from "./lib/QuarkOperationHelper.sol";
 
-import "src/defi_integrations/MorphoScripts.sol";
+import "src/MorphoScripts.sol";
 
 /**
  * Tests for Morpho Blue market
