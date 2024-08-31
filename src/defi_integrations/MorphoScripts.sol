@@ -62,8 +62,6 @@ contract MorphoBlueActions {
     // To handle non-standard ERC20 tokens (i.e. USDT)
     using SafeERC20 for IERC20;
 
-    error InvalidInput();
-
     /**
      * @notice Borrow assets or shares from a Morpho blue market on behalf of `onBehalf` and send assets to `receiver`
      * @param morpho The address of the top level Morpho contract
@@ -108,12 +106,10 @@ contract MorphoBlueActions {
         if (assets > 0) {
             IERC20(marketParams.loanToken).forceApprove(morpho, assets);
             (assetsRepaid, sharesRepaid) = IMorpho(morpho).repay(marketParams, assets, shares, onBehalf, data);
-        } else if (shares > 0) {
+        } else {
             IERC20(marketParams.loanToken).forceApprove(morpho, type(uint256).max);
             (assetsRepaid, sharesRepaid) = IMorpho(morpho).repay(marketParams, assets, shares, onBehalf, data);
             IERC20(marketParams.loanToken).forceApprove(morpho, 0);
-        } else {
-            revert InvalidInput();
         }
     }
 
