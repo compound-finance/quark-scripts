@@ -17,160 +17,37 @@ contract MorphoVaultActions {
      * @param vault The address of the MetaMorpho vault
      * @param asset The address of the asset to deposit
      * @param amount The amount of the asset to deposit
-     * @return shares The amount of shares minted
      */
-    function deposit(address vault, address asset, uint256 amount) external returns (uint256) {
+    function deposit(address vault, address asset, uint256 amount) external {
         IERC20(asset).forceApprove(vault, amount);
-        return IMetaMorpho(vault).deposit({assets: amount, receiver: address(this)});
-    }
-
-    /**
-     * @notice Mint shares from a MetaMorpho vault
-     * @param vault The address of the MetaMorpho vault
-     * @param asset The address of the asset to mint
-     * @param shares The amount of shares to mint
-     * @return assets The amount of assets for shares
-     */
-    function mint(address vault, address asset, uint256 shares) external returns (uint256 assets) {
-        IERC20(asset).forceApprove(vault, type(uint256).max);
-        assets = IMetaMorpho(vault).mint({shares: shares, receiver: address(this)});
-        IERC20(asset).forceApprove(vault, 0);
+        IMetaMorpho(vault).deposit({assets: amount, receiver: address(this)});
     }
 
     /**
      * @notice Withdraw assets from a MetaMorpho vault
-     * @param vault The address of the MetaMorpho vault
-     * @param amount The amount of assets to withdraw
-     * @return shares The amount of shares burned
-     */
-    function withdraw(address vault, uint256 amount) external returns (uint256) {
-        return IMetaMorpho(vault).withdraw({assets: amount, receiver: address(this), owner: address(this)});
-    }
-
-    /**
-     * @notice Redeem shares from a MetaMorpho vault
-     * @param vault The address of the MetaMorpho vault
-     * @param shares The amount of shares to redeem
-     * @return assets The amount of assets redeemed
-     */
-    function redeem(address vault, uint256 shares) external returns (uint256) {
-        return IMetaMorpho(vault).redeem({shares: shares, receiver: address(this), owner: address(this)});
-    }
-
-    /**
-     * @notice Redeem all shares from a MetaMorpho vault
      * As suggested from MetaMorpho.sol doc, it is recommended to not use their
      * redeemMax function to retrieve max shares to redeem due to cost.
-     * Instead will just use balanceOf(vault) to optimistically redeem all shares.
+     * Instead will just use balanceOf(vault) to optimistically redeem all shares when amount is `type(uint256).max`.
      * @param vault The address of the MetaMorpho vault
+     * @param amount The amount of assets to withdraw, if it is `type(uint256).max`, it will withdraw max
      */
-    function redeemAll(address vault) external returns (uint256) {
-        return IMetaMorpho(vault).redeem({
-            shares: IMetaMorpho(vault).balanceOf(address(this)),
-            receiver: address(this),
-            owner: address(this)
-        });
+    function withdraw(address vault, uint256 amount) external {
+        if (amount == type(uint256).max) {
+            // Withdraw max
+            IMetaMorpho(vault).redeem({
+                shares: IMetaMorpho(vault).balanceOf(address(this)),
+                receiver: address(this),
+                owner: address(this)
+            });
+        } else {
+            IMetaMorpho(vault).withdraw({assets: amount, receiver: address(this), owner: address(this)});
+        }
     }
 }
 
 contract MorphoActions {
     // To handle non-standard ERC20 tokens (i.e. USDT)
     using SafeERC20 for IERC20;
-
-    /**
-     * @notice Borrow assets or shares from a Morpho blue market on behalf of `onBehalf` and send assets to `receiver`
-     * @param morpho The address of the top level Morpho contract
-     * @param marketParams The market parameters of the individual morpho blue market to borrow assets from
-     * @param assets The amount of assets to borrow
-     * @param shares The amount of shares to borrow
-     * @return assetsBorrowed The amount of assets borrowed
-     * @return sharesBorrowed The amount of shares minted
-     */
-    function borrow(address morpho, MarketParams memory marketParams, uint256 assets, uint256 shares)
-        external
-        returns (uint256, uint256)
-    {
-        return IMorpho(morpho).borrow({
-            marketParams: marketParams,
-            assets: assets,
-            shares: shares,
-            onBehalf: address(this),
-            receiver: address(this)
-        });
-    }
-
-    /**
-     * @notice Repay assets or shares in a Morpho blue market on behalf of `onBehalf`
-     * @param morpho The address of the top level Morpho contract
-     * @param marketParams The market parameters of the individual morpho blue market
-     * @param assets The amount of assets to repay
-     * @param shares The amount of shares to repay
-     * @param data Arbitrary data to pass to the `onMorphoRepay` callback. Pass empty data if not needed
-     * @return assetsRepaid The amount of assets repaid
-     * @return sharesRepaid The amount of shares burned
-     */
-    function repay(
-        address morpho,
-        MarketParams memory marketParams,
-        uint256 assets,
-        uint256 shares,
-        bytes calldata data
-    ) external returns (uint256 assetsRepaid, uint256 sharesRepaid) {
-        if (assets > 0) {
-            IERC20(marketParams.loanToken).forceApprove(morpho, assets);
-            (assetsRepaid, sharesRepaid) = IMorpho(morpho).repay({
-                marketParams: marketParams,
-                assets: assets,
-                shares: shares,
-                onBehalf: address(this),
-                data: data
-            });
-        } else {
-            IERC20(marketParams.loanToken).forceApprove(morpho, type(uint256).max);
-            (assetsRepaid, sharesRepaid) = IMorpho(morpho).repay({
-                marketParams: marketParams,
-                assets: assets,
-                shares: shares,
-                onBehalf: address(this),
-                data: data
-            });
-            IERC20(marketParams.loanToken).forceApprove(morpho, 0);
-        }
-    }
-
-    /**
-     * @notice Supply collateral to a Morpho blue market on behalf of `onBehalf`
-     * @param morpho The address of the top level Morpho contract
-     * @param marketParams The market parameters of the individual morpho blue market
-     * @param assets The amount of assets to supply as collateral
-     * @param data Arbitrary data to pass to the `onMorphoSupplyCollateral` callback. Pass empty data if not needed
-     */
-    function supplyCollateral(address morpho, MarketParams memory marketParams, uint256 assets, bytes calldata data)
-        external
-    {
-        IERC20(marketParams.collateralToken).forceApprove(morpho, assets);
-        IMorpho(morpho).supplyCollateral({
-            marketParams: marketParams,
-            assets: assets,
-            onBehalf: address(this),
-            data: data
-        });
-    }
-
-    /**
-     * @notice Withdraw collateral from a Morpho blue market on behalf of `onBehalf` to `receiver`
-     * @param morpho The address of the top level Morpho contract
-     * @param marketParams The market parameters of the individual morpho blue market
-     * @param assets The amount of assets to withdraw as collateral
-     */
-    function withdrawCollateral(address morpho, MarketParams memory marketParams, uint256 assets) external {
-        IMorpho(morpho).withdrawCollateral({
-            marketParams: marketParams,
-            assets: assets,
-            onBehalf: address(this),
-            receiver: address(this)
-        });
-    }
 
     /**
      * @notice Repay assets and withdraw collateral from a Morpho blue market on behalf of `onBehalf` and send collateral to `receiver`

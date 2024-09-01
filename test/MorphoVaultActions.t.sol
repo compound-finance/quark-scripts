@@ -67,27 +67,6 @@ contract MorphoVaultActionsTest is Test {
         assertApproxEqAbs(IERC4626(morphoVault).balanceOf(address(wallet)), 9713.4779e18, 0.01e18);
     }
 
-    function testMint() public {
-        vm.pauseGasMetering();
-        QuarkWallet wallet = QuarkWallet(factory.create(alice, address(0)));
-
-        deal(USDC, address(wallet), 10_000e6);
-
-        QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
-            wallet,
-            morphoVaultActionsScripts,
-            abi.encodeWithSelector(MorphoVaultActions.mint.selector, morphoVault, USDC, 9000e18),
-            ScriptType.ScriptSource
-        );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
-        assertEq(IERC20(USDC).balanceOf(address(wallet)), 10_000e6);
-        assertEq(IERC4626(morphoVault).balanceOf(address(wallet)), 0);
-        vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
-        assertApproxEqAbs(IERC20(USDC).balanceOf(address(wallet)), 734.5e6, 1e6);
-        assertEq(IERC4626(morphoVault).balanceOf(address(wallet)), 9000e18);
-    }
-
     function testWithdraw() public {
         vm.pauseGasMetering();
         QuarkWallet wallet = QuarkWallet(factory.create(alice, address(0)));
@@ -108,27 +87,5 @@ contract MorphoVaultActionsTest is Test {
         wallet.executeQuarkOperation(op, v, r, s);
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 10_000e6);
         assertApproxEqAbs(IERC4626(morphoVault).balanceOf(address(wallet)), 286.5e18, 1e18);
-    }
-
-    function testRedeem() public {
-        vm.pauseGasMetering();
-        QuarkWallet wallet = QuarkWallet(factory.create(alice, address(0)));
-
-        // Deal vault shares to wallet, ERC4262 is ERC20 compatible
-        deal(morphoVault, address(wallet), 10_000e18);
-
-        QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
-            wallet,
-            morphoVaultActionsScripts,
-            abi.encodeWithSelector(MorphoVaultActions.redeem.selector, morphoVault, 10_000e18),
-            ScriptType.ScriptSource
-        );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
-        assertEq(IERC20(USDC).balanceOf(address(wallet)), 0e6);
-        assertEq(IERC4626(morphoVault).balanceOf(address(wallet)), 10_000e18);
-        vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
-        assertApproxEqAbs(IERC20(USDC).balanceOf(address(wallet)), 10_294e6, 1e6);
-        assertEq(IERC4626(morphoVault).balanceOf(address(wallet)), 0e18);
     }
 }
