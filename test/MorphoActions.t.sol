@@ -24,19 +24,19 @@ import "src/MorphoScripts.sol";
 /**
  * Tests for Morpho Blue market
  */
-contract MorphoBlueActionsTest is Test {
+contract MorphoActionsTest is Test {
     QuarkWalletProxyFactory public factory;
     uint256 alicePrivateKey = 0xa11ce;
     address alice = vm.addr(alicePrivateKey);
 
     // Contracts address on mainnet
-    address constant morphoBlue = 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb;
+    address constant morpho = 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb;
     address constant adaptiveCurveIrm = 0x870aC11D48B15DB9a138Cf899d20F13F79Ba00BC;
     address constant morphoOracle = 0x48F7E36EB6B826B2dF4B2E630B62Cd25e89E40e2;
     address constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address constant wstETH = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
     MarketParams marketParams = MarketParams(USDC, wstETH, morphoOracle, adaptiveCurveIrm, 0.86e18);
-    bytes morphoBlueActionsScripts = new YulHelper().getCode("MorphoScripts.sol/MorphoBlueActions.json");
+    bytes MorphoActionsScripts = new YulHelper().getCode("MorphoScripts.sol/MorphoActions.json");
 
     function setUp() public {
         // Fork setup
@@ -56,16 +56,14 @@ contract MorphoBlueActionsTest is Test {
         deal(wstETH, address(wallet), 10e18);
 
         vm.startPrank(address(wallet));
-        IERC20(wstETH).approve(morphoBlue, 10e18);
-        IMorpho(morphoBlue).supplyCollateral(marketParams, 10e18, address(wallet), new bytes(0));
+        IERC20(wstETH).approve(morpho, 10e18);
+        IMorpho(morpho).supplyCollateral(marketParams, 10e18, address(wallet), new bytes(0));
         vm.stopPrank();
 
         QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
             wallet,
-            morphoBlueActionsScripts,
-            abi.encodeWithSelector(
-                MorphoBlueActions.borrow.selector, morphoBlue, marketParams, 1000e6, 0, address(wallet), address(wallet)
-            ),
+            MorphoActionsScripts,
+            abi.encodeWithSelector(MorphoActions.borrow.selector, morpho, marketParams, 1000e6, 0),
             ScriptType.ScriptSource
         );
         (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
@@ -82,16 +80,14 @@ contract MorphoBlueActionsTest is Test {
         deal(wstETH, address(wallet), 10e18);
 
         vm.startPrank(address(wallet));
-        IERC20(wstETH).approve(morphoBlue, 10e18);
-        IMorpho(morphoBlue).supplyCollateral(marketParams, 10e18, address(wallet), new bytes(0));
+        IERC20(wstETH).approve(morpho, 10e18);
+        IMorpho(morpho).supplyCollateral(marketParams, 10e18, address(wallet), new bytes(0));
         vm.stopPrank();
 
         QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
             wallet,
-            morphoBlueActionsScripts,
-            abi.encodeWithSelector(
-                MorphoBlueActions.borrow.selector, morphoBlue, marketParams, 0, 1e15, address(wallet), address(wallet)
-            ),
+            MorphoActionsScripts,
+            abi.encodeWithSelector(MorphoActions.borrow.selector, morpho, marketParams, 0, 1e15),
             ScriptType.ScriptSource
         );
         (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
@@ -108,28 +104,26 @@ contract MorphoBlueActionsTest is Test {
         deal(wstETH, address(wallet), 10e18);
 
         vm.startPrank(address(wallet));
-        IERC20(wstETH).approve(morphoBlue, 10e18);
-        IMorpho(morphoBlue).supplyCollateral(marketParams, 10e18, address(wallet), new bytes(0));
-        IMorpho(morphoBlue).borrow(marketParams, 1000e6, 0, address(wallet), address(wallet));
+        IERC20(wstETH).approve(morpho, 10e18);
+        IMorpho(morpho).supplyCollateral(marketParams, 10e18, address(wallet), new bytes(0));
+        IMorpho(morpho).borrow(marketParams, 1000e6, 0, address(wallet), address(wallet));
         vm.stopPrank();
 
         QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
             wallet,
-            morphoBlueActionsScripts,
-            abi.encodeWithSelector(
-                MorphoBlueActions.repay.selector, morphoBlue, marketParams, 1000e6, 0, address(wallet), new bytes(0)
-            ),
+            MorphoActionsScripts,
+            abi.encodeWithSelector(MorphoActions.repay.selector, morpho, marketParams, 1000e6, 0, new bytes(0)),
             ScriptType.ScriptSource
         );
         (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 1000e6);
         assertApproxEqAbs(
-            IMorpho(morphoBlue).position(marketId(marketParams), address(wallet)).borrowShares, 9.533e14, 0.1e14
+            IMorpho(morpho).position(marketId(marketParams), address(wallet)).borrowShares, 9.533e14, 0.1e14
         );
         vm.resumeGasMetering();
         wallet.executeQuarkOperation(op, v, r, s);
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 0);
-        assertApproxEqAbs(IMorpho(morphoBlue).position(marketId(marketParams), address(wallet)).borrowShares, 0, 0.1e14);
+        assertApproxEqAbs(IMorpho(morpho).position(marketId(marketParams), address(wallet)).borrowShares, 0, 0.1e14);
     }
 
     function testRepaySharesAmount() public {
@@ -140,35 +134,27 @@ contract MorphoBlueActionsTest is Test {
         deal(USDC, address(wallet), 100e6);
 
         vm.startPrank(address(wallet));
-        IERC20(wstETH).approve(morphoBlue, 10e18);
-        IMorpho(morphoBlue).supplyCollateral(marketParams, 10e18, address(wallet), new bytes(0));
-        IMorpho(morphoBlue).borrow(marketParams, 1000e6, 0, address(wallet), address(wallet));
+        IERC20(wstETH).approve(morpho, 10e18);
+        IMorpho(morpho).supplyCollateral(marketParams, 10e18, address(wallet), new bytes(0));
+        IMorpho(morpho).borrow(marketParams, 1000e6, 0, address(wallet), address(wallet));
         vm.stopPrank();
 
-        uint256 sharesRepay = IMorpho(morphoBlue).position(marketId(marketParams), address(wallet)).borrowShares;
+        uint256 sharesRepay = IMorpho(morpho).position(marketId(marketParams), address(wallet)).borrowShares;
         QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
             wallet,
-            morphoBlueActionsScripts,
-            abi.encodeWithSelector(
-                MorphoBlueActions.repay.selector,
-                morphoBlue,
-                marketParams,
-                0e6,
-                sharesRepay,
-                address(wallet),
-                new bytes(0)
-            ),
+            MorphoActionsScripts,
+            abi.encodeWithSelector(MorphoActions.repay.selector, morpho, marketParams, 0e6, sharesRepay, new bytes(0)),
             ScriptType.ScriptSource
         );
         (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 1100e6);
         assertApproxEqAbs(
-            IMorpho(morphoBlue).position(marketId(marketParams), address(wallet)).borrowShares, 9.533e14, 0.1e14
+            IMorpho(morpho).position(marketId(marketParams), address(wallet)).borrowShares, 9.533e14, 0.1e14
         );
         vm.resumeGasMetering();
         wallet.executeQuarkOperation(op, v, r, s);
         assertApproxEqAbs(IERC20(USDC).balanceOf(address(wallet)), 100e6, 0.01e6);
-        assertEq(IMorpho(morphoBlue).position(marketId(marketParams), address(wallet)).borrowShares, 0);
+        assertEq(IMorpho(morpho).position(marketId(marketParams), address(wallet)).borrowShares, 0);
     }
 
     function testSupplyCollateral() public {
@@ -179,24 +165,17 @@ contract MorphoBlueActionsTest is Test {
 
         QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
             wallet,
-            morphoBlueActionsScripts,
-            abi.encodeWithSelector(
-                MorphoBlueActions.supplyCollateral.selector,
-                morphoBlue,
-                marketParams,
-                10e18,
-                address(wallet),
-                new bytes(0)
-            ),
+            MorphoActionsScripts,
+            abi.encodeWithSelector(MorphoActions.supplyCollateral.selector, morpho, marketParams, 10e18, new bytes(0)),
             ScriptType.ScriptSource
         );
         (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 10e18);
-        assertEq(IMorpho(morphoBlue).position(marketId(marketParams), address(wallet)).collateral, 0);
+        assertEq(IMorpho(morpho).position(marketId(marketParams), address(wallet)).collateral, 0);
         vm.resumeGasMetering();
         wallet.executeQuarkOperation(op, v, r, s);
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 0);
-        assertEq(IMorpho(morphoBlue).position(marketId(marketParams), address(wallet)).collateral, 10e18);
+        assertEq(IMorpho(morpho).position(marketId(marketParams), address(wallet)).collateral, 10e18);
     }
 
     function testWithdrawCollateral() public {
@@ -206,30 +185,23 @@ contract MorphoBlueActionsTest is Test {
         deal(wstETH, address(wallet), 10e18);
 
         vm.startPrank(address(wallet));
-        IERC20(wstETH).approve(morphoBlue, 10e18);
-        IMorpho(morphoBlue).supplyCollateral(marketParams, 10e18, address(wallet), new bytes(0));
+        IERC20(wstETH).approve(morpho, 10e18);
+        IMorpho(morpho).supplyCollateral(marketParams, 10e18, address(wallet), new bytes(0));
         vm.stopPrank();
 
         QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
             wallet,
-            morphoBlueActionsScripts,
-            abi.encodeWithSelector(
-                MorphoBlueActions.withdrawCollateral.selector,
-                morphoBlue,
-                marketParams,
-                10e18,
-                address(wallet),
-                address(wallet)
-            ),
+            MorphoActionsScripts,
+            abi.encodeWithSelector(MorphoActions.withdrawCollateral.selector, morpho, marketParams, 10e18),
             ScriptType.ScriptSource
         );
         (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 0);
-        assertEq(IMorpho(morphoBlue).position(marketId(marketParams), address(wallet)).collateral, 10e18);
+        assertEq(IMorpho(morpho).position(marketId(marketParams), address(wallet)).collateral, 10e18);
         vm.resumeGasMetering();
         wallet.executeQuarkOperation(op, v, r, s);
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 10e18);
-        assertEq(IMorpho(morphoBlue).position(marketId(marketParams), address(wallet)).collateral, 0e18);
+        assertEq(IMorpho(morpho).position(marketId(marketParams), address(wallet)).collateral, 0e18);
     }
 
     function testRepayAndWithdrawCollateral() public {
@@ -240,24 +212,17 @@ contract MorphoBlueActionsTest is Test {
         deal(USDC, address(wallet), 100e6);
 
         vm.startPrank(address(wallet));
-        IERC20(wstETH).approve(morphoBlue, 10e18);
-        IMorpho(morphoBlue).supplyCollateral(marketParams, 10e18, address(wallet), new bytes(0));
-        IMorpho(morphoBlue).borrow(marketParams, 1000e6, 0, address(wallet), address(wallet));
+        IERC20(wstETH).approve(morpho, 10e18);
+        IMorpho(morpho).supplyCollateral(marketParams, 10e18, address(wallet), new bytes(0));
+        IMorpho(morpho).borrow(marketParams, 1000e6, 0, address(wallet), address(wallet));
         vm.stopPrank();
 
-        uint256 sharesRepay = IMorpho(morphoBlue).position(marketId(marketParams), address(wallet)).borrowShares;
+        uint256 sharesRepay = IMorpho(morpho).position(marketId(marketParams), address(wallet)).borrowShares;
         QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
             wallet,
-            morphoBlueActionsScripts,
+            MorphoActionsScripts,
             abi.encodeWithSelector(
-                MorphoBlueActions.repayAndWithdrawCollateral.selector,
-                morphoBlue,
-                marketParams,
-                0,
-                sharesRepay,
-                10e18,
-                address(wallet),
-                address(wallet)
+                MorphoActions.repayAndWithdrawCollateral.selector, morpho, marketParams, 0, sharesRepay, 10e18
             ),
             ScriptType.ScriptSource
         );
@@ -265,12 +230,12 @@ contract MorphoBlueActionsTest is Test {
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 1100e6);
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 0);
         assertApproxEqAbs(
-            IMorpho(morphoBlue).position(marketId(marketParams), address(wallet)).borrowShares, 9.533e14, 0.1e14
+            IMorpho(morpho).position(marketId(marketParams), address(wallet)).borrowShares, 9.533e14, 0.1e14
         );
         vm.resumeGasMetering();
         wallet.executeQuarkOperation(op, v, r, s);
         assertApproxEqAbs(IERC20(USDC).balanceOf(address(wallet)), 100e6, 0.01e6);
-        assertEq(IMorpho(morphoBlue).position(marketId(marketParams), address(wallet)).borrowShares, 0);
+        assertEq(IMorpho(morpho).position(marketId(marketParams), address(wallet)).borrowShares, 0);
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 10e18);
     }
 
@@ -282,26 +247,54 @@ contract MorphoBlueActionsTest is Test {
 
         QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
             wallet,
-            morphoBlueActionsScripts,
+            MorphoActionsScripts,
             abi.encodeWithSelector(
-                MorphoBlueActions.supplyCollateralAndBorrow.selector,
-                morphoBlue,
-                marketParams,
-                10e18,
-                1000e6,
-                address(wallet),
-                address(wallet)
+                MorphoActions.supplyCollateralAndBorrow.selector, morpho, marketParams, 10e18, 1000e6
             ),
             ScriptType.ScriptSource
         );
         (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 10e18);
-        assertEq(IMorpho(morphoBlue).position(marketId(marketParams), address(wallet)).collateral, 0);
+        assertEq(IMorpho(morpho).position(marketId(marketParams), address(wallet)).collateral, 0);
         vm.resumeGasMetering();
         wallet.executeQuarkOperation(op, v, r, s);
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 0);
-        assertEq(IMorpho(morphoBlue).position(marketId(marketParams), address(wallet)).collateral, 10e18);
+        assertEq(IMorpho(morpho).position(marketId(marketParams), address(wallet)).collateral, 10e18);
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 1000e6);
+    }
+
+    function testRepayMaxAndWithdrawCollateral() public {
+        vm.pauseGasMetering();
+        QuarkWallet wallet = QuarkWallet(factory.create(alice, address(0)));
+
+        deal(wstETH, address(wallet), 10e18);
+        deal(USDC, address(wallet), 100e6);
+
+        vm.startPrank(address(wallet));
+        IERC20(wstETH).approve(morpho, 10e18);
+        IMorpho(morpho).supplyCollateral(marketParams, 10e18, address(wallet), new bytes(0));
+        IMorpho(morpho).borrow(marketParams, 1000e6, 0, address(wallet), address(wallet));
+        vm.stopPrank();
+
+        QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
+            wallet,
+            MorphoActionsScripts,
+            abi.encodeWithSelector(
+                MorphoActions.repayAndWithdrawCollateral.selector, morpho, marketParams, type(uint256).max, 0, 10e18
+            ),
+            ScriptType.ScriptSource
+        );
+        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        assertEq(IERC20(USDC).balanceOf(address(wallet)), 1100e6);
+        assertEq(IERC20(wstETH).balanceOf(address(wallet)), 0);
+        assertApproxEqAbs(
+            IMorpho(morpho).position(marketId(marketParams), address(wallet)).borrowShares, 9.533e14, 0.1e14
+        );
+        vm.resumeGasMetering();
+        wallet.executeQuarkOperation(op, v, r, s);
+        assertApproxEqAbs(IERC20(USDC).balanceOf(address(wallet)), 100e6, 0.01e6);
+        assertEq(IMorpho(morpho).position(marketId(marketParams), address(wallet)).borrowShares, 0);
+        assertEq(IERC20(wstETH).balanceOf(address(wallet)), 10e18);
     }
 
     // Helper function to convert MarketParams to bytes32 Id
