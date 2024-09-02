@@ -62,7 +62,7 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(0.4e6, 0, 0, 1e18), // user does not have enough USDC
             cometPortfolios: emptyCometPortfolios_(),
-            morphoBluePortfolios: emptyMorphoBluePortfolios_()
+            morphoPortfolios: emptyMorphoPortfolios_()
         });
 
         vm.expectRevert(QuarkBuilder.MaxCostTooHigh.selector);
@@ -83,7 +83,7 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
             assetSymbols: Arrays.stringArray("USDC", "USDT", "WBTC", "WETH"),
             assetBalances: Arrays.uintArray(1e6, 0, 0, 0), // has 1 USDC
             cometPortfolios: emptyCometPortfolios_(),
-            morphoBluePortfolios: emptyMorphoBluePortfolios_()
+            morphoPortfolios: emptyMorphoPortfolios_()
         });
         chainPortfolios[1] = ChainPortfolio({
             chainId: 8453,
@@ -92,7 +92,7 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
             assetSymbols: Arrays.stringArray("USDC", "USDT", "WBTC", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 0, 0),
             cometPortfolios: emptyCometPortfolios_(),
-            morphoBluePortfolios: emptyMorphoBluePortfolios_()
+            morphoPortfolios: emptyMorphoPortfolios_()
         });
 
         QuarkBuilder builder = new QuarkBuilder();
@@ -200,7 +200,7 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
             assetSymbols: Arrays.stringArray("USDC", "ETH", "cbETH", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 0, 0),
             cometPortfolios: emptyCometPortfolios_(),
-            morphoBluePortfolios: emptyMorphoBluePortfolios_()
+            morphoPortfolios: emptyMorphoPortfolios_()
         });
         chainPortfolios[1] = ChainPortfolio({
             chainId: 8453,
@@ -209,7 +209,7 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
             assetSymbols: Arrays.stringArray("USDC", "ETH", "cbETH", "WETH"),
             assetBalances: Arrays.uintArray(0, 1e18, 0, 0),
             cometPortfolios: emptyCometPortfolios_(),
-            morphoBluePortfolios: emptyMorphoBluePortfolios_()
+            morphoPortfolios: emptyMorphoPortfolios_()
         });
 
         QuarkBuilder builder = new QuarkBuilder();
@@ -317,7 +317,7 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
             assetSymbols: Arrays.stringArray("USDC", "USDT", "WBTC", "WETH"),
             assetBalances: Arrays.uintArray(2e6, 0, 0, 0),
             cometPortfolios: emptyCometPortfolios_(),
-            morphoBluePortfolios: emptyMorphoBluePortfolios_()
+            morphoPortfolios: emptyMorphoPortfolios_()
         });
         chainPortfolios[1] = ChainPortfolio({
             chainId: 8453,
@@ -326,7 +326,7 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
             assetSymbols: Arrays.stringArray("USDC", "USDT", "WBTC", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 0, 0),
             cometPortfolios: emptyCometPortfolios_(),
-            morphoBluePortfolios: emptyMorphoBluePortfolios_()
+            morphoPortfolios: emptyMorphoPortfolios_()
         });
 
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
@@ -440,7 +440,7 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
             assetSymbols: Arrays.stringArray("USDC", "USDT", "WBTC", "WETH"),
             assetBalances: Arrays.uintArray(4e6, 0, 0, 0), // 4 USDC on mainnet
             cometPortfolios: emptyCometPortfolios_(),
-            morphoBluePortfolios: emptyMorphoBluePortfolios_()
+            morphoPortfolios: emptyMorphoPortfolios_()
         });
         chainPortfolios[1] = ChainPortfolio({
             chainId: 8453,
@@ -449,7 +449,7 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
             assetSymbols: Arrays.stringArray("USDC", "USDT", "WBTC", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 0, 0), // no assets on base
             cometPortfolios: emptyCometPortfolios_(),
-            morphoBluePortfolios: emptyMorphoBluePortfolios_()
+            morphoPortfolios: emptyMorphoPortfolios_()
         });
 
         QuarkBuilder.BuilderResult memory result = builder.morphoRepay(
@@ -609,13 +609,12 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
         maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 0.1e6});
 
-        MorphoBluePortfolio[] memory morphoBluePortfolios = new MorphoBluePortfolio[](1);
-        morphoBluePortfolios[0] = MorphoBluePortfolio({
+        MorphoPortfolio[] memory morphoPortfolios = new MorphoPortfolio[](1);
+        morphoPortfolios[0] = MorphoPortfolio({
             marketId: MorphoInfo.marketId(MorphoInfo.getMarketParams(1, "WBTC", "USDC")),
             loanToken: "USDC",
             collateralToken: "WBTC",
             borrowedBalance: 10e6,
-            borrowedShares: 5e18, // Random shares number for unit test
             collateralBalance: 1e8
         });
 
@@ -627,7 +626,7 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
             assetSymbols: Arrays.stringArray("USDC", "USDT", "WBTC", "WETH"),
             assetBalances: Arrays.uintArray(20e6, 0, 0, 0), // has 20 USDC
             cometPortfolios: emptyCometPortfolios_(),
-            morphoBluePortfolios: morphoBluePortfolios
+            morphoPortfolios: morphoPortfolios
         });
 
         QuarkBuilder builder = new QuarkBuilder();
@@ -738,13 +737,12 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
         maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 0.1e6});
         maxCosts[1] = PaymentInfo.PaymentMaxCost({chainId: 8453, amount: 0.1e6});
 
-        MorphoBluePortfolio[] memory morphoBluePortfolios = new MorphoBluePortfolio[](1);
-        morphoBluePortfolios[0] = MorphoBluePortfolio({
+        MorphoPortfolio[] memory morphoPortfolios = new MorphoPortfolio[](1);
+        morphoPortfolios[0] = MorphoPortfolio({
             marketId: MorphoInfo.marketId(MorphoInfo.getMarketParams(8453, "WETH", "USDC")),
             loanToken: "USDC",
             collateralToken: "WETH",
             borrowedBalance: 10e6,
-            borrowedShares: 5e18, // Random shares number for unit test
             collateralBalance: 1e8
         });
 
@@ -756,7 +754,7 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
             assetSymbols: Arrays.stringArray("USDC", "USDT", "WBTC", "WETH"),
             assetBalances: Arrays.uintArray(50e6, 0, 0, 0), // has 50 USDC
             cometPortfolios: emptyCometPortfolios_(),
-            morphoBluePortfolios: emptyMorphoBluePortfolios_()
+            morphoPortfolios: emptyMorphoPortfolios_()
         });
         chainPortfolios[1] = ChainPortfolio({
             chainId: 8453,
@@ -765,7 +763,7 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
             assetSymbols: Arrays.stringArray("USDC", "USDT", "WBTC", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 0, 0), // has 0 USDC on base
             cometPortfolios: emptyCometPortfolios_(),
-            morphoBluePortfolios: morphoBluePortfolios
+            morphoPortfolios: morphoPortfolios
         });
 
         QuarkBuilder builder = new QuarkBuilder();

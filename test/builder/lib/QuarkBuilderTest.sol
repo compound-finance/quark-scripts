@@ -95,21 +95,21 @@ contract QuarkBuilderTest {
             quarkStates: quarkStates_(address(0xa11ce), 12),
             assetPositionsList: assetPositionsList_(1, address(0xa11ce), uint256(amount / 2)),
             cometPositions: emptyCometPositions_(),
-            morphoBluePositions: emptyMorphoBluePositions_()
+            morphoPositions: emptyMorphoPositions_()
         });
         chainAccountsList[1] = Accounts.ChainAccounts({
             chainId: 8453,
             quarkStates: quarkStates_(address(0xb0b), 2),
             assetPositionsList: assetPositionsList_(8453, address(0xb0b), uint256(amount / 2)),
             cometPositions: emptyCometPositions_(),
-            morphoBluePositions: emptyMorphoBluePositions_()
+            morphoPositions: emptyMorphoPositions_()
         });
         chainAccountsList[2] = Accounts.ChainAccounts({
             chainId: 7777,
             quarkStates: quarkStates_(address(0xc0b), 5),
             assetPositionsList: assetPositionsList_(7777, address(0xc0b), uint256(0)),
             cometPositions: emptyCometPositions_(),
-            morphoBluePositions: emptyMorphoBluePositions_()
+            morphoPositions: emptyMorphoPositions_()
         });
         return chainAccountsList;
     }
@@ -119,9 +119,9 @@ contract QuarkBuilderTest {
         return emptyCometPositions;
     }
 
-    function emptyMorphoBluePositions_() internal pure returns (Accounts.MorphoBluePositions[] memory) {
-        Accounts.MorphoBluePositions[] memory emptyMorphoBluePositions = new Accounts.MorphoBluePositions[](0);
-        return emptyMorphoBluePositions;
+    function emptyMorphoPositions_() internal pure returns (Accounts.MorphoPositions[] memory) {
+        Accounts.MorphoPositions[] memory emptyMorphoPositions = new Accounts.MorphoPositions[](0);
+        return emptyMorphoPositions;
     }
 
     function quarkStates_() internal pure returns (Accounts.QuarkState[] memory) {
@@ -298,7 +298,7 @@ contract QuarkBuilderTest {
         string[] assetSymbols;
         uint256[] assetBalances;
         CometPortfolio[] cometPortfolios;
-        MorphoBluePortfolio[] morphoBluePortfolios;
+        MorphoPortfolio[] morphoPortfolios;
     }
 
     struct CometPortfolio {
@@ -309,12 +309,11 @@ contract QuarkBuilderTest {
         uint256[] collateralAssetBalances;
     }
 
-    struct MorphoBluePortfolio {
+    struct MorphoPortfolio {
         bytes32 marketId;
         string loanToken;
         string collateralToken;
         uint256 borrowedBalance;
-        uint256 borrowedShares;
         uint256 collateralBalance;
     }
 
@@ -323,9 +322,9 @@ contract QuarkBuilderTest {
         return emptyCometPortfolios;
     }
 
-    function emptyMorphoBluePortfolios_() internal pure returns (MorphoBluePortfolio[] memory) {
-        MorphoBluePortfolio[] memory emptyMorphoBluePortfolios = new MorphoBluePortfolio[](0);
-        return emptyMorphoBluePortfolios;
+    function emptyMorphoPortfolios_() internal pure returns (MorphoPortfolio[] memory) {
+        MorphoPortfolio[] memory emptyMorphoPortfolios = new MorphoPortfolio[](0);
+        return emptyMorphoPortfolios;
     }
 
     function chainAccountsFromChainPortfolios(ChainPortfolio[] memory chainPortfolios)
@@ -348,8 +347,8 @@ contract QuarkBuilderTest {
                 cometPositions: cometPositionsForCometPorfolios(
                     chainPortfolios[i].chainId, chainPortfolios[i].account, chainPortfolios[i].cometPortfolios
                     ),
-                morphoBluePositions: morphoBluePositionsForMorphoBluePortfolios(
-                    chainPortfolios[i].chainId, chainPortfolios[i].account, chainPortfolios[i].morphoBluePortfolios
+                morphoPositions: morphoPositionsForMorphoPortfolios(
+                    chainPortfolios[i].chainId, chainPortfolios[i].account, chainPortfolios[i].morphoPortfolios
                     )
             });
         }
@@ -393,37 +392,35 @@ contract QuarkBuilderTest {
         return cometPositions;
     }
 
-    function morphoBluePositionsForMorphoBluePortfolios(
+    function morphoPositionsForMorphoPortfolios(
         uint256 chainId,
         address account,
-        MorphoBluePortfolio[] memory morphoBluePortfolios
-    ) internal pure returns (Accounts.MorphoBluePositions[] memory) {
-        Accounts.MorphoBluePositions[] memory morphoBluePositions =
-            new Accounts.MorphoBluePositions[](morphoBluePortfolios.length);
+        MorphoPortfolio[] memory morphoPortfolios
+    ) internal pure returns (Accounts.MorphoPositions[] memory) {
+        Accounts.MorphoPositions[] memory morphoPositions = new Accounts.MorphoPositions[](morphoPortfolios.length);
 
-        for (uint256 i = 0; i < morphoBluePortfolios.length; ++i) {
-            MorphoBluePortfolio memory morphoBluePortfolio = morphoBluePortfolios[i];
-            (address loanAsset,,) = assetInfo(morphoBluePortfolio.loanToken, chainId);
-            (address collateralAsset,,) = assetInfo(morphoBluePortfolio.collateralToken, chainId);
+        for (uint256 i = 0; i < morphoPortfolios.length; ++i) {
+            MorphoPortfolio memory morphoPortfolio = morphoPortfolios[i];
+            (address loanAsset,,) = assetInfo(morphoPortfolio.loanToken, chainId);
+            (address collateralAsset,,) = assetInfo(morphoPortfolio.collateralToken, chainId);
 
-            morphoBluePositions[i] = Accounts.MorphoBluePositions({
-                marketId: morphoBluePortfolio.marketId,
+            morphoPositions[i] = Accounts.MorphoPositions({
+                marketId: morphoPortfolio.marketId,
                 morpho: MorphoInfo.getMorphoAddress(),
                 loanToken: loanAsset,
                 collateralToken: collateralAsset,
-                borrowPosition: Accounts.MorphoBlueBorrowPosition({
+                borrowPosition: Accounts.MorphoBorrowPosition({
                     accounts: Arrays.addressArray(account),
-                    borrowedBalances: Arrays.uintArray(morphoBluePortfolio.borrowedBalance),
-                    borrowedShares: Arrays.uintArray(morphoBluePortfolio.borrowedShares)
+                    borrowedBalances: Arrays.uintArray(morphoPortfolio.borrowedBalance)
                 }),
-                collateralPosition: Accounts.MorphoBlueCollateralPosition({
+                collateralPosition: Accounts.MorphoCollateralPosition({
                     accounts: Arrays.addressArray(account),
-                    collateralBalances: Arrays.uintArray(morphoBluePortfolio.collateralBalance)
+                    collateralBalances: Arrays.uintArray(morphoPortfolio.collateralBalance)
                 })
             });
         }
 
-        return morphoBluePositions;
+        return morphoPositions;
     }
 
     function baseAssetForComet(uint256 chainId, address comet) internal pure returns (address) {
