@@ -1534,6 +1534,8 @@ contract QuarkBuilder {
 
             if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_BORROW)) {
                 continue;
+            } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_MORPHO_BORROW)) {
+                continue;
             } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_MORPHO_REPAY)) {
                 Actions.MorphoRepayActionContext memory morphoRepayActionContext =
                     abi.decode(nonBridgeAction.actionContext, (Actions.MorphoRepayActionContext));
