@@ -10,7 +10,7 @@ import {QuarkBuilderTest, Accounts, PaymentInfo, QuarkBuilder} from "test/builde
 import {Actions} from "src/builder/Actions.sol";
 import {CCTPBridgeActions} from "src/BridgeScripts.sol";
 import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
-import {MorphoBlueActions} from "src/defi_integrations/MorphoScripts.sol";
+import {MorphoActions} from "src/MorphoScripts.sol";
 import {Paycall} from "src/Paycall.sol";
 import {Strings} from "src/builder/Strings.sol";
 import {Multicall} from "src/Multicall.sol";
@@ -120,7 +120,7 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
                                 address(CodeJarHelper.CODE_JAR_ADDRESS),
                                 uint256(0),
                                 /* script bytecode */
-                                keccak256(type(MorphoBlueActions).creationCode)
+                                keccak256(type(MorphoActions).creationCode)
                             )
                         )
                     )
@@ -131,20 +131,13 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[0].scriptCalldata,
             abi.encodeCall(
-                MorphoBlueActions.supplyCollateralAndBorrow,
-                (
-                    MorphoInfo.getMorphoAddress(),
-                    MorphoInfo.getMarketParams(1, "WBTC", "USDC"),
-                    1e8,
-                    1e6,
-                    address(0xa11ce),
-                    address(0xa11ce)
-                )
+                MorphoActions.supplyCollateralAndBorrow,
+                (MorphoInfo.getMorphoAddress(), MorphoInfo.getMarketParams(1, "WBTC", "USDC"), 1e8, 1e6)
             ),
-            "calldata is MorphoBlueActions.supplyCollateralAndBorrow(MorphoInfo.getMorphoAddress(), MorphoInfo.getMarketParams(1, WBTC, USDC), 1e8, 1e6, address(0xal1ce), address(0xal1ce));"
+            "calldata is MorphoActions.supplyCollateralAndBorrow(MorphoInfo.getMorphoAddress(), MorphoInfo.getMarketParams(1, WBTC, USDC), 1e8, 1e6, address(0xal1ce), address(0xal1ce));"
         );
         assertEq(result.quarkOperations[0].scriptSources.length, 1);
-        assertEq(result.quarkOperations[0].scriptSources[0], type(MorphoBlueActions).creationCode);
+        assertEq(result.quarkOperations[0].scriptSources[0], type(MorphoActions).creationCode);
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
@@ -226,7 +219,7 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
 
         address multicallAddress = CodeJarHelper.getCodeAddress(type(Multicall).creationCode);
         address wrapperActionsAddress = CodeJarHelper.getCodeAddress(type(WrapperActions).creationCode);
-        address morphoBlueActionsAddress = CodeJarHelper.getCodeAddress(type(MorphoBlueActions).creationCode);
+        address MorphoActionsAddress = CodeJarHelper.getCodeAddress(type(MorphoActions).creationCode);
         // Check the quark operations
         assertEq(result.quarkOperations.length, 1, "one merged operation");
         assertEq(
@@ -236,31 +229,24 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
         );
         address[] memory callContracts = new address[](2);
         callContracts[0] = wrapperActionsAddress;
-        callContracts[1] = morphoBlueActionsAddress;
+        callContracts[1] = MorphoActionsAddress;
         bytes[] memory callDatas = new bytes[](2);
         callDatas[0] = abi.encodeWithSelector(
             WrapperActions.wrapETH.selector, TokenWrapper.getKnownWrapperTokenPair(8453, "WETH").wrapper, 1e18
         );
         callDatas[1] = abi.encodeCall(
-            MorphoBlueActions.supplyCollateralAndBorrow,
-            (
-                MorphoInfo.getMorphoAddress(),
-                MorphoInfo.getMarketParams(8453, "WETH", "USDC"),
-                1e18,
-                1e6,
-                address(0xa11ce),
-                address(0xa11ce)
-            )
+            MorphoActions.supplyCollateralAndBorrow,
+            (MorphoInfo.getMorphoAddress(), MorphoInfo.getMarketParams(8453, "WETH", "USDC"), 1e18, 1e6)
         );
 
         assertEq(
             result.quarkOperations[0].scriptCalldata,
             abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
-            "calldata is Multicall.run([wrapperActionsAddress, morphoBlueActionsAddress], [WrapperActions.wrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 10e18), MorphoBlueActions.supplyCollateralAndBorrow(MorphoInfo.getMorphoAddress(), MorphoInfo.getMarketParams(8453, WETH, USDC), 1e18, 1e6, address(0xa11ce), address(0xa11ce))"
+            "calldata is Multicall.run([wrapperActionsAddress, MorphoActionsAddress], [WrapperActions.wrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 10e18), MorphoActions.supplyCollateralAndBorrow(MorphoInfo.getMorphoAddress(), MorphoInfo.getMarketParams(8453, WETH, USDC), 1e18, 1e6, address(0xa11ce), address(0xa11ce))"
         );
         assertEq(result.quarkOperations[0].scriptSources.length, 3);
         assertEq(result.quarkOperations[0].scriptSources[0], type(WrapperActions).creationCode);
-        assertEq(result.quarkOperations[0].scriptSources[1], type(MorphoBlueActions).creationCode);
+        assertEq(result.quarkOperations[0].scriptSources[1], type(MorphoActions).creationCode);
         assertEq(result.quarkOperations[0].scriptSources[2], type(Multicall).creationCode);
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
@@ -340,7 +326,7 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
             paymentUsdc_(maxCosts)
         );
 
-        address morphoBlueActionsAddress = CodeJarHelper.getCodeAddress(type(MorphoBlueActions).creationCode);
+        address MorphoActionsAddress = CodeJarHelper.getCodeAddress(type(MorphoActions).creationCode);
         address paycallAddress = paycallUsdc_(1);
 
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
@@ -357,24 +343,17 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
             result.quarkOperations[0].scriptCalldata,
             abi.encodeWithSelector(
                 Paycall.run.selector,
-                morphoBlueActionsAddress,
+                MorphoActionsAddress,
                 abi.encodeCall(
-                    MorphoBlueActions.supplyCollateralAndBorrow,
-                    (
-                        MorphoInfo.getMorphoAddress(),
-                        MorphoInfo.getMarketParams(1, "WBTC", "USDC"),
-                        1e8,
-                        1e6,
-                        address(0xa11ce),
-                        address(0xa11ce)
-                    )
+                    MorphoActions.supplyCollateralAndBorrow,
+                    (MorphoInfo.getMorphoAddress(), MorphoInfo.getMarketParams(1, "WBTC", "USDC"), 1e8, 1e6)
                 ),
                 0.1e6
             ),
-            "calldata is Paycall.run(MorphoBlueActions.supplyCollateralAndBorrow(MorphoInfo.getMorphoAddress(), MorphoInfo.getMarketParams(1, WBTC, USDC), 1e8, 1e6, address(0xa11ce), address(0xa11ce));"
+            "calldata is Paycall.run(MorphoActions.supplyCollateralAndBorrow(MorphoInfo.getMorphoAddress(), MorphoInfo.getMarketParams(1, WBTC, USDC), 1e8, 1e6, address(0xa11ce), address(0xa11ce));"
         );
         assertEq(result.quarkOperations[0].scriptSources.length, 2);
-        assertEq(result.quarkOperations[0].scriptSources[0], type(MorphoBlueActions).creationCode);
+        assertEq(result.quarkOperations[0].scriptSources[0], type(MorphoActions).creationCode);
         assertEq(
             result.quarkOperations[0].scriptSources[1],
             abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
@@ -459,7 +438,7 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
             paymentUsdc_(maxCosts)
         );
 
-        address morphoBlueActionsAddress = CodeJarHelper.getCodeAddress(type(MorphoBlueActions).creationCode);
+        address MorphoActionsAddress = CodeJarHelper.getCodeAddress(type(MorphoActions).creationCode);
         address paycallAddress = paycallUsdc_(1);
 
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
@@ -476,24 +455,17 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
             result.quarkOperations[0].scriptCalldata,
             abi.encodeWithSelector(
                 Paycall.run.selector,
-                morphoBlueActionsAddress,
+                MorphoActionsAddress,
                 abi.encodeCall(
-                    MorphoBlueActions.supplyCollateralAndBorrow,
-                    (
-                        MorphoInfo.getMorphoAddress(),
-                        MorphoInfo.getMarketParams(1, "WBTC", "USDC"),
-                        1e8,
-                        1e6,
-                        address(0xa11ce),
-                        address(0xa11ce)
-                    )
+                    MorphoActions.supplyCollateralAndBorrow,
+                    (MorphoInfo.getMorphoAddress(), MorphoInfo.getMarketParams(1, "WBTC", "USDC"), 1e8, 1e6)
                 ),
                 0.1e6
             ),
-            "calldata is Paycall.run(MorphoBlueActions.supplyCollateralAndBorrow(MorphoInfo.getMorphoAddress(), MorphoInfo.getMarketParams(1, WBTC, USDC), 1e8, 1e6, address(0xa11ce), address(0xa11ce));"
+            "calldata is Paycall.run(MorphoActions.supplyCollateralAndBorrow(MorphoInfo.getMorphoAddress(), MorphoInfo.getMarketParams(1, WBTC, USDC), 1e8, 1e6, address(0xa11ce), address(0xa11ce));"
         );
         assertEq(result.quarkOperations[0].scriptSources.length, 2);
-        assertEq(result.quarkOperations[0].scriptSources[0], type(MorphoBlueActions).creationCode);
+        assertEq(result.quarkOperations[0].scriptSources[0], type(MorphoActions).creationCode);
         assertEq(
             result.quarkOperations[0].scriptSources[1],
             abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
@@ -582,7 +554,7 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
         address paycallAddress = paycallUsdc_(1);
         address paycallAddressBase = paycallUsdc_(8453);
         address cctpBridgeActionsAddress = CodeJarHelper.getCodeAddress(type(CCTPBridgeActions).creationCode);
-        address morphoBlueActionsAddress = CodeJarHelper.getCodeAddress(type(MorphoBlueActions).creationCode);
+        address MorphoActionsAddress = CodeJarHelper.getCodeAddress(type(MorphoActions).creationCode);
 
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
 
@@ -632,24 +604,17 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
             result.quarkOperations[1].scriptCalldata,
             abi.encodeWithSelector(
                 Paycall.run.selector,
-                morphoBlueActionsAddress,
+                MorphoActionsAddress,
                 abi.encodeCall(
-                    MorphoBlueActions.supplyCollateralAndBorrow,
-                    (
-                        MorphoInfo.getMorphoAddress(),
-                        MorphoInfo.getMarketParams(8453, "cbETH", "WETH"),
-                        1e18,
-                        0.2e18,
-                        address(0xa11ce),
-                        address(0xa11ce)
-                    )
+                    MorphoActions.supplyCollateralAndBorrow,
+                    (MorphoInfo.getMorphoAddress(), MorphoInfo.getMarketParams(8453, "cbETH", "WETH"), 1e18, 0.2e18)
                 ),
                 1e6
             ),
-            "calldata is Paycall.run(MorphoBlueActions.supplyCollateralAndBorrow(MorphoInfo.getMorphoAddress(), MorphoInfo.getMarketParams(8453, cbETH, WETH), 1e18, 0.2e18, address(0xa11ce), address(0xa11ce));"
+            "calldata is Paycall.run(MorphoActions.supplyCollateralAndBorrow(MorphoInfo.getMorphoAddress(), MorphoInfo.getMarketParams(8453, cbETH, WETH), 1e18, 0.2e18, address(0xa11ce), address(0xa11ce));"
         );
         assertEq(result.quarkOperations[1].scriptSources.length, 2);
-        assertEq(result.quarkOperations[1].scriptSources[0], type(MorphoBlueActions).creationCode);
+        assertEq(result.quarkOperations[1].scriptSources[0], type(MorphoActions).creationCode);
         assertEq(
             result.quarkOperations[1].scriptSources[1],
             abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_8453, USDC_8453))
