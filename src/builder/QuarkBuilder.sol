@@ -1501,8 +1501,7 @@ contract QuarkBuilder {
                 chainId: withdrawIntent.chainId,
                 withdrawer: withdrawIntent.withdrawer
             }),
-            payment,
-            isMaxWithdraw
+            payment
         );
         List.addAction(actions, cometWithdrawAction);
         List.addQuarkOperation(quarkOperations, cometWithdrawQuarkOperation);

@@ -12,7 +12,7 @@ import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
 import {CometSupplyActions, TransferActions} from "src/DeFiScripts.sol";
 import {Paycall} from "src/Paycall.sol";
 import {MorphoInfo} from "src/builder/MorphoInfo.sol";
-import {MorphoVaultActions} from "src/defi_integrations/MorphoScripts.sol";
+import {MorphoVaultActions} from "src/MorphoScripts.sol";
 import {Multicall} from "src/Multicall.sol";
 import {Quotecall} from "src/Quotecall.sol";
 import {QuarkBuilder} from "src/builder/QuarkBuilder.sol";
@@ -74,7 +74,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
             quarkStates: quarkStates_(address(0xa11ce), 12),
             assetPositionsList: assetPositionsList_(1, address(0xa11ce), 0e6),
             cometPositions: emptyCometPositions_(),
-            morphoBluePositions: emptyMorphoBluePositions_(),
+            morphoPositions: emptyMorphoPositions_(),
             morphoVaultPositions: emptyMorphoVaultPositions_()
         });
         chainAccountsList[1] = Accounts.ChainAccounts({
@@ -82,7 +82,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
             quarkStates: quarkStates_(address(0xb0b), 2),
             assetPositionsList: assetPositionsList_(8453, address(0xb0b), 0e6),
             cometPositions: emptyCometPositions_(),
-            morphoBluePositions: emptyMorphoBluePositions_(),
+            morphoPositions: emptyMorphoPositions_(),
             morphoVaultPositions: emptyMorphoVaultPositions_()
         });
         chainAccountsList[2] = Accounts.ChainAccounts({
@@ -90,7 +90,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
             quarkStates: quarkStates_(address(0xc0b), 5),
             assetPositionsList: assetPositionsList_(7777, address(0xc0b), 100e6),
             cometPositions: emptyCometPositions_(),
-            morphoBluePositions: emptyMorphoBluePositions_(),
+            morphoPositions: emptyMorphoPositions_(),
             morphoVaultPositions: emptyMorphoVaultPositions_()
         });
         vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "USDC", 2e6, 0));
@@ -192,7 +192,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
             quarkStates: quarkStates_(address(0xa11ce), 12),
             assetPositionsList: assetPositionsList_(1, address(0xa11ce), uint256(3e6)),
             cometPositions: emptyCometPositions_(),
-            morphoBluePositions: emptyMorphoBluePositions_(),
+            morphoPositions: emptyMorphoPositions_(),
             morphoVaultPositions: emptyMorphoVaultPositions_()
         });
 
@@ -301,7 +301,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
             quarkStates: quarkStates_(address(0xa11ce), 12),
             assetPositionsList: assetPositionsList,
             cometPositions: emptyCometPositions_(),
-            morphoBluePositions: emptyMorphoBluePositions_(),
+            morphoPositions: emptyMorphoPositions_(),
             morphoVaultPositions: emptyMorphoVaultPositions_()
         });
 

@@ -14,7 +14,7 @@ library Accounts {
         AssetPositions[] assetPositionsList;
         CometPositions[] cometPositions;
         MorphoPositions[] morphoPositions;
-        MorphoVaultPosition[] morphoVaultPositions;
+        MorphoVaultPositions[] morphoVaultPositions;
     }
 
     // We map this to the Portfolio data structure that the client will already have.
