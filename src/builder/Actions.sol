@@ -14,7 +14,7 @@ import {
     CometWithdrawActions,
     TransferActions
 } from "../DeFiScripts.sol";
-import {MorphoBlueActions, MorphoRewardsActions, MorphoVaultActions} from "../defi_integrations/MorphoScripts.sol";
+import {MorphoActions, MorphoRewardsActions, MorphoVaultActions} from "../MorphoScripts.sol";
 import {WrapperActions} from "../WrapperScripts.sol";
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
 import {IMorpho, Position} from "../interfaces/IMorpho.sol";
@@ -168,9 +168,6 @@ library Actions {
         uint256 blockTimestamp;
         uint256 collateralAmount;
         string collateralAssetSymbol;
-        // Needed for handling max repay
-        bool payInShares;
-        uint256 borrowedShares;
     }
 
     // Note: Mainly to avoid stack too deep errors
@@ -860,7 +857,7 @@ library Actions {
         returns (IQuarkWallet.QuarkOperation memory, Action memory)
     {
         bytes[] memory scriptSources = new bytes[](1);
-        scriptSources[0] = type(MorphoBlueActions).creationCode;
+        scriptSources[0] = type(MorphoActions).creationCode;
 
         Accounts.ChainAccounts memory accounts =
             Accounts.findChainAccounts(borrowInput.chainId, borrowInput.chainAccountsList);
@@ -874,19 +871,17 @@ library Actions {
             Accounts.findAssetPositions(borrowInput.collateralAssetSymbol, accounts.assetPositionsList);
 
         bytes memory scriptCalldata = abi.encodeWithSelector(
-            MorphoBlueActions.supplyCollateralAndBorrow.selector,
+            MorphoActions.supplyCollateralAndBorrow.selector,
             MorphoInfo.getMorphoAddress(),
             MorphoInfo.getMarketParams(borrowInput.chainId, borrowInput.collateralAssetSymbol, borrowInput.assetSymbol),
             borrowInput.collateralAmount,
-            borrowInput.amount,
-            borrowInput.borrower,
-            borrowInput.borrower
+            borrowInput.amount
         );
 
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
             nonce: accountState.quarkNextNonce,
-            scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoBlueActions).creationCode),
+            scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoActions).creationCode),
             scriptCalldata: scriptCalldata,
             scriptSources: scriptSources,
             expiry: borrowInput.blockTimestamp + STANDARD_EXPIRY_BUFFER
@@ -941,7 +936,7 @@ library Actions {
         returns (IQuarkWallet.QuarkOperation memory, Action memory)
     {
         bytes[] memory scriptSources = new bytes[](1);
-        scriptSources[0] = type(MorphoBlueActions).creationCode;
+        scriptSources[0] = type(MorphoActions).creationCode;
 
         Accounts.ChainAccounts memory accounts =
             Accounts.findChainAccounts(repayInput.chainId, repayInput.chainAccountsList);
@@ -954,28 +949,19 @@ library Actions {
         Accounts.AssetPositions memory assetPositions =
             Accounts.findAssetPositions(repayInput.collateralAssetSymbol, accounts.assetPositionsList);
 
-        uint256 repayAmount = repayInput.amount;
-        uint256 repayShares = 0;
-
-        if (repayInput.payInShares) {
-            repayAmount = 0;
-            repayShares = repayInput.borrowedShares;
-        }
         bytes memory scriptCalldata = abi.encodeWithSelector(
-            MorphoBlueActions.repayAndWithdrawCollateral.selector,
+            MorphoActions.repayAndWithdrawCollateral.selector,
             MorphoInfo.getMorphoAddress(),
             MorphoInfo.getMarketParams(repayInput.chainId, repayInput.collateralAssetSymbol, repayInput.assetSymbol),
-            repayAmount,
-            repayShares,
-            repayInput.collateralAmount,
-            repayInput.repayer,
-            repayInput.repayer
+            repayInput.amount,
+            0,
+            repayInput.collateralAmount
         );
 
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
             nonce: accountState.quarkNextNonce,
-            scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoBlueActions).creationCode),
+            scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoActions).creationCode),
             scriptCalldata: scriptCalldata,
             scriptSources: scriptSources,
             expiry: repayInput.blockTimestamp + STANDARD_EXPIRY_BUFFER

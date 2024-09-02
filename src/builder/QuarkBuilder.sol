@@ -1259,9 +1259,7 @@ contract QuarkBuilder {
                 repayer: repayIntent.repayer,
                 blockTimestamp: repayIntent.blockTimestamp,
                 collateralAmount: repayIntent.collateralAmount,
-                collateralAssetSymbol: repayIntent.collateralAssetSymbol,
-                payInShares: isMaxRepay,
-                borrowedShares: repayShares
+                collateralAssetSymbol: repayIntent.collateralAssetSymbol
             }),
             payment
         );
