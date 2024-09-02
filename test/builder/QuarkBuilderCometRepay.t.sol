@@ -205,9 +205,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                     collateralTokens: collateralTokens,
                     comet: cometUsdc_(1),
                     price: USDC_PRICE,
-                    token: usdc_(1),
-                    morpho: address(0),
-                    morphoMarketId: bytes32(0)
+                    token: usdc_(1)
                 })
             ),
             "action context encoded from RepayActionContext"
@@ -324,9 +322,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                     collateralTokens: collateralTokens,
                     comet: cometWeth_(1),
                     price: WETH_PRICE,
-                    token: weth_(1),
-                    morpho: address(0),
-                    morphoMarketId: bytes32(0)
+                    token: weth_(1)
                 })
             ),
             "action context encoded from RepayActionContext"
@@ -451,9 +447,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                     collateralTokens: collateralTokens,
                     comet: cometUsdc_(1),
                     price: USDC_PRICE,
-                    token: usdc_(1),
-                    morpho: address(0),
-                    morphoMarketId: bytes32(0)
+                    token: usdc_(1)
                 })
             ),
             "action context encoded from RepayActionContext"
@@ -579,9 +573,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                     collateralTokens: collateralTokens,
                     comet: cometWeth_(1),
                     price: WETH_PRICE,
-                    token: weth_(1),
-                    morpho: address(0),
-                    morphoMarketId: bytes32(0)
+                    token: weth_(1)
                 })
             ),
             "action context encoded from RepayActionContext"
@@ -768,9 +760,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                     collateralTokens: collateralTokens,
                     comet: cometUsdc_(8453),
                     price: USDC_PRICE,
-                    token: usdc_(8453),
-                    morpho: address(0),
-                    morphoMarketId: bytes32(0)
+                    token: usdc_(8453)
                 })
             ),
             "action context encoded from RepayActionContext"
@@ -892,9 +882,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                     collateralTokens: collateralTokens,
                     comet: cometUsdc_(1),
                     price: USDC_PRICE,
-                    token: usdc_(1),
-                    morpho: address(0),
-                    morphoMarketId: bytes32(0)
+                    token: usdc_(1)
                 })
             ),
             "action context encoded from RepayActionContext"
@@ -1086,9 +1074,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
                     collateralTokens: collateralTokens,
                     comet: cometUsdc_(8453),
                     price: USDC_PRICE,
-                    token: usdc_(8453),
-                    morpho: address(0),
-                    morphoMarketId: bytes32(0)
+                    token: usdc_(8453)
                 })
             ),
             "action context encoded from RepayActionContext"

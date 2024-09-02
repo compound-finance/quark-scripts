@@ -1534,31 +1534,28 @@ contract QuarkBuilder {
 
             if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_BORROW)) {
                 continue;
+            } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_MORPHO_REPAY)) {
+                Actions.MorphoRepayActionContext memory morphoRepayActionContext =
+                    abi.decode(nonBridgeAction.actionContext, (Actions.MorphoRepayActionContext));
+                    if (morphoRepayActionContext.amount == type(uint256).max) {
+                        paymentTokenCost += morphoRepayMaxAmount(
+                                chainAccountsList,
+                                morphoRepayActionContext.chainId,
+                                morphoRepayActionContext.token,
+                                morphoRepayActionContext.collateralToken,
+                                account
+                            );
+                    } else {
+                        paymentTokenCost += morphoRepayActionContext.amount;
+                    }
             } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_REPAY)) {
                 Actions.RepayActionContext memory repayActionContext =
                     abi.decode(nonBridgeAction.actionContext, (Actions.RepayActionContext));
                 if (Strings.stringEqIgnoreCase(repayActionContext.assetSymbol, paymentTokenSymbol)) {
                     if (repayActionContext.amount == type(uint256).max) {
-                        uint256 repayAmount;
-                        if (repayActionContext.comet != address(0)) {
-                            // Comet repay
-                            repayAmount = cometRepayMaxAmount(
+                        paymentTokenCost += cometRepayMaxAmount(
                                 chainAccountsList, repayActionContext.chainId, repayActionContext.comet, account
                             );
-                        } else if (repayActionContext.morpho != address(0)) {
-                            // Morpho repay
-                            repayAmount = morphoRepayMaxAmount(
-                                chainAccountsList,
-                                repayActionContext.chainId,
-                                repayActionContext.token,
-                                repayActionContext.collateralTokens[0],
-                                account
-                            );
-                        } else {
-                            revert InvalidRepayActionContext();
-                        }
-
-                        paymentTokenCost += repayAmount;
                     } else {
                         paymentTokenCost += repayActionContext.amount;
                     }

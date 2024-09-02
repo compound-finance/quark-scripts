@@ -81,7 +81,7 @@ contract MorphoInfoTest is Test {
             if (marketKeys[i].chainId == chainId) {
                 MarketParams memory marketParams = MorphoInfo.getMarketParams(markets, marketKeys[i]);
                 (uint128 totalSupplyAssets,,,, uint128 lastUpdate,) =
-                    IMorpho(MorphoInfo.getMorphoAddress()).market(MorphoInfo.marketId(marketParams));
+                    IMorpho(MorphoInfo.getMorphoAddress(chainId)).market(MorphoInfo.marketId(marketParams));
                 assertGt(
                     totalSupplyAssets,
                     0,
