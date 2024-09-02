@@ -149,25 +149,25 @@ library Actions {
     }
 
     struct MorphoBorrow {
-        Accounts.ChainAccounts[] chainAccountsList;
-        string assetSymbol;
         uint256 amount;
-        uint256 chainId;
-        address borrower;
+        string assetSymbol;
         uint256 blockTimestamp;
+        address borrower;
+        Accounts.ChainAccounts[] chainAccountsList;
+        uint256 chainId;
         uint256 collateralAmount;
         string collateralAssetSymbol;
     }
 
     struct MorphoRepay {
-        Accounts.ChainAccounts[] chainAccountsList;
-        string assetSymbol;
         uint256 amount;
-        uint256 chainId;
-        address repayer;
+        string assetSymbol;
         uint256 blockTimestamp;
+        uint256 chainId;
+        Accounts.ChainAccounts[] chainAccountsList;
         uint256 collateralAmount;
         string collateralAssetSymbol;
+        address repayer;
     }
 
     // Note: Mainly to avoid stack too deep errors
@@ -867,7 +867,7 @@ library Actions {
         Accounts.AssetPositions memory borrowAssetPositions =
             Accounts.findAssetPositions(borrowInput.assetSymbol, accounts.assetPositionsList);
 
-        Accounts.AssetPositions memory assetPositions =
+        Accounts.AssetPositions memory collateralAssetPositions =
             Accounts.findAssetPositions(borrowInput.collateralAssetSymbol, accounts.assetPositionsList);
 
         bytes memory scriptCalldata = abi.encodeWithSelector(
@@ -893,9 +893,9 @@ library Actions {
         uint256[] memory collateralAmountsArray = new uint256[](1);
         collateralAmountsArray[0] = borrowInput.collateralAmount;
         uint256[] memory collateralTokenPricesArray = new uint256[](1);
-        collateralTokenPricesArray[0] = assetPositions.usdPrice;
+        collateralTokenPricesArray[0] = collateralAssetPositions.usdPrice;
         address[] memory collateralTokensArray = new address[](1);
-        collateralTokensArray[0] = assetPositions.asset;
+        collateralTokensArray[0] = collateralAssetPositions.asset;
         string[] memory collateralAssetSymbolsArray = new string[](1);
         collateralAssetSymbolsArray[0] = borrowInput.collateralAssetSymbol;
 
@@ -946,7 +946,7 @@ library Actions {
         Accounts.AssetPositions memory repayAssetPositions =
             Accounts.findAssetPositions(repayInput.assetSymbol, accounts.assetPositionsList);
 
-        Accounts.AssetPositions memory assetPositions =
+        Accounts.AssetPositions memory collateralAssetPositions =
             Accounts.findAssetPositions(repayInput.collateralAssetSymbol, accounts.assetPositionsList);
 
         bytes memory scriptCalldata = abi.encodeWithSelector(
@@ -975,9 +975,9 @@ library Actions {
         string[] memory collateralAssetSymbolsArray = new string[](1);
         collateralAssetSymbolsArray[0] = repayInput.collateralAssetSymbol;
         uint256[] memory collateralTokenPricesArray = new uint256[](1);
-        collateralTokenPricesArray[0] = assetPositions.usdPrice;
+        collateralTokenPricesArray[0] = collateralAssetPositions.usdPrice;
         address[] memory collateralTokensArray = new address[](1);
-        collateralTokensArray[0] = assetPositions.asset;
+        collateralTokensArray[0] = collateralAssetPositions.asset;
 
         RepayActionContext memory repayActionContext = RepayActionContext({
             amount: repayInput.amount,
