@@ -132,9 +132,9 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
             result.quarkOperations[0].scriptCalldata,
             abi.encodeCall(
                 MorphoActions.supplyCollateralAndBorrow,
-                (MorphoInfo.getMorphoAddress(), MorphoInfo.getMarketParams(1, "WBTC", "USDC"), 1e8, 1e6)
+                (MorphoInfo.getMorphoAddress(1), MorphoInfo.getMarketParams(1, "WBTC", "USDC"), 1e8, 1e6)
             ),
-            "calldata is MorphoActions.supplyCollateralAndBorrow(MorphoInfo.getMorphoAddress(), MorphoInfo.getMarketParams(1, WBTC, USDC), 1e8, 1e6, address(0xal1ce), address(0xal1ce));"
+            "calldata is MorphoActions.supplyCollateralAndBorrow(MorphoInfo.getMorphoAddress(1), MorphoInfo.getMarketParams(1, WBTC, USDC), 1e8, 1e6, address(0xal1ce), address(0xal1ce));"
         );
         assertEq(result.quarkOperations[0].scriptSources.length, 1);
         assertEq(result.quarkOperations[0].scriptSources[0], type(MorphoActions).creationCode);
@@ -146,39 +146,29 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
         assertEq(result.actions.length, 1, "one action");
         assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
         assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.actions[0].actionType, "BORROW", "action type is 'BORROW'");
+        assertEq(result.actions[0].actionType, "MORPHO_BORROW", "action type is 'MORPHO_BORROW'");
         assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
         assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
         assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
 
-        uint256[] memory collateralAmounts = new uint256[](1);
-        collateralAmounts[0] = 1e8;
-        uint256[] memory collateralTokenPrices = new uint256[](1);
-        collateralTokenPrices[0] = WBTC_PRICE;
-        address[] memory collateralTokens = new address[](1);
-        collateralTokens[0] = wbtc_(1);
-        string[] memory collateralAssetSymbols = new string[](1);
-        collateralAssetSymbols[0] = "WBTC";
-
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
-                Actions.BorrowActionContext({
+                Actions.MorphoBorrowActionContext({
                     amount: 1e6,
                     assetSymbol: "USDC",
                     chainId: 1,
-                    collateralAmounts: collateralAmounts,
-                    collateralTokenPrices: collateralTokenPrices,
-                    collateralTokens: collateralTokens,
-                    collateralAssetSymbols: collateralAssetSymbols,
-                    comet: address(0),
+                    collateralAmount: 1e8,
+                    collateralTokenPrice: WBTC_PRICE,
+                    collateralToken: wbtc_(1),
+                    collateralAssetSymbol: "WBTC",
                     price: USDC_PRICE,
                     token: usdc_(1),
-                    morpho: MorphoInfo.getMorphoAddress(),
+                    morpho: MorphoInfo.getMorphoAddress(1),
                     morphoMarketId: MorphoInfo.marketId(MorphoInfo.getMarketParams(1, "WBTC", "USDC"))
                 })
             ),
-            "action context encoded from BorrowActionContext"
+            "action context encoded from MorphoBorrowActionContext"
         );
 
         // TODO: Check the contents of the EIP712 data
@@ -236,13 +226,13 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
         );
         callDatas[1] = abi.encodeCall(
             MorphoActions.supplyCollateralAndBorrow,
-            (MorphoInfo.getMorphoAddress(), MorphoInfo.getMarketParams(8453, "WETH", "USDC"), 1e18, 1e6)
+            (MorphoInfo.getMorphoAddress(8453), MorphoInfo.getMarketParams(8453, "WETH", "USDC"), 1e18, 1e6)
         );
 
         assertEq(
             result.quarkOperations[0].scriptCalldata,
             abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
-            "calldata is Multicall.run([wrapperActionsAddress, MorphoActionsAddress], [WrapperActions.wrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 10e18), MorphoActions.supplyCollateralAndBorrow(MorphoInfo.getMorphoAddress(), MorphoInfo.getMarketParams(8453, WETH, USDC), 1e18, 1e6, address(0xa11ce), address(0xa11ce))"
+            "calldata is Multicall.run([wrapperActionsAddress, MorphoActionsAddress], [WrapperActions.wrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 10e18), MorphoActions.supplyCollateralAndBorrow(MorphoInfo.getMorphoAddress(8453), MorphoInfo.getMarketParams(8453, WETH, USDC), 1e18, 1e6, address(0xa11ce), address(0xa11ce))"
         );
         assertEq(result.quarkOperations[0].scriptSources.length, 3);
         assertEq(result.quarkOperations[0].scriptSources[0], type(WrapperActions).creationCode);
@@ -256,37 +246,29 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
         assertEq(result.actions.length, 1, "one action");
         assertEq(result.actions[0].chainId, 8453, "operation is on chainid 8453");
         assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.actions[0].actionType, "BORROW", "action type is 'BORROW'");
+        assertEq(result.actions[0].actionType, "MORPHO_BORROW", "action type is 'MORPHO_BORROW'");
         assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
         assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
         assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
-        uint256[] memory collateralAmounts = new uint256[](1);
-        collateralAmounts[0] = 1e18;
-        uint256[] memory collateralTokenPrices = new uint256[](1);
-        collateralTokenPrices[0] = WETH_PRICE;
-        address[] memory collateralTokens = new address[](1);
-        collateralTokens[0] = weth_(8453);
-        string[] memory collateralAssetSymbols = new string[](1);
-        collateralAssetSymbols[0] = "WETH";
+
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
-                Actions.BorrowActionContext({
+                Actions.MorphoBorrowActionContext({
                     amount: 1e6,
                     assetSymbol: "USDC",
                     chainId: 8453,
-                    collateralAmounts: collateralAmounts,
-                    collateralTokenPrices: collateralTokenPrices,
-                    collateralTokens: collateralTokens,
-                    collateralAssetSymbols: collateralAssetSymbols,
-                    comet: address(0),
+                    collateralAmount: 1e18,
+                    collateralTokenPrice: WETH_PRICE,
+                    collateralToken: weth_(8453),
+                    collateralAssetSymbol: "WETH",
                     price: USDC_PRICE,
                     token: usdc_(8453),
-                    morpho: MorphoInfo.getMorphoAddress(),
+                    morpho: MorphoInfo.getMorphoAddress(8453),
                     morphoMarketId: MorphoInfo.marketId(MorphoInfo.getMarketParams(8453, "WETH", "USDC"))
                 })
             ),
-            "action context encoded from BorrowActionContext"
+            "action context encoded from MorphoBorrowActionContext"
         );
 
         // TODO: Check the contents of the EIP712 data
@@ -346,11 +328,11 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
                 MorphoActionsAddress,
                 abi.encodeCall(
                     MorphoActions.supplyCollateralAndBorrow,
-                    (MorphoInfo.getMorphoAddress(), MorphoInfo.getMarketParams(1, "WBTC", "USDC"), 1e8, 1e6)
+                    (MorphoInfo.getMorphoAddress(1), MorphoInfo.getMarketParams(1, "WBTC", "USDC"), 1e8, 1e6)
                 ),
                 0.1e6
             ),
-            "calldata is Paycall.run(MorphoActions.supplyCollateralAndBorrow(MorphoInfo.getMorphoAddress(), MorphoInfo.getMarketParams(1, WBTC, USDC), 1e8, 1e6, address(0xa11ce), address(0xa11ce));"
+            "calldata is Paycall.run(MorphoActions.supplyCollateralAndBorrow(MorphoInfo.getMorphoAddress(1), MorphoInfo.getMarketParams(1, WBTC, USDC), 1e8, 1e6, address(0xa11ce), address(0xa11ce));"
         );
         assertEq(result.quarkOperations[0].scriptSources.length, 2);
         assertEq(result.quarkOperations[0].scriptSources[0], type(MorphoActions).creationCode);
@@ -366,39 +348,29 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
         assertEq(result.actions.length, 1, "one action");
         assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
         assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.actions[0].actionType, "BORROW", "action type is 'BORROW'");
+        assertEq(result.actions[0].actionType, "MORPHO_BORROW", "action type is 'MORPHO_BORROW'");
         assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
         assertEq(result.actions[0].paymentMaxCost, 0.1e6, "payment max is set to .1e6 in this test case");
 
-        uint256[] memory collateralAmounts = new uint256[](1);
-        collateralAmounts[0] = 1e8;
-        uint256[] memory collateralTokenPrices = new uint256[](1);
-        collateralTokenPrices[0] = WBTC_PRICE;
-        address[] memory collateralTokens = new address[](1);
-        collateralTokens[0] = wbtc_(1);
-        string[] memory collateralAssetSymbols = new string[](1);
-        collateralAssetSymbols[0] = "WBTC";
-
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
-                Actions.BorrowActionContext({
+                Actions.MorphoBorrowActionContext({
                     amount: 1e6,
                     assetSymbol: "USDC",
                     chainId: 1,
-                    collateralAmounts: collateralAmounts,
-                    collateralTokenPrices: collateralTokenPrices,
-                    collateralTokens: collateralTokens,
-                    collateralAssetSymbols: collateralAssetSymbols,
-                    comet: address(0),
+                    collateralAmount: 1e8,
+                    collateralTokenPrice: WBTC_PRICE,
+                    collateralToken:  wbtc_(1),
+                    collateralAssetSymbol: "WBTC",
                     price: USDC_PRICE,
                     token: usdc_(1),
-                    morpho: MorphoInfo.getMorphoAddress(),
+                    morpho: MorphoInfo.getMorphoAddress(1),
                     morphoMarketId: MorphoInfo.marketId(MorphoInfo.getMarketParams(1, "WBTC", "USDC"))
                 })
             ),
-            "action context encoded from BorrowActionContext"
+            "action context encoded from MorphoBorrowActionContext"
         );
 
         // TODO: Check the contents of the EIP712 data
@@ -458,7 +430,7 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
                 MorphoActionsAddress,
                 abi.encodeCall(
                     MorphoActions.supplyCollateralAndBorrow,
-                    (MorphoInfo.getMorphoAddress(), MorphoInfo.getMarketParams(1, "WBTC", "USDC"), 1e8, 1e6)
+                    (MorphoInfo.getMorphoAddress(1), MorphoInfo.getMarketParams(1, "WBTC", "USDC"), 1e8, 1e6)
                 ),
                 0.1e6
             ),
@@ -478,39 +450,28 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
         assertEq(result.actions.length, 1, "one action");
         assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
         assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.actions[0].actionType, "BORROW", "action type is 'BORROW'");
+        assertEq(result.actions[0].actionType, "MORPHO_BORROW", "action type is 'MORPHO_MORPHO_BORROW'");
         assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
         assertEq(result.actions[0].paymentMaxCost, 0.1e6, "payment max is set to .1e6 in this test case");
-
-        uint256[] memory collateralAmounts = new uint256[](1);
-        collateralAmounts[0] = 1e8;
-        uint256[] memory collateralTokenPrices = new uint256[](1);
-        collateralTokenPrices[0] = WBTC_PRICE;
-        address[] memory collateralTokens = new address[](1);
-        collateralTokens[0] = wbtc_(1);
-        string[] memory collateralAssetSymbols = new string[](1);
-        collateralAssetSymbols[0] = "WBTC";
-
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
-                Actions.BorrowActionContext({
+                Actions.MorphoBorrowActionContext({
                     amount: 1e6,
                     assetSymbol: "USDC",
                     chainId: 1,
-                    collateralAmounts: collateralAmounts,
-                    collateralTokenPrices: collateralTokenPrices,
-                    collateralTokens: collateralTokens,
-                    collateralAssetSymbols: collateralAssetSymbols,
-                    comet: address(0),
+                    collateralAmount: 1e8,
+                    collateralTokenPrice: WBTC_PRICE,
+                    collateralToken: wbtc_(1),
+                    collateralAssetSymbol: "WBTC",
                     price: USDC_PRICE,
                     token: usdc_(1),
-                    morpho: MorphoInfo.getMorphoAddress(),
+                    morpho: MorphoInfo.getMorphoAddress(1),
                     morphoMarketId: MorphoInfo.marketId(MorphoInfo.getMarketParams(1, "WBTC", "USDC"))
                 })
             ),
-            "action context encoded from BorrowActionContext"
+            "action context encoded from MorphoBorrowActionContext"
         );
 
         // TODO: Check the contents of the EIP712 data
@@ -607,11 +568,11 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
                 MorphoActionsAddress,
                 abi.encodeCall(
                     MorphoActions.supplyCollateralAndBorrow,
-                    (MorphoInfo.getMorphoAddress(), MorphoInfo.getMarketParams(8453, "cbETH", "WETH"), 1e18, 0.2e18)
+                    (MorphoInfo.getMorphoAddress(8453), MorphoInfo.getMarketParams(8453, "cbETH", "WETH"), 1e18, 0.2e18)
                 ),
                 1e6
             ),
-            "calldata is Paycall.run(MorphoActions.supplyCollateralAndBorrow(MorphoInfo.getMorphoAddress(), MorphoInfo.getMarketParams(8453, cbETH, WETH), 1e18, 0.2e18, address(0xa11ce), address(0xa11ce));"
+            "calldata is Paycall.run(MorphoActions.supplyCollateralAndBorrow(MorphoInfo.getMorphoAddress(8453), MorphoInfo.getMarketParams(8453, cbETH, WETH), 1e18, 0.2e18, address(0xa11ce), address(0xa11ce));"
         );
         assertEq(result.quarkOperations[1].scriptSources.length, 2);
         assertEq(result.quarkOperations[1].scriptSources[0], type(MorphoActions).creationCode);
@@ -651,39 +612,29 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
         // second action
         assertEq(result.actions[1].chainId, 8453, "operation is on chainid 8453");
         assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.actions[1].actionType, "BORROW", "action type is 'BORROW'");
+        assertEq(result.actions[1].actionType, "MORPHO_BORROW", "action type is 'MORPHO_BORROW'");
         assertEq(result.actions[1].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[1].paymentToken, USDC_8453, "payment token is USDC on Base");
         assertEq(result.actions[1].paymentMaxCost, 1e6, "payment should have max cost of 1e6");
 
-        uint256[] memory collateralAmounts = new uint256[](1);
-        collateralAmounts[0] = 1e18;
-        uint256[] memory collateralTokenPrices = new uint256[](1);
-        collateralTokenPrices[0] = CBETH_PRICE;
-        address[] memory collateralTokens = new address[](1);
-        collateralTokens[0] = cbEth_(8453);
-        string[] memory collateralAssetSymbols = new string[](1);
-        collateralAssetSymbols[0] = "cbETH";
-
         assertEq(
             result.actions[1].actionContext,
             abi.encode(
-                Actions.BorrowActionContext({
+                Actions.MorphoBorrowActionContext({
                     amount: 0.2e18,
                     assetSymbol: "WETH",
                     chainId: 8453,
-                    collateralAmounts: collateralAmounts,
-                    collateralTokenPrices: collateralTokenPrices,
-                    collateralTokens: collateralTokens,
-                    collateralAssetSymbols: collateralAssetSymbols,
-                    comet: address(0),
+                    collateralAmount: 1e18,
+                    collateralTokenPrice: CBETH_PRICE,
+                    collateralToken: cbEth_(8453),
+                    collateralAssetSymbol: "cbETH",
                     price: WETH_PRICE,
                     token: weth_(8453),
-                    morpho: MorphoInfo.getMorphoAddress(),
+                    morpho: MorphoInfo.getMorphoAddress(8453),
                     morphoMarketId: MorphoInfo.marketId(MorphoInfo.getMarketParams(8453, "cbETH", "WETH"))
                 })
             ),
-            "action context encoded from BorrowActionContext"
+            "action context encoded from MorphoBorrowActionContext"
         );
 
         // TODO: Check the contents of the EIP712 data

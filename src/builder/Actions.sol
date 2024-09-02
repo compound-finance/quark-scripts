@@ -26,10 +26,12 @@ import {List} from "./List.sol";
 library Actions {
     /* ===== Constants ===== */
     string constant ACTION_TYPE_BORROW = "BORROW";
+    string constant ACTION_TYPE_MORPHO_BORROW = "MORPHO_BORROW";
     string constant ACTION_TYPE_BRIDGE = "BRIDGE";
     string constant ACTION_TYPE_CLAIM_REWARDS = "CLAIM_REWARDS";
     string constant ACTION_TYPE_DRIP_TOKENS = "DRIP_TOKENS";
     string constant ACTION_TYPE_REPAY = "REPAY";
+    string constant ACTION_TYPE_MORPHO_REPAY = "MORPHO_REPAY";
     string constant ACTION_TYPE_SUPPLY = "SUPPLY";
     string constant ACTION_TYPE_SWAP = "SWAP";
     string constant ACTION_TYPE_TRANSFER = "TRANSFER";
@@ -209,8 +211,6 @@ library Actions {
         address comet;
         uint256 price;
         address token;
-        address morpho;
-        bytes32 morphoMarketId;
     }
 
     struct BridgeActionContext {
@@ -247,8 +247,6 @@ library Actions {
         address comet;
         uint256 price;
         address token;
-        address morpho;
-        bytes32 morphoMarketId;
     }
 
     struct SupplyActionContext {
@@ -313,6 +311,34 @@ library Actions {
         address token;
         string fromAssetSymbol;
         string toAssetSymbol;
+    }
+
+    struct MorphoRepayActionContext {
+        uint256 amount;
+        string assetSymbol;
+        uint256 chainId;
+        uint256 collateralAmount;
+        string collateralAssetSymbol;
+        uint256 collateralTokenPrice;
+        address collateralToken;
+        address morpho;
+        bytes32 morphoMarketId;
+        uint256 price;
+        address token;
+    }
+
+    struct MorphoBorrowActionContext {
+        uint256 amount;
+        string assetSymbol;
+        uint256 chainId;
+        uint256 collateralAmount;
+        string collateralAssetSymbol;
+        uint256 collateralTokenPrice;
+        address collateralToken;
+        address morpho;
+        bytes32 morphoMarketId;
+        uint256 price;
+        address token;
     }
 
     function constructBridgeOperations(
@@ -578,9 +604,7 @@ library Actions {
             collateralAssetSymbols: borrowInput.collateralAssetSymbols,
             comet: borrowInput.comet,
             price: borrowAssetPositions.usdPrice,
-            token: borrowAssetPositions.asset,
-            morpho: address(0),
-            morphoMarketId: bytes32(0)
+            token: borrowAssetPositions.asset
         });
         Action memory action = Actions.Action({
             chainId: borrowInput.chainId,
@@ -653,9 +677,7 @@ library Actions {
             collateralTokens: collateralTokens,
             comet: repayInput.comet,
             price: repayAssetPositions.usdPrice,
-            token: repayAssetPositions.asset,
-            morpho: address(0),
-            morphoMarketId: bytes32(0)
+            token: repayAssetPositions.asset
         });
         Action memory action = Actions.Action({
             chainId: repayInput.chainId,
@@ -872,7 +894,7 @@ library Actions {
 
         bytes memory scriptCalldata = abi.encodeWithSelector(
             MorphoActions.supplyCollateralAndBorrow.selector,
-            MorphoInfo.getMorphoAddress(),
+            MorphoInfo.getMorphoAddress(borrowInput.chainId),
             MorphoInfo.getMarketParams(borrowInput.chainId, borrowInput.collateralAssetSymbol, borrowInput.assetSymbol),
             borrowInput.collateralAmount,
             borrowInput.amount
@@ -887,30 +909,17 @@ library Actions {
             expiry: borrowInput.blockTimestamp + STANDARD_EXPIRY_BUFFER
         });
 
-        // Construct Action
-
-        // Single element arrays to fit to existing context format
-        uint256[] memory collateralAmountsArray = new uint256[](1);
-        collateralAmountsArray[0] = borrowInput.collateralAmount;
-        uint256[] memory collateralTokenPricesArray = new uint256[](1);
-        collateralTokenPricesArray[0] = collateralAssetPositions.usdPrice;
-        address[] memory collateralTokensArray = new address[](1);
-        collateralTokensArray[0] = collateralAssetPositions.asset;
-        string[] memory collateralAssetSymbolsArray = new string[](1);
-        collateralAssetSymbolsArray[0] = borrowInput.collateralAssetSymbol;
-
-        BorrowActionContext memory borrowActionContext = BorrowActionContext({
+        MorphoBorrowActionContext memory borrowActionContext = MorphoBorrowActionContext({
             assetSymbol: borrowInput.assetSymbol,
             amount: borrowInput.amount,
             chainId: borrowInput.chainId,
-            collateralAmounts: collateralAmountsArray,
-            collateralTokenPrices: collateralTokenPricesArray,
-            collateralTokens: collateralTokensArray,
-            collateralAssetSymbols: collateralAssetSymbolsArray,
-            comet: address(0),
+            collateralAmount: borrowInput.collateralAmount,
+            collateralTokenPrice: collateralAssetPositions.usdPrice,
+            collateralToken: collateralAssetPositions.asset,
+            collateralAssetSymbol: borrowInput.collateralAssetSymbol,
             price: borrowAssetPositions.usdPrice,
             token: borrowAssetPositions.asset,
-            morpho: MorphoInfo.getMorphoAddress(),
+            morpho: MorphoInfo.getMorphoAddress(borrowInput.chainId),
             morphoMarketId: MorphoInfo.marketId(
                 MorphoInfo.getMarketParams(borrowInput.chainId, borrowInput.collateralAssetSymbol, borrowInput.assetSymbol)
                 )
@@ -918,7 +927,7 @@ library Actions {
         Action memory action = Actions.Action({
             chainId: borrowInput.chainId,
             quarkAccount: borrowInput.borrower,
-            actionType: ACTION_TYPE_BORROW,
+            actionType: ACTION_TYPE_MORPHO_BORROW,
             actionContext: abi.encode(borrowActionContext),
             paymentMethod: PaymentInfo.paymentMethodForPayment(payment, false),
             // Null address for OFFCHAIN payment.
@@ -951,7 +960,7 @@ library Actions {
 
         bytes memory scriptCalldata = abi.encodeWithSelector(
             MorphoActions.repayAndWithdrawCollateral.selector,
-            MorphoInfo.getMorphoAddress(),
+            MorphoInfo.getMorphoAddress(repayInput.chainId),
             MorphoInfo.getMarketParams(repayInput.chainId, repayInput.collateralAssetSymbol, repayInput.assetSymbol),
             repayInput.amount,
             0,
@@ -967,30 +976,17 @@ library Actions {
             expiry: repayInput.blockTimestamp + STANDARD_EXPIRY_BUFFER
         });
 
-        // Construct Action
-
-        // Single element arrays to fit to existing context format
-        uint256[] memory collateralAmountsArray = new uint256[](1);
-        collateralAmountsArray[0] = repayInput.collateralAmount;
-        string[] memory collateralAssetSymbolsArray = new string[](1);
-        collateralAssetSymbolsArray[0] = repayInput.collateralAssetSymbol;
-        uint256[] memory collateralTokenPricesArray = new uint256[](1);
-        collateralTokenPricesArray[0] = collateralAssetPositions.usdPrice;
-        address[] memory collateralTokensArray = new address[](1);
-        collateralTokensArray[0] = collateralAssetPositions.asset;
-
-        RepayActionContext memory repayActionContext = RepayActionContext({
+        MorphoRepayActionContext memory morphoRepayActionContext = MorphoRepayActionContext({
             amount: repayInput.amount,
             assetSymbol: repayInput.assetSymbol,
             chainId: repayInput.chainId,
-            collateralAmounts: collateralAmountsArray,
-            collateralAssetSymbols: collateralAssetSymbolsArray,
-            collateralTokenPrices: collateralTokenPricesArray,
-            collateralTokens: collateralTokensArray,
-            comet: address(0),
+            collateralAmount: repayInput.collateralAmount,
+            collateralAssetSymbol: repayInput.collateralAssetSymbol,
+            collateralTokenPrice: collateralAssetPositions.usdPrice,
+            collateralToken: collateralAssetPositions.asset,
             price: repayAssetPositions.usdPrice,
             token: repayAssetPositions.asset,
-            morpho: MorphoInfo.getMorphoAddress(),
+            morpho: MorphoInfo.getMorphoAddress(repayInput.chainId),
             morphoMarketId: MorphoInfo.marketId(
                 MorphoInfo.getMarketParams(repayInput.chainId, repayInput.collateralAssetSymbol, repayInput.assetSymbol)
                 )
@@ -999,8 +995,8 @@ library Actions {
         Action memory action = Actions.Action({
             chainId: repayInput.chainId,
             quarkAccount: repayInput.repayer,
-            actionType: ACTION_TYPE_REPAY,
-            actionContext: abi.encode(repayActionContext),
+            actionType: ACTION_TYPE_MORPHO_REPAY,
+            actionContext: abi.encode(morphoRepayActionContext),
             paymentMethod: PaymentInfo.paymentMethodForPayment(payment, false),
             // Null address for OFFCHAIN payment.
             paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, repayInput.chainId).token : address(0),
@@ -1213,8 +1209,8 @@ library Actions {
         return ds[0];
     }
 
-    function emptyRepayActionContext() external pure returns (RepayActionContext memory) {
-        RepayActionContext[] memory rs = new RepayActionContext[](1);
+    function emptyMorphoRepayActionContext() external pure returns (MorphoRepayActionContext memory) {
+        MorphoRepayActionContext[] memory rs = new MorphoRepayActionContext[](1);
         return rs[0];
     }
 

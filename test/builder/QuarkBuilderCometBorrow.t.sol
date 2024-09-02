@@ -178,9 +178,7 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
                     collateralAssetSymbols: collateralAssetSymbols,
                     comet: cometUsdc_(1),
                     price: USDC_PRICE,
-                    token: usdc_(1),
-                    morpho: address(0),
-                    morphoMarketId: bytes32(0)
+                    token: usdc_(1)
                 })
             ),
             "action context encoded from BorrowActionContext"
@@ -295,9 +293,7 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
                     collateralAssetSymbols: collateralAssetSymbols,
                     comet: cometUsdc_(1),
                     price: USDC_PRICE,
-                    token: usdc_(1),
-                    morpho: address(0),
-                    morphoMarketId: bytes32(0)
+                    token: usdc_(1)
                 })
             ),
             "action context encoded from BorrowActionContext"
@@ -421,9 +417,7 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
                     collateralAssetSymbols: collateralAssetSymbols,
                     comet: cometUsdc_(1),
                     price: USDC_PRICE,
-                    token: usdc_(1),
-                    morpho: address(0),
-                    morphoMarketId: bytes32(0)
+                    token: usdc_(1)
                 })
             ),
             "action context encoded from BorrowActionContext"
@@ -546,9 +540,7 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
                     collateralAssetSymbols: collateralAssetSymbols,
                     comet: cometUsdc_(1),
                     price: USDC_PRICE,
-                    token: usdc_(1),
-                    morpho: address(0),
-                    morphoMarketId: bytes32(0)
+                    token: usdc_(1)
                 })
             ),
             "action context encoded from BorrowActionContext"
@@ -734,9 +726,7 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
                     collateralAssetSymbols: collateralAssetSymbols,
                     comet: cometUsdc_(1),
                     price: USDT_PRICE,
-                    token: usdt_(8453),
-                    morpho: address(0),
-                    morphoMarketId: bytes32(0)
+                    token: usdt_(8453)
                 })
             ),
             "action context encoded from BorrowActionContext"
@@ -922,9 +912,7 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
                     collateralAssetSymbols: collateralAssetSymbols,
                     comet: cometUsdc_(1),
                     price: WETH_PRICE,
-                    token: weth_(8453),
-                    morpho: address(0),
-                    morphoMarketId: bytes32(0)
+                    token: weth_(8453)
                 })
             ),
             "action context encoded from BorrowActionContext"

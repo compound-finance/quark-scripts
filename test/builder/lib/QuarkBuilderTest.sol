@@ -406,7 +406,7 @@ contract QuarkBuilderTest {
 
             morphoPositions[i] = Accounts.MorphoPositions({
                 marketId: morphoPortfolio.marketId,
-                morpho: MorphoInfo.getMorphoAddress(),
+                morpho: MorphoInfo.getMorphoAddress(chainId),
                 loanToken: loanAsset,
                 collateralToken: collateralAsset,
                 borrowPosition: Accounts.MorphoBorrowPosition({
