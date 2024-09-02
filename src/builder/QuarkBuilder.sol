@@ -82,12 +82,11 @@ contract QuarkBuilder {
         address loanToken,
         address collateralToken,
         address repayer
-    ) internal pure returns (uint256 amount, uint256 shares) {
-        (uint256 totalBorrowForAccount, uint256 totalBorrowedSharesForAccount) =
+    ) internal pure returns (uint256 amount) {
+        uint256 totalBorrowForAccount =
             Accounts.totalMorphoBorrowForAccount(chainAccountsList, chainId, loanToken, collateralToken, repayer);
         uint256 buffer = totalBorrowForAccount / 1000; // 0.1%
         amount = totalBorrowForAccount + buffer;
-        shares = totalBorrowedSharesForAccount;
     }
 
     function cometRepay(
@@ -1188,10 +1187,10 @@ contract QuarkBuilder {
         bool isMaxRepay = repayIntent.amount == type(uint256).max;
         bool useQuotecall = false; // never use Quotecall
 
+        // Only use repayAmount for purpose of bridging, will still use uint256 max for MorphoScript
         uint256 repayAmount = repayIntent.amount;
-        uint256 repayShares = 0; // Default to be 0 and not used, unless mas repay case
         if (isMaxRepay) {
-            (repayAmount, repayShares) = morphorRepayMaxAmount(
+            repayAmount = morphorRepayMaxAmount(
                 chainAccountsList,
                 repayIntent.chainId,
                 Accounts.findAssetPositions(repayIntent.assetSymbol, repayIntent.chainId, chainAccountsList).asset,
@@ -1548,7 +1547,7 @@ contract QuarkBuilder {
                             );
                         } else if (repayActionContext.morpho != address(0)) {
                             // Morpho repay
-                            (repayAmount,) = morphorRepayMaxAmount(
+                            repayAmount = morphorRepayMaxAmount(
                                 chainAccountsList,
                                 repayActionContext.chainId,
                                 repayActionContext.token,
