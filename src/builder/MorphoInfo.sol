@@ -11,7 +11,7 @@ library MorphoInfo {
 
     // Note: Current Morpho has same address across mainnet and base
     function getMorphoAddress(uint256 chainId) internal pure returns (address) {
-        if (chainId == 1 || chainId == 8453) {
+        if (chainId == 1 || chainId == 8453 || chainId == 11155111 || chainId == 84532) {
             return 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb;
         } else {
             revert UnsupportedChainId();

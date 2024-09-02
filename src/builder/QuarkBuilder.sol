@@ -1539,25 +1539,25 @@ contract QuarkBuilder {
             } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_MORPHO_REPAY)) {
                 Actions.MorphoRepayActionContext memory morphoRepayActionContext =
                     abi.decode(nonBridgeAction.actionContext, (Actions.MorphoRepayActionContext));
-                    if (morphoRepayActionContext.amount == type(uint256).max) {
-                        paymentTokenCost += morphoRepayMaxAmount(
-                                chainAccountsList,
-                                morphoRepayActionContext.chainId,
-                                morphoRepayActionContext.token,
-                                morphoRepayActionContext.collateralToken,
-                                account
-                            );
-                    } else {
-                        paymentTokenCost += morphoRepayActionContext.amount;
-                    }
+                if (morphoRepayActionContext.amount == type(uint256).max) {
+                    paymentTokenCost += morphoRepayMaxAmount(
+                        chainAccountsList,
+                        morphoRepayActionContext.chainId,
+                        morphoRepayActionContext.token,
+                        morphoRepayActionContext.collateralToken,
+                        account
+                    );
+                } else {
+                    paymentTokenCost += morphoRepayActionContext.amount;
+                }
             } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_REPAY)) {
                 Actions.RepayActionContext memory repayActionContext =
                     abi.decode(nonBridgeAction.actionContext, (Actions.RepayActionContext));
                 if (Strings.stringEqIgnoreCase(repayActionContext.assetSymbol, paymentTokenSymbol)) {
                     if (repayActionContext.amount == type(uint256).max) {
                         paymentTokenCost += cometRepayMaxAmount(
-                                chainAccountsList, repayActionContext.chainId, repayActionContext.comet, account
-                            );
+                            chainAccountsList, repayActionContext.chainId, repayActionContext.comet, account
+                        );
                     } else {
                         paymentTokenCost += repayActionContext.amount;
                     }
