@@ -580,7 +580,7 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
             nextNonce: 12,
             assetSymbols: Arrays.stringArray("USDC", "USDT", "WBTC", "WETH"),
             assetBalances: Arrays.uintArray(20e6, 0, 0, 0), // has 20 USDC
-            cometPortfolios: emptyCometPortfolios_(),      
+            cometPortfolios: emptyCometPortfolios_(),
             morphoPortfolios: morphoPortfolios,
             morphoVaultPortfolios: emptyMorphoVaultPortfolios_()
         });

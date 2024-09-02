@@ -160,8 +160,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
             quarkStates: quarkStates_(address(0xa11ce), 12),
             assetPositionsList: assetPositionsList_(1, address(0xa11ce), uint256(3e6)),
             cometPositions: emptyCometPositions_(),
-            morphoPortfolios: emptyMorphoPortfolios_(),
-            morphoVaultPortfolios: emptyMorphoVaultPortfolios_()
+            morphoPositions: emptyMorphoPositions_(),
+            morphoVaultPositions: emptyMorphoVaultPositions_()
         });
 
         QuarkBuilder.BuilderResult memory result = builder.cometSupply(
@@ -265,8 +265,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
             quarkStates: quarkStates_(address(0xa11ce), 12),
             assetPositionsList: assetPositionsList,
             cometPositions: emptyCometPositions_(),
-            morphoPortfolios: emptyMorphoPortfolios_(),
-            morphoVaultPortfolios: emptyMorphoVaultPortfolios_()
+            morphoPositions: emptyMorphoPositions_(),
+            morphoVaultPositions: emptyMorphoVaultPositions_()
         });
 
         QuarkBuilder.BuilderResult memory result =

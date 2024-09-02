@@ -371,7 +371,7 @@ library Actions {
         uint256 price;
         address token;
     }
-    
+
     struct MorphoVaultWithdrawContext {
         uint256 amount;
         string assetSymbol;
@@ -1111,11 +1111,11 @@ library Actions {
         return (quarkOperation, action);
     }
 
-    function morphoVaultWithdraw(
-        MorphoVaultWithdraw memory vaultWithdraw,
-        PaymentInfo.Payment memory payment,
-        bool withdrawMax
-    ) internal pure returns (IQuarkWallet.QuarkOperation memory, Action memory) {
+    function morphoVaultWithdraw(MorphoVaultWithdraw memory vaultWithdraw, PaymentInfo.Payment memory payment)
+        internal
+        pure
+        returns (IQuarkWallet.QuarkOperation memory, Action memory)
+    {
         bytes[] memory scriptSources = new bytes[](1);
         scriptSources[0] = type(MorphoVaultActions).creationCode;
 
@@ -1128,19 +1128,11 @@ library Actions {
         Accounts.QuarkState memory accountState =
             Accounts.findQuarkState(vaultWithdraw.withdrawer, accounts.quarkStates);
 
-        bytes memory scriptCalldata;
-        if (withdrawMax) {
-            scriptCalldata = abi.encodeWithSelector(
-                MorphoVaultActions.redeemAll.selector,
-                MorphoInfo.getMorphoVaultAddress(vaultWithdraw.chainId, vaultWithdraw.assetSymbol)
-            );
-        } else {
-            scriptCalldata = abi.encodeWithSelector(
-                MorphoVaultActions.withdraw.selector,
-                MorphoInfo.getMorphoVaultAddress(vaultWithdraw.chainId, vaultWithdraw.assetSymbol),
-                vaultWithdraw.amount
-            );
-        }
+        bytes memory scriptCalldata = abi.encodeWithSelector(
+            MorphoVaultActions.withdraw.selector,
+            MorphoInfo.getMorphoVaultAddress(vaultWithdraw.chainId, vaultWithdraw.assetSymbol),
+            vaultWithdraw.amount
+        );
 
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({

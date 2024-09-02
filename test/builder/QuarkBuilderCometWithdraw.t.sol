@@ -259,16 +259,16 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
             quarkStates: quarkStates_(address(0xa11ce), 12),
             assetPositionsList: assetPositionsList_(1, address(0xa11ce), 3e6), // 3 USDC on mainnet
             cometPositions: emptyCometPositions_(),
-            morphoPortfolios: emptyMorphoPortfolios_(),
-            morphoVaultPortfolios: emptyMorphoVaultPortfolios_()
+            morphoPositions: emptyMorphoPositions_(),
+            morphoVaultPositions: emptyMorphoVaultPositions_()
         });
         chainAccountsList[1] = Accounts.ChainAccounts({
             chainId: 8453,
             quarkStates: quarkStates_(address(0xb0b), 2),
             assetPositionsList: assetPositionsList_(8453, address(0xb0b), 0), // 0 USDC on base
             cometPositions: emptyCometPositions_(),
-            morphoPortfolios: emptyMorphoPortfolios_(),
-            morphoVaultPortfolios: emptyMorphoVaultPortfolios_()
+            morphoPositions: emptyMorphoPositions_(),
+            morphoVaultPositions: emptyMorphoVaultPositions_()
         });
 
         QuarkBuilder.BuilderResult memory result = builder.cometWithdraw(

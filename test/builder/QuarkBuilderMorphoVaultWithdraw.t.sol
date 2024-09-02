@@ -10,7 +10,7 @@ import {CCTPBridgeActions} from "src/BridgeScripts.sol";
 import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
 import {CometWithdrawActions, TransferActions} from "src/DeFiScripts.sol";
 import {MorphoInfo} from "src/builder/MorphoInfo.sol";
-import {MorphoVaultActions} from "src/defi_integrations/MorphoScripts.sol";
+import {MorphoVaultActions} from "src/MorphoScripts.sol";
 import {Paycall} from "src/Paycall.sol";
 import {QuarkBuilder} from "src/builder/QuarkBuilder.sol";
 
@@ -257,7 +257,7 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
             quarkStates: quarkStates_(address(0xa11ce), 12),
             assetPositionsList: assetPositionsList_(1, address(0xa11ce), 3e6), // 3 USDC on mainnet
             cometPositions: emptyCometPositions_(),
-            morphoBluePositions: emptyMorphoBluePositions_(),
+            morphoPositions: emptyMorphoPositions_(),
             morphoVaultPositions: emptyMorphoVaultPositions_()
         });
         chainAccountsList[1] = Accounts.ChainAccounts({
@@ -265,7 +265,7 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
             quarkStates: quarkStates_(address(0xb0b), 2),
             assetPositionsList: assetPositionsList_(8453, address(0xb0b), 0), // 0 USDC on base
             cometPositions: emptyCometPositions_(),
-            morphoBluePositions: emptyMorphoBluePositions_(),
+            morphoPositions: emptyMorphoPositions_(),
             morphoVaultPositions: emptyMorphoVaultPositions_()
         });
 
@@ -400,7 +400,7 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 0, 0),
             cometPortfolios: emptyCometPortfolios_(),
-            morphoBluePortfolios: emptyMorphoBluePortfolios_(),
+            morphoPortfolios: emptyMorphoPortfolios_(),
             morphoVaultPortfolios: morphoVaultPortfolios
         });
 
@@ -429,7 +429,7 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
                 Paycall.run.selector,
                 morphoVaultActionsAddress,
                 abi.encodeWithSelector(
-                    MorphoVaultActions.redeemAll.selector, MorphoInfo.getMorphoVaultAddress(1, "USDC")
+                    MorphoVaultActions.withdraw.selector, MorphoInfo.getMorphoVaultAddress(1, "USDC"), type(uint256).max
                 ),
                 0.1e6
             ),
@@ -487,7 +487,7 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 0, 0),
             cometPortfolios: emptyCometPortfolios_(),
-            morphoBluePortfolios: emptyMorphoBluePortfolios_(),
+            morphoPortfolios: emptyMorphoPortfolios_(),
             morphoVaultPortfolios: morphoVaultPortfolios
         });
 

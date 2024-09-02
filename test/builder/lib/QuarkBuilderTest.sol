@@ -368,7 +368,8 @@ contract QuarkBuilderTest {
                     chainPortfolios[i].chainId, chainPortfolios[i].account, chainPortfolios[i].cometPortfolios
                     ),
                 morphoPositions: morphoPositionsForMorphoPortfolios(
-                    chainPortfolios[i].chainId, chainPortfolios[i].account, chainPortfolios[i].morphoPortfolios,
+                    chainPortfolios[i].chainId, chainPortfolios[i].account, chainPortfolios[i].morphoPortfolios
+                    ),
                 morphoVaultPositions: morphoVaultPositionsForMorphoVaultPortfolios(
                     chainPortfolios[i].chainId, chainPortfolios[i].account, chainPortfolios[i].morphoVaultPortfolios
                     )
