@@ -362,7 +362,7 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
                     chainId: 1,
                     collateralAmount: 1e8,
                     collateralTokenPrice: WBTC_PRICE,
-                    collateralToken:  wbtc_(1),
+                    collateralToken: wbtc_(1),
                     collateralAssetSymbol: "WBTC",
                     price: USDC_PRICE,
                     token: usdc_(1),
