@@ -76,7 +76,7 @@ contract QuarkBuilder {
         return totalBorrowForAccount + buffer;
     }
 
-    function morphorRepayMaxAmount(
+    function morphoRepayMaxAmount(
         Accounts.ChainAccounts[] memory chainAccountsList,
         uint256 chainId,
         address loanToken,
@@ -1190,7 +1190,7 @@ contract QuarkBuilder {
         // Only use repayAmount for purpose of bridging, will still use uint256 max for MorphoScript
         uint256 repayAmount = repayIntent.amount;
         if (isMaxRepay) {
-            repayAmount = morphorRepayMaxAmount(
+            repayAmount = morphoRepayMaxAmount(
                 chainAccountsList,
                 repayIntent.chainId,
                 Accounts.findAssetPositions(repayIntent.assetSymbol, repayIntent.chainId, chainAccountsList).asset,
@@ -1547,7 +1547,7 @@ contract QuarkBuilder {
                             );
                         } else if (repayActionContext.morpho != address(0)) {
                             // Morpho repay
-                            repayAmount = morphorRepayMaxAmount(
+                            repayAmount = morphoRepayMaxAmount(
                                 chainAccountsList,
                                 repayActionContext.chainId,
                                 repayActionContext.token,
