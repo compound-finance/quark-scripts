@@ -13,3 +13,6 @@
 [submodule "lib/quark"]
 	path = lib/quark
 	url = git@github.com:compound-finance/quark
+[submodule "lib/swap-router-contracts"]
+	path = lib/swap-router-contracts
+	url = https://github.com/Uniswap/swap-router-contracts
