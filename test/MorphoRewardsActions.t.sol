@@ -103,8 +103,10 @@ contract MorphoRewardsActionsTest is Test {
         );
         (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         assertEq(IERC20(0xc55126051B22eBb829D00368f4B12Bde432de5Da).balanceOf(sampleAccount), 0);
+
         vm.resumeGasMetering();
         wallet.executeQuarkOperation(op, v, r, s);
+
         assertEq(IERC20(0xc55126051B22eBb829D00368f4B12Bde432de5Da).balanceOf(sampleAccount), 547387349612);
     }
 
@@ -124,8 +126,10 @@ contract MorphoRewardsActionsTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         assertEq(IERC20(0xc55126051B22eBb829D00368f4B12Bde432de5Da).balanceOf(sampleAccount), 0);
         assertEq(IERC20(0xdAC17F958D2ee523a2206206994597C13D831ec7).balanceOf(sampleAccount), 0);
+
         vm.resumeGasMetering();
         wallet.executeQuarkOperation(op, v, r, s);
+
         assertEq(IERC20(0xc55126051B22eBb829D00368f4B12Bde432de5Da).balanceOf(sampleAccount), 547387349612);
         assertEq(IERC20(0xdAC17F958D2ee523a2206206994597C13D831ec7).balanceOf(sampleAccount), 116);
     }

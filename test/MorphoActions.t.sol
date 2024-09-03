@@ -75,8 +75,10 @@ contract MorphoActionsTest is Test {
         assertApproxEqAbs(
             IMorpho(morpho).position(marketId(marketParams), address(wallet)).borrowShares, 9.533e14, 0.1e14
         );
+
         vm.resumeGasMetering();
         wallet.executeQuarkOperation(op, v, r, s);
+
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 200e6);
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 5e18);
     }
@@ -109,8 +111,10 @@ contract MorphoActionsTest is Test {
         assertApproxEqAbs(
             IMorpho(morpho).position(marketId(marketParams), address(wallet)).borrowShares, 9.533e14, 0.1e14
         );
+
         vm.resumeGasMetering();
         wallet.executeQuarkOperation(op, v, r, s);
+
         assertApproxEqAbs(IERC20(USDC).balanceOf(address(wallet)), 100e6, 0.05e6);
         assertEq(IMorpho(morpho).position(marketId(marketParams), address(wallet)).borrowShares, 0);
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 10e18);
@@ -134,8 +138,10 @@ contract MorphoActionsTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 10e18);
         assertEq(IMorpho(morpho).position(marketId(marketParams), address(wallet)).collateral, 0);
+
         vm.resumeGasMetering();
         wallet.executeQuarkOperation(op, v, r, s);
+
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 0);
         assertEq(IMorpho(morpho).position(marketId(marketParams), address(wallet)).collateral, 10e18);
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 1000e6);
@@ -169,8 +175,10 @@ contract MorphoActionsTest is Test {
         assertApproxEqAbs(
             IMorpho(morpho).position(marketId(marketParams), address(wallet)).borrowShares, 9.533e14, 0.1e14
         );
+
         vm.resumeGasMetering();
         wallet.executeQuarkOperation(op, v, r, s);
+
         assertApproxEqAbs(IERC20(USDC).balanceOf(address(wallet)), 100e6, 0.01e6);
         assertEq(IMorpho(morpho).position(marketId(marketParams), address(wallet)).borrowShares, 0);
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 10e18);

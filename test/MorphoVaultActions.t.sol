@@ -61,10 +61,15 @@ contract MorphoVaultActionsTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 10_000e6);
         assertEq(IERC4626(morphoVault).balanceOf(address(wallet)), 0);
+
         vm.resumeGasMetering();
         wallet.executeQuarkOperation(op, v, r, s);
+
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 0);
         assertApproxEqAbs(IERC4626(morphoVault).balanceOf(address(wallet)), 9713.4779e18, 0.01e18);
+        assertApproxEqAbs(
+            IERC4626(morphoVault).convertToAssets(IERC4626(morphoVault).balanceOf(address(wallet))), 10_000e6, 0.01e6
+        );
     }
 
     function testWithdraw() public {
@@ -83,8 +88,10 @@ contract MorphoVaultActionsTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 0e6);
         assertEq(IERC4626(morphoVault).balanceOf(address(wallet)), 10_000e18);
+
         vm.resumeGasMetering();
         wallet.executeQuarkOperation(op, v, r, s);
+
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 10_000e6);
         assertApproxEqAbs(IERC4626(morphoVault).balanceOf(address(wallet)), 286.5e18, 1e18);
     }
