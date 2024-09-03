@@ -87,7 +87,6 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
                     assetSymbol: "LINK",
                     chainId: 1,
                     comet: cometUsdc_(1),
-                    morphoVault: address(0),
                     price: LINK_PRICE,
                     token: link_(1)
                 })
@@ -153,7 +152,6 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
                     assetSymbol: "LINK",
                     chainId: 1,
                     comet: cometUsdc_(1),
-                    morphoVault: address(0),
                     price: LINK_PRICE,
                     token: link_(1)
                 })
@@ -219,7 +217,6 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
                     assetSymbol: "USDC",
                     chainId: 1,
                     comet: cometUsdc_(1),
-                    morphoVault: address(0),
                     price: USDC_PRICE,
                     token: usdc_(1)
                 })
@@ -370,7 +367,6 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
                     assetSymbol: "LINK",
                     chainId: 8453,
                     comet: cometUsdc_(8453),
-                    morphoVault: address(0),
                     price: LINK_PRICE,
                     token: link_(8453)
                 })
@@ -460,7 +456,6 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
                     assetSymbol: "USDC",
                     chainId: 1,
                     comet: cometUsdc_(1),
-                    morphoVault: address(0),
                     price: USDC_PRICE,
                     token: usdc_(1)
                 })

@@ -1824,6 +1824,13 @@ contract QuarkBuilder {
                 if (Strings.stringEqIgnoreCase(cometSupplyActionContext.assetSymbol, paymentTokenSymbol)) {
                     paymentTokenCost += cometSupplyActionContext.amount;
                 }
+            } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_MORPHO_VAULT_SUPPLY))
+            {
+                Actions.MorphoVaultSupplyContext memory morphoVaultSupplyActionContext =
+                    abi.decode(nonBridgeAction.actionContext, (Actions.MorphoVaultSupplyContext));
+                if (Strings.stringEqIgnoreCase(morphoVaultSupplyActionContext.assetSymbol, paymentTokenSymbol)) {
+                    paymentTokenCost += morphoVaultSupplyActionContext.amount;
+                }
             } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_SWAP)) {
                 Actions.SwapActionContext memory swapActionContext =
                     abi.decode(nonBridgeAction.actionContext, (Actions.SwapActionContext));
@@ -1847,6 +1854,10 @@ contract QuarkBuilder {
                     paymentTokenCost += wrapOrUnwrapActionContext.amount;
                 }
             } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_WITHDRAW)) {
+                continue;
+            } else if (
+                Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_MORPHO_VAULT_WITHDRAW)
+            ) {
                 continue;
             } else {
                 revert InvalidActionType();
