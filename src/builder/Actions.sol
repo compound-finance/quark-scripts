@@ -35,9 +35,11 @@ library Actions {
     string constant ACTION_TYPE_REPAY = "REPAY";
     string constant ACTION_TYPE_MORPHO_REPAY = "MORPHO_REPAY";
     string constant ACTION_TYPE_SUPPLY = "SUPPLY";
+    string constant ACTION_TYPE_MORPHO_VAULT_SUPPLY = "MORPHO_VAULT_SUPPLY";
     string constant ACTION_TYPE_SWAP = "SWAP";
     string constant ACTION_TYPE_TRANSFER = "TRANSFER";
     string constant ACTION_TYPE_WITHDRAW = "WITHDRAW";
+    string constant ACTION_TYPE_MORPHO_VAULT_WITHDRAW = "MORPHO_VAULT_WITHDRAW";
     string constant ACTION_TYPE_WITHDRAW_AND_BORROW = "WITHDRAW_AND_BORROW";
     string constant ACTION_TYPE_WRAP = "WRAP";
     string constant ACTION_TYPE_UNWRAP = "UNWRAP";
@@ -274,6 +276,14 @@ library Actions {
         string assetSymbol;
         uint256 chainId;
         address comet;
+        uint256 price;
+        address token;
+    }
+
+    struct MorphoVaultSupplyActionContext {
+        uint256 amount;
+        string assetSymbol;
+        uint256 chainId;
         address morphoVault;
         uint256 price;
         address token;
@@ -310,6 +320,14 @@ library Actions {
         string assetSymbol;
         uint256 chainId;
         address comet;
+        uint256 price;
+        address token;
+    }
+
+    struct MorphoVaultWithdrawActionContext {
+        uint256 amount;
+        string assetSymbol;
+        uint256 chainId;
         address morphoVault;
         uint256 price;
         address token;
@@ -775,7 +793,6 @@ library Actions {
             amount: cometSupply.amount,
             chainId: cometSupply.chainId,
             comet: cometSupply.comet,
-            morphoVault: address(0),
             price: assetPositions.usdPrice,
             token: assetPositions.asset,
             assetSymbol: assetPositions.symbol
@@ -836,7 +853,6 @@ library Actions {
             assetSymbol: cometWithdraw.assetSymbol,
             chainId: cometWithdraw.chainId,
             comet: cometWithdraw.comet,
-            morphoVault: address(0),
             price: assetPositions.usdPrice,
             token: assetPositions.asset
         });
@@ -1099,7 +1115,7 @@ library Actions {
         Action memory action = Actions.Action({
             chainId: vaultSupply.chainId,
             quarkAccount: vaultSupply.sender,
-            actionType: ACTION_TYPE_SUPPLY,
+            actionType: ACTION_TYPE_MORPHO_VAULT_SUPPLY,
             actionContext: abi.encode(vaultSupplyActionContext),
             paymentMethod: PaymentInfo.paymentMethodForPayment(payment, useQuotecall),
             // Null address for OFFCHAIN payment.
@@ -1156,7 +1172,7 @@ library Actions {
         Action memory action = Actions.Action({
             chainId: vaultWithdraw.chainId,
             quarkAccount: vaultWithdraw.withdrawer,
-            actionType: ACTION_TYPE_WITHDRAW,
+            actionType: ACTION_TYPE_MORPHO_VAULT_WITHDRAW,
             actionContext: abi.encode(vaultWithdrawActionContext),
             paymentMethod: PaymentInfo.paymentMethodForPayment(payment, false),
             // Null address for OFFCHAIN payment.

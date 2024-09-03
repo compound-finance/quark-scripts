@@ -159,7 +159,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         assertEq(result.actions.length, 1, "one action");
         assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
         assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.actions[0].actionType, "SUPPLY", "action type is 'SUPPLY'");
+        assertEq(result.actions[0].actionType, "MORPHO_VAULT_SUPPLY", "action type is 'MORPHO_VAULT_SUPPLY'");
         assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
         assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
         assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
@@ -245,7 +245,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         assertEq(result.actions.length, 1, "one action");
         assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
         assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.actions[0].actionType, "SUPPLY", "action type is 'SUPPLY'");
+        assertEq(result.actions[0].actionType, "MORPHO_VAULT_SUPPLY", "action type is 'MORPHO_VAULT_SUPPLY'");
         assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
         assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
         assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
@@ -341,7 +341,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         assertEq(result.actions.length, 1, "one action");
         assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
         assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.actions[0].actionType, "SUPPLY", "action type is 'SUPPLY'");
+        assertEq(result.actions[0].actionType, "MORPHO_VAULT_SUPPLY", "action type is 'MORPHO_VAULT_SUPPLY'");
         assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
         assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
         assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
@@ -408,7 +408,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         assertEq(result.actions.length, 1, "one action");
         assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
         assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.actions[0].actionType, "SUPPLY", "action type is 'SUPPLY'");
+        assertEq(result.actions[0].actionType, "MORPHO_VAULT_SUPPLY", "action type is 'MORPHO_VAULT_SUPPLY'");
         assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
         assertEq(result.actions[0].paymentMaxCost, 0.1e6, "payment max is set to .1e6 in this test case");
@@ -545,7 +545,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         // second action
         assertEq(result.actions[1].chainId, 8453, "second action is on chainid 8453");
         assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.actions[1].actionType, "SUPPLY", "action type is 'SUPPLY'");
+        assertEq(result.actions[1].actionType, "MORPHO_VAULT_SUPPLY", "action type is 'MORPHO_VAULT_SUPPLY'");
         assertEq(result.actions[1].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
         assertEq(result.actions[1].paymentToken, address(0), "payment token is null");
         assertEq(result.actions[1].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
@@ -682,7 +682,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         // second action
         assertEq(result.actions[1].chainId, 8453, "second action is on chainid 8453");
         assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.actions[1].actionType, "SUPPLY", "action type is 'SUPPLY'");
+        assertEq(result.actions[1].actionType, "MORPHO_VAULT_SUPPLY", "action type is 'MORPHO_VAULT_SUPPLY'");
         assertEq(result.actions[1].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
         assertEq(result.actions[1].paymentToken, address(0), "payment token is null");
         assertEq(result.actions[1].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
@@ -805,7 +805,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         // second action
         assertEq(result.actions[1].chainId, 8453, "operation is on chainid 8453");
         assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.actions[1].actionType, "SUPPLY", "action type is 'SUPPLY'");
+        assertEq(result.actions[1].actionType, "MORPHO_VAULT_SUPPLY", "action type is 'MORPHO_VAULT_SUPPLY'");
         assertEq(result.actions[1].paymentMethod, "QUOTE_CALL", "payment method is 'QUOTE_CALL'");
         assertEq(result.actions[1].paymentToken, USDC_8453, "payment token is USDC on Base");
         assertEq(result.actions[1].paymentMaxCost, 0.1e6, "payment should have max cost of 0.1e6");
@@ -928,7 +928,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         // second action
         assertEq(result.actions[1].chainId, 8453, "operation is on chainid 8453");
         assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.actions[1].actionType, "SUPPLY", "action type is 'SUPPLY'");
+        assertEq(result.actions[1].actionType, "MORPHO_VAULT_SUPPLY", "action type is 'MORPHO_VAULT_SUPPLY'");
         assertEq(result.actions[1].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[1].paymentToken, USDC_8453, "payment token is USDC on Base");
         assertEq(result.actions[1].paymentMaxCost, 0.1e6, "payment should have max cost of 0.1e6");

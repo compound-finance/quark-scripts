@@ -138,7 +138,6 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     assetSymbol: "USDC",
                     chainId: 1,
                     comet: COMET,
-                    morphoVault: address(0),
                     price: USDC_PRICE,
                     token: USDC_1
                 })
@@ -219,7 +218,6 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     assetSymbol: "USDC",
                     chainId: 1,
                     comet: COMET,
-                    morphoVault: address(0),
                     price: USDC_PRICE,
                     token: USDC_1
                 })
@@ -316,7 +314,6 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     assetSymbol: "WETH",
                     chainId: 1,
                     comet: COMET_ETH,
-                    morphoVault: address(0),
                     price: WETH_PRICE,
                     token: WETH_1
                 })
@@ -382,7 +379,6 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     assetSymbol: "USDC",
                     chainId: 1,
                     comet: COMET,
-                    morphoVault: address(0),
                     price: USDC_PRICE,
                     token: USDC_1
                 })
@@ -518,7 +514,6 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     assetSymbol: "USDC",
                     chainId: 8453,
                     comet: COMET,
-                    morphoVault: address(0),
                     price: USDC_PRICE,
                     token: USDC_8453
                 })
@@ -654,7 +649,6 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     assetSymbol: "USDC",
                     chainId: 8453,
                     comet: COMET,
-                    morphoVault: address(0),
                     price: USDC_PRICE,
                     token: USDC_8453
                 })
@@ -776,7 +770,6 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     assetSymbol: "USDC",
                     chainId: 8453,
                     comet: COMET,
-                    morphoVault: address(0),
                     price: USDC_PRICE,
                     token: USDC_8453
                 })
@@ -898,7 +891,6 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     assetSymbol: "USDC",
                     chainId: 8453,
                     comet: COMET,
-                    morphoVault: address(0),
                     price: USDC_PRICE,
                     token: USDC_8453
                 })
