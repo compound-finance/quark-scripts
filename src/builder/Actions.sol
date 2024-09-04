@@ -25,11 +25,13 @@ import {List} from "./List.sol";
 
 library Actions {
     /* ===== Constants ===== */
+    // TODO: Rename ACTION_TYPE_BORROW to ACTION_TYPE_COMET_BORROW, as now we have more than one borrow market
     string constant ACTION_TYPE_BORROW = "BORROW";
     string constant ACTION_TYPE_MORPHO_BORROW = "MORPHO_BORROW";
     string constant ACTION_TYPE_BRIDGE = "BRIDGE";
     string constant ACTION_TYPE_CLAIM_REWARDS = "CLAIM_REWARDS";
     string constant ACTION_TYPE_DRIP_TOKENS = "DRIP_TOKENS";
+    // TODO: Rename ACTION_TYPE_REPAY to ACTION_TYPE_COMET_REPAY, as now we have more than one borrow market
     string constant ACTION_TYPE_REPAY = "REPAY";
     string constant ACTION_TYPE_MORPHO_REPAY = "MORPHO_REPAY";
     string constant ACTION_TYPE_SUPPLY = "SUPPLY";
