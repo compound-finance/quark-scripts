@@ -44,7 +44,7 @@ contract RecurringSwapTest is Test {
     address constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address constant COMP = 0xc00e94Cb662C3520282E6f5717214004A7f26888;
-    // Uniswap router02 info on mainnet
+    // Uniswap SwapRouter02 info on mainnet
     address constant UNISWAP_ROUTER = 0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45;
     // Price feeds
     address constant ETH_USD_PRICE_FEED = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419; // Price is $1790.45
