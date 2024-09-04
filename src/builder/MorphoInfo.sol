@@ -319,7 +319,7 @@ library MorphoInfo {
     }
 
     // Morpho vaults
-    // Note: Potential can add other key (i.e. curator) for supporting multiple vaults with same assets
+    // Note: Potentially can add other key (i.e. curator) for supporting multiple vaults with same assets
     struct MorphoVaultKey {
         uint256 chainId;
         string supplyAssetSymbol;
