@@ -12,5 +12,8 @@ via_ir = true
 optimizer = true
 optimizer_runs = 100000000
 
+[fmt]
+ignore = ["src/vendor/**/*"]
+
 bytecode_hash = "none"
 cbor_metadata = false

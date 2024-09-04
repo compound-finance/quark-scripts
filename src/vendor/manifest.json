@@ -1,6 +1,6 @@
 {
     "files": {
-        "uniswap_v3_periphery/PoolAddress.sol": {
+        "uniswap-v3-periphery/PoolAddress.sol": {
             "source": {
                 "git": {
                     "repo": "git@github.com:Uniswap/v3-periphery.git",
@@ -90,7 +90,7 @@
                     "commit": "dd2c5ef1a71d821d97f199573b04df71dcab6172",
                     "path": "contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol"
                 }
-            }, 
+            },
             "patches": [
                 {
                     "oldStart": 1,
@@ -131,7 +131,73 @@
                     ]
                   }
             ]
-        }, 
+        },
+        "uniswap-swap-router-contracts/IApproveAndCall.sol": {
+            "source": {
+                "git": {
+                    "repo": "git@github.com:Uniswap/swap-router-contracts.git",
+                    "commit": "c696aada49b33c8e764e6f0bd0a0a56bd8aa455f",
+                    "path": "contracts/interfaces/IApproveAndCall.sol"
+                }
+            },
+            "patches": [
+                {
+                  "oldStart": 1,
+                  "oldLines": 6,
+                  "newStart": 1,
+                  "newLines": 6,
+                  "lines": [
+                    " // SPDX-License-Identifier: GPL-2.0-or-later",
+                    "-pragma solidity >=0.7.6;",
+                    "+pragma solidity =0.7.6;",
+                    " pragma abicoder v2;",
+                    " ",
+                    " interface IApproveAndCall {",
+                    "     enum ApprovalType {NOT_REQUIRED, MAX, MAX_MINUS_ONE, ZERO_THEN_MAX, ZERO_THEN_MAX_MINUS_ONE}"
+                  ]
+                }
+            ]
+        },
+        "uniswap-swap-router-contracts/ISwapRouter02.sol": {
+            "source": {
+                "git": {
+                    "repo": "git@github.com:Uniswap/swap-router-contracts.git",
+                    "commit": "c696aada49b33c8e764e6f0bd0a0a56bd8aa455f",
+                    "path": "contracts/interfaces/ISwapRouter02.sol"
+                }
+            },
+            "patches": [
+                {
+                  "oldStart": 1,
+                  "oldLines": 16,
+                  "newStart": 1,
+                  "newLines": 15,
+                  "lines": [
+                    " // SPDX-License-Identifier: GPL-2.0-or-later",
+                    " pragma solidity >=0.7.5;",
+                    " pragma abicoder v2;",
+                    " ",
+                    "-import \"@uniswap/v3-periphery/contracts/interfaces/ISelfPermit.sol\";",
+                    "+import '@uniswap/v3-periphery/contracts/interfaces/ISelfPermit.sol';",
+                    " ",
+                    "-import \"@uniswap/swap-router-contracts/contracts/interfaces/IV2SwapRouter.sol\";",
+                    "-import \"@uniswap/swap-router-contracts/contracts/interfaces/IV3SwapRouter.sol\";",
+                    "-import \"@uniswap/swap-router-contracts/contracts/interfaces/IMulticallExtended.sol\";",
+                    "+import './IV2SwapRouter.sol';",
+                    "+import './IV3SwapRouter.sol';",
+                    "+import './IApproveAndCall.sol';",
+                    "+import './IMulticallExtended.sol';",
+                    " ",
+                    "-import \"./IApproveAndCall.sol\";",
+                    "-",
+                    " /// @title Router token swapping functionality",
+                    " interface ISwapRouter02 is IV2SwapRouter, IV3SwapRouter, IApproveAndCall, IMulticallExtended, ISelfPermit {",
+                    " ",
+                    " }"
+                  ]
+                }
+            ]
+        },
         "morpho_blue_periphery/MathLib.sol":{
             "source": {
                 "git": {
@@ -139,9 +205,9 @@
                     "commit": "0448402af51b8293ed36653de43cbee8d4d2bfda",
                     "path": "src/libraries/MathLib.sol"
                 }
-            }, 
+            },
             "patches": []
-        }, 
+        },
         "morpho_blue_periphery/SharesMathLib.sol":{
             "source": {
                 "git": {
@@ -149,7 +215,7 @@
                     "commit": "0448402af51b8293ed36653de43cbee8d4d2bfda",
                     "path": "src/libraries/SharesMathLib.sol"
                 }
-            }, 
+            },
             "patches": []
         }
     }
