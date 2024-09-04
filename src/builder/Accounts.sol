@@ -69,12 +69,12 @@ library Accounts {
 
     struct MorphoBorrowPosition {
         address[] accounts;
-        uint256[] borrowedBalances;
+        uint256[] borrowed;
     }
 
     struct MorphoCollateralPosition {
         address[] accounts;
-        uint256[] collateralBalances;
+        uint256[] balances;
     }
 
     function findChainAccounts(uint256 chainId, ChainAccounts[] memory chainAccountsList)
@@ -302,7 +302,7 @@ library Accounts {
             findMorphoPositions(chainId, loanToken, collateralToken, chainAccountsList);
         for (uint256 i = 0; i < morphoPositions.borrowPosition.accounts.length; ++i) {
             if (morphoPositions.borrowPosition.accounts[i] == account) {
-                totalBorrow = morphoPositions.borrowPosition.borrowedBalances[i];
+                totalBorrow = morphoPositions.borrowPosition.borrowed[i];
             }
         }
     }

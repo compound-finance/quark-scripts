@@ -411,11 +411,11 @@ contract QuarkBuilderTest {
                 collateralToken: collateralAsset,
                 borrowPosition: Accounts.MorphoBorrowPosition({
                     accounts: Arrays.addressArray(account),
-                    borrowedBalances: Arrays.uintArray(morphoPortfolio.borrowedBalance)
+                    borrowed: Arrays.uintArray(morphoPortfolio.borrowedBalance)
                 }),
                 collateralPosition: Accounts.MorphoCollateralPosition({
                     accounts: Arrays.addressArray(account),
-                    collateralBalances: Arrays.uintArray(morphoPortfolio.collateralBalance)
+                    balances: Arrays.uintArray(morphoPortfolio.collateralBalance)
                 })
             });
         }
