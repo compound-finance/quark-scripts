@@ -18,7 +18,7 @@ import {QuarkWalletProxyFactory} from "quark-proxy/src/QuarkWalletProxyFactory.s
 import {YulHelper} from "./lib/YulHelper.sol";
 import {SignatureHelper} from "./lib/SignatureHelper.sol";
 import {QuarkOperationHelper, ScriptType} from "./lib/QuarkOperationHelper.sol";
-
+import {SharesMathLib} from "src/vendor/morpho_blue_periphery/SharesMathLib.sol";
 import "src/MorphoScripts.sol";
 
 /**
@@ -72,8 +72,10 @@ contract MorphoActionsTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 1000e6);
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 0);
-        assertApproxEqAbs(
-            IMorpho(morpho).position(marketId(marketParams), address(wallet)).borrowShares, 9.533e14, 0.1e14
+        (,, uint128 totalBorrowAssets, uint128 totalBorrowShares,,) = IMorpho(morpho).market(marketId(marketParams));
+        assertEq(
+            IMorpho(morpho).position(marketId(marketParams), address(wallet)).borrowShares,
+            SharesMathLib.toSharesUp(1000e6, totalBorrowAssets, totalBorrowShares)
         );
 
         vm.resumeGasMetering();
@@ -108,8 +110,10 @@ contract MorphoActionsTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 1100e6);
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 0);
-        assertApproxEqAbs(
-            IMorpho(morpho).position(marketId(marketParams), address(wallet)).borrowShares, 9.533e14, 0.1e14
+        (,, uint128 totalBorrowAssets, uint128 totalBorrowShares,,) = IMorpho(morpho).market(marketId(marketParams));
+        assertEq(
+            IMorpho(morpho).position(marketId(marketParams), address(wallet)).borrowShares,
+            SharesMathLib.toSharesUp(1000e6, totalBorrowAssets, totalBorrowShares)
         );
 
         vm.resumeGasMetering();
@@ -172,8 +176,10 @@ contract MorphoActionsTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 1100e6);
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 0);
-        assertApproxEqAbs(
-            IMorpho(morpho).position(marketId(marketParams), address(wallet)).borrowShares, 9.533e14, 0.1e14
+        (,, uint128 totalBorrowAssets, uint128 totalBorrowShares,,) = IMorpho(morpho).market(marketId(marketParams));
+        assertEq(
+            IMorpho(morpho).position(marketId(marketParams), address(wallet)).borrowShares,
+            SharesMathLib.toSharesUp(1000e6, totalBorrowAssets, totalBorrowShares)
         );
 
         vm.resumeGasMetering();

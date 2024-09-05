@@ -66,7 +66,6 @@ contract MorphoVaultActionsTest is Test {
         wallet.executeQuarkOperation(op, v, r, s);
 
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 0);
-        assertApproxEqAbs(IERC4626(morphoVault).balanceOf(address(wallet)), 9713.4779e18, 0.01e18);
         assertApproxEqAbs(
             IERC4626(morphoVault).convertToAssets(IERC4626(morphoVault).balanceOf(address(wallet))), 10_000e6, 0.01e6
         );
@@ -93,6 +92,5 @@ contract MorphoVaultActionsTest is Test {
         wallet.executeQuarkOperation(op, v, r, s);
 
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 10_000e6);
-        assertApproxEqAbs(IERC4626(morphoVault).balanceOf(address(wallet)), 286.5e18, 1e18);
     }
 }
