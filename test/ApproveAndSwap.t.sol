@@ -29,9 +29,7 @@ contract ApproveAndSwapTest is Test {
     function setUp() public {
         // Fork setup
         vm.createSelectFork(
-            string.concat(
-                "https://node-provider.compound.finance/ethereum-mainnet/", vm.envString("NODE_PROVIDER_BYPASS_KEY")
-            ),
+            vm.envString("MAINNET_RPC_URL"),
             // Warp to the block where the quote is valid
             19121945
         );

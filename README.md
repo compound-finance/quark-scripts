@@ -32,23 +32,18 @@ Callbacks need to be explicitly turned on by Quark scripts. Specifically, this i
 
 [Quark Builder Helper](./src/builder/QuarkBuilderHelper.sol) is a contract with functions outside of constructing _Quark operations_ that might still be helpful for those using the QuarkBuilder. For example, there is a helper function to determine the bridgeability of assets on different chains.
 
-## Fork tests and NODE_PROVIDER_BYPASS_KEY
+## Fork tests and MAINNET_RPC_URL
 
 Some tests require forking mainnet, e.g. to exercise use-cases like
 supplying and borrowing in a comet market.
 
-For a "fork url" we use our rate-limited node provider endpoint at
-`https://node-provider.compound.finance/ethereum-mainnet`. Setting up a
-fork quickly exceeds the rate limits, so we use a bypass key to allow fork
-tests to exceed the rate limits.
+The "fork url" is specified using the environment variable `MAINNET_RPC_URL`.
+It can be any node provider for Ethereum mainnet, such as Infura or Alchemy.
 
-A bypass key for Quark development can be found in 1Password as a
-credential named "Quark Dev node-provider Bypass Key". The key can then be
-set during tests via the environment variable `NODE_PROVIDER_BYPASS_KEY`,
-like so:
+The environment variable can be set when running tests, like so:
 
 ```
-$ NODE_PROVIDER_BYPASS_KEY=... forge test
+$ MAINNET_RPC_URL=... forge test
 ```
 
 ## Updating gas snapshots
@@ -61,7 +56,7 @@ You can accept the diff and update the baseline if the increased gas usage
 is intentional. Just run the following command:
 
 ```sh
-$ NODE_PROVIDER_BYPASS_KEY=... ./script/update-snapshot.sh
+$ MAINNET_RPC_URL=... ./script/update-snapshot.sh
 ```
 
 Then commit the updated snapshot file:
