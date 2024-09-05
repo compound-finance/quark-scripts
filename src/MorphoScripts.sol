@@ -54,17 +54,15 @@ contract MorphoActions {
      * @param morpho The address of the top level Morpho contract
      * @param marketParams The market parameters of the individual morpho blue market
      * @param repayAmount The amount of assets to repay, pass in `type(uint256).max` to repay max
-     * @param repayShares The amount of shares to repay
      * @param withdrawAmount The amount of assets to withdraw as collateral
      */
     function repayAndWithdrawCollateral(
         address morpho,
         MarketParams memory marketParams,
         uint256 repayAmount,
-        uint256 repayShares,
         uint256 withdrawAmount
     ) external {
-        if (repayAmount > 0 || repayShares > 0) {
+        if (repayAmount > 0) {
             if (repayAmount == type(uint256).max) {
                 // Repay max
                 IERC20(marketParams.loanToken).forceApprove(morpho, type(uint256).max);
@@ -76,7 +74,7 @@ contract MorphoActions {
                     data: new bytes(0)
                 });
                 IERC20(marketParams.loanToken).forceApprove(morpho, 0);
-            } else if (repayAmount > 0) {
+            } else {
                 IERC20(marketParams.loanToken).forceApprove(morpho, repayAmount);
                 IMorpho(morpho).repay({
                     marketParams: marketParams,
@@ -85,18 +83,9 @@ contract MorphoActions {
                     onBehalf: address(this),
                     data: new bytes(0)
                 });
-            } else {
-                IERC20(marketParams.loanToken).forceApprove(morpho, type(uint256).max);
-                IMorpho(morpho).repay({
-                    marketParams: marketParams,
-                    assets: 0,
-                    shares: repayShares,
-                    onBehalf: address(this),
-                    data: new bytes(0)
-                });
-                IERC20(marketParams.loanToken).forceApprove(morpho, 0);
             }
         }
+
         if (withdrawAmount > 0) {
             IMorpho(morpho).withdrawCollateral({
                 marketParams: marketParams,
