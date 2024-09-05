@@ -81,6 +81,12 @@ contract MorphoActionsTest is Test {
 
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 200e6);
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 5e18);
+        assertEq(IMorpho(morpho).position(marketId(marketParams), address(wallet)).collateral, 5e18);
+        assertApproxEqAbs(
+            IMorpho(morpho).position(marketId(marketParams), address(wallet)).borrowShares,
+            SharesMathLib.toSharesUp(200e6, totalBorrowAssets, totalBorrowShares),
+            1
+        );
     }
 
     function testSupplyCollateralAndBorrow() public {
