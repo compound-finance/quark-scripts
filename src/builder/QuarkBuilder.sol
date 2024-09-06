@@ -82,11 +82,11 @@ contract QuarkBuilder {
         address loanToken,
         address collateralToken,
         address repayer
-    ) internal pure returns (uint256 amount) {
+    ) internal pure returns (uint256) {
         uint256 totalBorrowForAccount =
             Accounts.totalMorphoBorrowForAccount(chainAccountsList, chainId, loanToken, collateralToken, repayer);
         uint256 buffer = totalBorrowForAccount / 1000; // 0.1%
-        amount = totalBorrowForAccount + buffer;
+        return totalBorrowForAccount + buffer;
     }
 
     function cometRepay(
