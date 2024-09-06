@@ -1016,7 +1016,8 @@ contract QuarkBuilder {
         List.DynamicArray memory quarkOperations = List.newList();
 
         bool useQuotecall = false; // never use Quotecall
-        bool paymentTokenIsCollateralAsset = false;
+        bool paymentTokenIsCollateralAsset =
+            Strings.stringEqIgnoreCase(borrowIntent.collateralAssetSymbol, payment.currency);
 
         assertFundsAvailable(
             borrowIntent.chainId,
@@ -1025,10 +1026,6 @@ contract QuarkBuilder {
             chainAccountsList,
             payment
         );
-
-        if (Strings.stringEqIgnoreCase(borrowIntent.collateralAssetSymbol, payment.currency)) {
-            paymentTokenIsCollateralAsset = true;
-        }
 
         if (
             needsBridgedFunds(
@@ -1551,15 +1548,15 @@ contract QuarkBuilder {
                     paymentTokenCost += morphoRepayActionContext.amount;
                 }
             } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_REPAY)) {
-                Actions.RepayActionContext memory repayActionContext =
+                Actions.RepayActionContext memory cometRepayActionContext =
                     abi.decode(nonBridgeAction.actionContext, (Actions.RepayActionContext));
-                if (Strings.stringEqIgnoreCase(repayActionContext.assetSymbol, paymentTokenSymbol)) {
-                    if (repayActionContext.amount == type(uint256).max) {
+                if (Strings.stringEqIgnoreCase(cometRepayActionContext.assetSymbol, paymentTokenSymbol)) {
+                    if (cometRepayActionContext.amount == type(uint256).max) {
                         paymentTokenCost += cometRepayMaxAmount(
-                            chainAccountsList, repayActionContext.chainId, repayActionContext.comet, account
+                            chainAccountsList, cometRepayActionContext.chainId, cometRepayActionContext.comet, account
                         );
                     } else {
-                        paymentTokenCost += repayActionContext.amount;
+                        paymentTokenCost += cometRepayActionContext.amount;
                     }
                 }
             } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_SUPPLY)) {
