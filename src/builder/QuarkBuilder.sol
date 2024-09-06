@@ -563,7 +563,6 @@ contract QuarkBuilder {
             uint256 maxCostOnDstChain = PaymentInfo.findMaxCost(payment, cometWithdrawIntent.chainId);
             // if you're withdrawing the payment token, you can use the withdrawn amount to cover the cost
             if (Strings.stringEqIgnoreCase(payment.currency, cometWithdrawIntent.assetSymbol)) {
-                // XXX in the withdrawMax case, use the Comet balance
                 maxCostOnDstChain = Math.subtractFlooredAtZero(maxCostOnDstChain, cometWithdrawIntent.amount);
             }
 
@@ -1488,7 +1487,6 @@ contract QuarkBuilder {
             uint256 maxCostOnDstChain = PaymentInfo.findMaxCost(payment, withdrawIntent.chainId);
             // if you're withdrawing the payment token, you can use the withdrawn amount to cover the cost
             if (Strings.stringEqIgnoreCase(payment.currency, withdrawIntent.assetSymbol)) {
-                // XXX in the withdrawMax case, use the Comet balance
                 maxCostOnDstChain = Math.subtractFlooredAtZero(maxCostOnDstChain, withdrawIntent.amount);
             }
 
