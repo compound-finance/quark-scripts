@@ -136,9 +136,9 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
             result.quarkOperations[0].scriptCalldata,
             abi.encodeCall(
                 MorphoActions.repayAndWithdrawCollateral,
-                (MorphoInfo.getMorphoAddress(1), MorphoInfo.getMarketParams(1, "WBTC", "USDC"), 1e6, 0, 1e8)
+                (MorphoInfo.getMorphoAddress(1), MorphoInfo.getMarketParams(1, "WBTC", "USDC"), 1e6, 1e8)
             ),
-            "calldata is MorphoActions.repayAndWithdrawCollateral(MorphoInfo.getMorphoAddress(1), MorphoInfo.getMarketParams(1, WBTC, USDC), 1e6, 0, 1e8,  address(0xa11ce),  address(0xa11ce));"
+            "calldata is MorphoActions.repayAndWithdrawCollateral(MorphoInfo.getMorphoAddress(1), MorphoInfo.getMarketParams(1, WBTC, USDC), 1e6, 1e8,  address(0xa11ce),  address(0xa11ce));"
         );
         assertEq(result.quarkOperations[0].scriptSources.length, 1);
         assertEq(result.quarkOperations[0].scriptSources[0], type(MorphoActions).creationCode);
@@ -237,7 +237,7 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
         );
         callDatas[1] = abi.encodeCall(
             MorphoActions.repayAndWithdrawCollateral,
-            (MorphoInfo.getMorphoAddress(8453), MorphoInfo.getMarketParams(8453, "cbETH", "WETH"), 1e18, 0, 0e18)
+            (MorphoInfo.getMorphoAddress(8453), MorphoInfo.getMarketParams(8453, "cbETH", "WETH"), 1e18, 0e18)
         );
 
         assertEq(
@@ -344,11 +344,11 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
                 MorphoActionsAddress,
                 abi.encodeCall(
                     MorphoActions.repayAndWithdrawCollateral,
-                    (MorphoInfo.getMorphoAddress(1), MorphoInfo.getMarketParams(1, "WBTC", "USDC"), 1e6, 0, 0e8)
+                    (MorphoInfo.getMorphoAddress(1), MorphoInfo.getMarketParams(1, "WBTC", "USDC"), 1e6, 0e8)
                 ),
                 0.1e6
             ),
-            "calldata is Paycall.run(MorphoActions.repayAndWithdrawCollateral(MorphoInfo.getMorphoAddress(1), MorphoInfo.getMarketParams(1, WBTC, USDC), 1e6, 0, 0);"
+            "calldata is Paycall.run(MorphoActions.repayAndWithdrawCollateral(MorphoInfo.getMorphoAddress(1), MorphoInfo.getMarketParams(1, WBTC, USDC), 1e6, 0);"
         );
         assertEq(result.quarkOperations[0].scriptSources.length, 2);
         assertEq(result.quarkOperations[0].scriptSources[0], type(MorphoActions).creationCode);
@@ -499,7 +499,7 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
                 MorphoActionsAddress,
                 abi.encodeCall(
                     MorphoActions.repayAndWithdrawCollateral,
-                    (MorphoInfo.getMorphoAddress(8453), MorphoInfo.getMarketParams(8453, "WETH", "USDC"), 2e6, 0, 0e18)
+                    (MorphoInfo.getMorphoAddress(8453), MorphoInfo.getMarketParams(8453, "WETH", "USDC"), 2e6, 0e18)
                 ),
                 0.2e6
             ),
@@ -637,13 +637,12 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
                         MorphoInfo.getMorphoAddress(1),
                         MorphoInfo.getMarketParams(1, "WBTC", "USDC"),
                         type(uint256).max,
-                        0,
                         0
                     )
                 ),
                 0.1e6
             ),
-            "calldata is Paycall.run(MorphoActions.repayAndWithdrawCollateral(MorphoInfo.getMorphoAddress(1), MorphoInfo.getMarketParams(1, WBTC, USDC), type(uint256).max, 0, 0);"
+            "calldata is Paycall.run(MorphoActions.repayAndWithdrawCollateral(MorphoInfo.getMorphoAddress(1), MorphoInfo.getMarketParams(1, WBTC, USDC), type(uint256).max, 0);"
         );
 
         assertEq(result.quarkOperations[0].scriptSources.length, 2);
@@ -801,13 +800,12 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
                         MorphoInfo.getMorphoAddress(8453),
                         MorphoInfo.getMarketParams(8453, "WETH", "USDC"),
                         type(uint256).max,
-                        0,
                         0
                     ) // Repaying in shares
                 ),
                 0.1e6
             ),
-            "calldata is Paycall.run(MorphoActions.repayAndWithdrawCollateral(MorphoInfo.getMorphoAddress(8453), MorphoInfo.getMarketParams(8453, WETH, USDC), type(uint256).max, 0, 0);"
+            "calldata is Paycall.run(MorphoActions.repayAndWithdrawCollateral(MorphoInfo.getMorphoAddress(8453), MorphoInfo.getMarketParams(8453, WETH, USDC), type(uint256).max, 0);"
         );
 
         assertEq(result.quarkOperations[1].scriptSources.length, 2);

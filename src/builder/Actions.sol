@@ -25,13 +25,13 @@ import {List} from "./List.sol";
 
 library Actions {
     /* ===== Constants ===== */
-    // TODO: Rename ACTION_TYPE_BORROW to ACTION_TYPE_COMET_BORROW, as now we have more than one borrow market
+    // TODO: (LHT-86) Rename ACTION_TYPE_BORROW to ACTION_TYPE_COMET_BORROW, as now we have more than one borrow market
     string constant ACTION_TYPE_BORROW = "BORROW";
     string constant ACTION_TYPE_MORPHO_BORROW = "MORPHO_BORROW";
     string constant ACTION_TYPE_BRIDGE = "BRIDGE";
     string constant ACTION_TYPE_CLAIM_REWARDS = "CLAIM_REWARDS";
     string constant ACTION_TYPE_DRIP_TOKENS = "DRIP_TOKENS";
-    // TODO: Rename ACTION_TYPE_REPAY to ACTION_TYPE_COMET_REPAY, as now we have more than one borrow market
+    // TODO: (LHT-86) Rename ACTION_TYPE_REPAY to ACTION_TYPE_COMET_REPAY, as now we have more than one borrow market
     string constant ACTION_TYPE_REPAY = "REPAY";
     string constant ACTION_TYPE_MORPHO_REPAY = "MORPHO_REPAY";
     string constant ACTION_TYPE_SUPPLY = "SUPPLY";
@@ -541,8 +541,9 @@ library Actions {
             actionType: ACTION_TYPE_BRIDGE,
             actionContext: abi.encode(bridgeActionContext),
             paymentMethod: PaymentInfo.paymentMethodForPayment(payment, useQuotecall),
-            // Null address for OFFCHAIN payment.
-            paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, bridge.srcChainId).token : address(0),
+            paymentToken: payment.isToken
+                ? PaymentInfo.knownToken(payment.currency, bridge.srcChainId).token
+                : PaymentInfo.NON_TOKEN_PAYMENT,
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, bridge.srcChainId) : 0
         });
@@ -614,8 +615,9 @@ library Actions {
             actionType: ACTION_TYPE_BORROW,
             actionContext: abi.encode(borrowActionContext),
             paymentMethod: PaymentInfo.paymentMethodForPayment(payment, false),
-            // Null address for OFFCHAIN payment.
-            paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, borrowInput.chainId).token : address(0),
+            paymentToken: payment.isToken
+                ? PaymentInfo.knownToken(payment.currency, borrowInput.chainId).token
+                : PaymentInfo.NON_TOKEN_PAYMENT,
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, borrowInput.chainId) : 0
         });
@@ -687,8 +689,9 @@ library Actions {
             actionType: ACTION_TYPE_REPAY,
             actionContext: abi.encode(repayActionContext),
             paymentMethod: PaymentInfo.paymentMethodForPayment(payment, false),
-            // Null address for OFFCHAIN payment.
-            paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, repayInput.chainId).token : address(0),
+            paymentToken: payment.isToken
+                ? PaymentInfo.knownToken(payment.currency, repayInput.chainId).token
+                : PaymentInfo.NON_TOKEN_PAYMENT,
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, repayInput.chainId) : 0
         });
@@ -744,8 +747,9 @@ library Actions {
             actionType: ACTION_TYPE_SUPPLY,
             actionContext: abi.encode(cometSupplyActionContext),
             paymentMethod: PaymentInfo.paymentMethodForPayment(payment, false),
-            // Null address for OFFCHAIN payment.
-            paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, cometSupply.chainId).token : address(0),
+            paymentToken: payment.isToken
+                ? PaymentInfo.knownToken(payment.currency, cometSupply.chainId).token
+                : PaymentInfo.NON_TOKEN_PAYMENT,
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, cometSupply.chainId) : 0
         });
@@ -802,10 +806,9 @@ library Actions {
             actionType: ACTION_TYPE_WITHDRAW,
             actionContext: abi.encode(cometWithdrawActionContext),
             paymentMethod: PaymentInfo.paymentMethodForPayment(payment, false),
-            // Null address for OFFCHAIN payment.
             paymentToken: payment.isToken
                 ? PaymentInfo.knownToken(payment.currency, cometWithdraw.chainId).token
-                : address(0),
+                : PaymentInfo.NON_TOKEN_PAYMENT,
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, cometWithdraw.chainId) : 0
         });
@@ -866,8 +869,9 @@ library Actions {
             actionType: ACTION_TYPE_TRANSFER,
             actionContext: abi.encode(transferActionContext),
             paymentMethod: PaymentInfo.paymentMethodForPayment(payment, useQuotecall),
-            // Null address for OFFCHAIN payment.
-            paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, transfer.chainId).token : address(0),
+            paymentToken: payment.isToken
+                ? PaymentInfo.knownToken(payment.currency, transfer.chainId).token
+                : PaymentInfo.NON_TOKEN_PAYMENT,
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, transfer.chainId) : 0
         });
@@ -932,8 +936,9 @@ library Actions {
             actionType: ACTION_TYPE_MORPHO_BORROW,
             actionContext: abi.encode(borrowActionContext),
             paymentMethod: PaymentInfo.paymentMethodForPayment(payment, false),
-            // Null address for OFFCHAIN payment.
-            paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, borrowInput.chainId).token : address(0),
+            paymentToken: payment.isToken
+                ? PaymentInfo.knownToken(payment.currency, borrowInput.chainId).token
+                : PaymentInfo.NON_TOKEN_PAYMENT,
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, borrowInput.chainId) : 0
         });
@@ -965,7 +970,6 @@ library Actions {
             MorphoInfo.getMorphoAddress(repayInput.chainId),
             MorphoInfo.getMarketParams(repayInput.chainId, repayInput.collateralAssetSymbol, repayInput.assetSymbol),
             repayInput.amount,
-            0,
             repayInput.collateralAmount
         );
 
@@ -1000,8 +1004,9 @@ library Actions {
             actionType: ACTION_TYPE_MORPHO_REPAY,
             actionContext: abi.encode(morphoRepayActionContext),
             paymentMethod: PaymentInfo.paymentMethodForPayment(payment, false),
-            // Null address for OFFCHAIN payment.
-            paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, repayInput.chainId).token : address(0),
+            paymentToken: payment.isToken
+                ? PaymentInfo.knownToken(payment.currency, repayInput.chainId).token
+                : PaymentInfo.NON_TOKEN_PAYMENT,
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, repayInput.chainId) : 0
         });
@@ -1052,10 +1057,9 @@ library Actions {
                 : ACTION_TYPE_WRAP,
             actionContext: abi.encode(wrapOrUnwrapActionContext),
             paymentMethod: PaymentInfo.paymentMethodForPayment(payment, useQuotecall),
-            // Null address for OFFCHAIN payment.
             paymentToken: payment.isToken
                 ? PaymentInfo.knownToken(payment.currency, wrapOrUnwrap.chainId).token
-                : address(0),
+                : PaymentInfo.NON_TOKEN_PAYMENT,
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, wrapOrUnwrap.chainId) : 0
         });
@@ -1127,8 +1131,9 @@ library Actions {
             actionType: ACTION_TYPE_SWAP,
             actionContext: abi.encode(swapActionContext),
             paymentMethod: PaymentInfo.paymentMethodForPayment(payment, useQuotecall),
-            // Null address for OFFCHAIN payment.
-            paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, swap.chainId).token : address(0),
+            paymentToken: payment.isToken
+                ? PaymentInfo.knownToken(payment.currency, swap.chainId).token
+                : PaymentInfo.NON_TOKEN_PAYMENT,
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, swap.chainId) : 0
         });
