@@ -128,22 +128,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         assertEq(result.quarkOperations.length, 1, "one operation");
         assertEq(
             result.quarkOperations[0].scriptAddress,
-            address(
-                uint160(
-                    uint256(
-                        keccak256(
-                            abi.encodePacked(
-                                bytes1(0xff),
-                                /* codeJar address */
-                                address(CodeJarHelper.CODE_JAR_ADDRESS),
-                                uint256(0),
-                                /* script bytecode */
-                                keccak256(type(MorphoVaultActions).creationCode)
-                            )
-                        )
-                    )
-                )
-            ),
+            CodeJarHelper.getCodeAddress(type(MorphoVaultActions).creationCode),
             "script address is correct given the code jar address on mainnet"
         );
         assertEq(
@@ -214,22 +199,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         assertEq(result.quarkOperations.length, 1, "one operation");
         assertEq(
             result.quarkOperations[0].scriptAddress,
-            address(
-                uint160(
-                    uint256(
-                        keccak256(
-                            abi.encodePacked(
-                                bytes1(0xff),
-                                /* codeJar address */
-                                address(CodeJarHelper.CODE_JAR_ADDRESS),
-                                uint256(0),
-                                /* script bytecode */
-                                keccak256(type(MorphoVaultActions).creationCode)
-                            )
-                        )
-                    )
-                )
-            ),
+            CodeJarHelper.getCodeAddress(type(MorphoVaultActions).creationCode),
             "script address is correct given the code jar address on mainnet"
         );
         assertEq(
@@ -448,22 +418,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         assertEq(result.quarkOperations.length, 2, "two operations");
         assertEq(
             result.quarkOperations[0].scriptAddress,
-            address(
-                uint160(
-                    uint256(
-                        keccak256(
-                            abi.encodePacked(
-                                bytes1(0xff),
-                                /* codeJar address */
-                                address(CodeJarHelper.CODE_JAR_ADDRESS),
-                                uint256(0),
-                                /* script bytecode */
-                                keccak256(type(CCTPBridgeActions).creationCode)
-                            )
-                        )
-                    )
-                )
-            ),
+            CodeJarHelper.getCodeAddress(type(MorphoVaultActions).creationCode),
             "script address is correct given the code jar address on mainnet"
         );
         assertEq(
@@ -487,22 +442,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         // second operation
         assertEq(
             result.quarkOperations[1].scriptAddress,
-            address(
-                uint160(
-                    uint256(
-                        keccak256(
-                            abi.encodePacked(
-                                bytes1(0xff),
-                                /* codeJar address */
-                                address(CodeJarHelper.CODE_JAR_ADDRESS),
-                                uint256(0),
-                                /* script bytecode */
-                                keccak256(type(MorphoVaultActions).creationCode)
-                            )
-                        )
-                    )
-                )
-            ),
+            CodeJarHelper.getCodeAddress(type(MorphoVaultActions).creationCode),
             "script address for transfer is correct given the code jar address"
         );
         assertEq(
@@ -585,22 +525,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         assertEq(result.quarkOperations.length, 2, "two operations");
         assertEq(
             result.quarkOperations[0].scriptAddress,
-            address(
-                uint160(
-                    uint256(
-                        keccak256(
-                            abi.encodePacked(
-                                bytes1(0xff),
-                                /* codeJar address */
-                                address(CodeJarHelper.CODE_JAR_ADDRESS),
-                                uint256(0),
-                                /* script bytecode */
-                                keccak256(type(CCTPBridgeActions).creationCode)
-                            )
-                        )
-                    )
-                )
-            ),
+            CodeJarHelper.getCodeAddress(type(CCTPBridgeActions).creationCode),
             "script address is correct given the code jar address on mainnet"
         );
         assertEq(
@@ -624,22 +549,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         // second operation
         assertEq(
             result.quarkOperations[1].scriptAddress,
-            address(
-                uint160(
-                    uint256(
-                        keccak256(
-                            abi.encodePacked(
-                                bytes1(0xff),
-                                /* codeJar address */
-                                address(CodeJarHelper.CODE_JAR_ADDRESS),
-                                uint256(0),
-                                /* script bytecode */
-                                keccak256(type(MorphoVaultActions).creationCode)
-                            )
-                        )
-                    )
-                )
-            ),
+            CodeJarHelper.getCodeAddress(type(MorphoVaultActions).creationCode),
             "script address for transfer is correct given the code jar address"
         );
         assertEq(

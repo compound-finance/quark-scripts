@@ -45,22 +45,7 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
         assertEq(result.quarkOperations.length, 1, "one operation");
         assertEq(
             result.quarkOperations[0].scriptAddress,
-            address(
-                uint160(
-                    uint256(
-                        keccak256(
-                            abi.encodePacked(
-                                bytes1(0xff),
-                                /* codeJar address */
-                                address(CodeJarHelper.CODE_JAR_ADDRESS),
-                                uint256(0),
-                                /* script bytecode */
-                                keccak256(type(MorphoVaultActions).creationCode)
-                            )
-                        )
-                    )
-                )
-            ),
+            CodeJarHelper.getCodeAddress(type(MorphoVaultActions).creationCode),
             "script address is correct given the code jar address on mainnet"
         );
         assertEq(
