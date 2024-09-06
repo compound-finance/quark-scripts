@@ -103,29 +103,13 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
         QuarkBuilder.BuilderResult memory result = builder.morphoBorrow(
             borrowIntent_(1, "USDC", 1e6, "WBTC", 1e8), chainAccountsFromChainPortfolios(chainPortfolios), paymentUsd_()
         );
-
-        assertEq(result.paymentCurrency, "usd", "usd currency");
-
+        address MorphoActionsAddress = CodeJarHelper.getCodeAddress(type(MorphoActions).creationCode);
         // Check the quark operations
+        assertEq(result.paymentCurrency, "usd", "usd currency");
         assertEq(result.quarkOperations.length, 1, "one operation");
         assertEq(
             result.quarkOperations[0].scriptAddress,
-            address(
-                uint160(
-                    uint256(
-                        keccak256(
-                            abi.encodePacked(
-                                bytes1(0xff),
-                                /* codeJar address */
-                                address(CodeJarHelper.CODE_JAR_ADDRESS),
-                                uint256(0),
-                                /* script bytecode */
-                                keccak256(type(MorphoActions).creationCode)
-                            )
-                        )
-                    )
-                )
-            ),
+            MorphoActionsAddress,
             "script address is correct given the code jar address on mainnet"
         );
         assertEq(

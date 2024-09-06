@@ -181,7 +181,7 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
     }
 
-    function testCometRepayWithAutoWrapper() public {
+    function testMorphoRepayWithAutoWrapper() public {
         ChainPortfolio[] memory chainPortfolios = new ChainPortfolio[](2);
         chainPortfolios[0] = ChainPortfolio({
             chainId: 1,
@@ -288,7 +288,7 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
     }
 
-    function testCometRepayWithPaycall() public {
+    function testMorphoRepayWithPaycall() public {
         ChainPortfolio[] memory chainPortfolios = new ChainPortfolio[](2);
         chainPortfolios[0] = ChainPortfolio({
             chainId: 1,
