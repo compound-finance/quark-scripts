@@ -154,8 +154,6 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
             ),
             "action context encoded from MorphoBorrowActionContext"
         );
-
-        // TODO: Check the contents of the EIP712 data
         assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
         assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
@@ -254,8 +252,6 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
             ),
             "action context encoded from MorphoBorrowActionContext"
         );
-
-        // TODO: Check the contents of the EIP712 data
         assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
         assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
@@ -356,8 +352,6 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
             ),
             "action context encoded from MorphoBorrowActionContext"
         );
-
-        // TODO: Check the contents of the EIP712 data
         assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
         assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
@@ -457,8 +451,6 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
             ),
             "action context encoded from MorphoBorrowActionContext"
         );
-
-        // TODO: Check the contents of the EIP712 data
         assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
         assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
@@ -620,8 +612,6 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
             ),
             "action context encoded from MorphoBorrowActionContext"
         );
-
-        // TODO: Check the contents of the EIP712 data
         assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
         assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");

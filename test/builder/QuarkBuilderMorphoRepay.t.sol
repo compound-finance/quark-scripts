@@ -109,27 +109,12 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
         );
 
         assertEq(result.paymentCurrency, "usd", "usd currency");
-
+        address MorphoActionsAddress = CodeJarHelper.getCodeAddress(type(MorphoActions).creationCode);
         // Check the quark operations
         assertEq(result.quarkOperations.length, 1, "one operation");
         assertEq(
             result.quarkOperations[0].scriptAddress,
-            address(
-                uint160(
-                    uint256(
-                        keccak256(
-                            abi.encodePacked(
-                                bytes1(0xff),
-                                /* codeJar address */
-                                address(CodeJarHelper.CODE_JAR_ADDRESS),
-                                uint256(0),
-                                /* script bytecode */
-                                keccak256(type(MorphoActions).creationCode)
-                            )
-                        )
-                    )
-                )
-            ),
+            MorphoActionsAddress,
             "script address is correct given the code jar address on mainnet"
         );
         assertEq(
@@ -174,8 +159,6 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
             ),
             "action context encoded from MorphoRepayActionContext"
         );
-
-        // TODO: Check the contents of the EIP712 data
         assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
         assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
@@ -281,8 +264,6 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
             ),
             "action context encoded from MorphoRepayActionContext"
         );
-
-        // TODO: Check the contents of the EIP712 data
         assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
         assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
@@ -397,8 +378,6 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
             ),
             "action context encoded from MorphoRepayActionContext"
         );
-
-        // TODO: Check the contents of the EIP712 data
         assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
         assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
@@ -567,8 +546,6 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
             ),
             "action context encoded from MorphoRepayActionContext"
         );
-
-        // TODO: Check the contents of the EIP712 data
         assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
         assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
@@ -683,8 +660,6 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
             ),
             "action context encoded from MorphoRepayActionContext"
         );
-
-        // TODO: Check the contents of the EIP712 data
         assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
         assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
@@ -870,8 +845,6 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
             ),
             "action context encoded from MorphoRepayActionContext"
         );
-
-        // TODO: Check the contents of the EIP712 data
         assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
         assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
