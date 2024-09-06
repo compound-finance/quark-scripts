@@ -1235,7 +1235,7 @@ library Actions {
         SupplyActionContext[] memory ss = new SupplyActionContext[](1);
         return ss[0];
     }
-    
+
     function emptySwapActionContext() external pure returns (SwapActionContext memory) {
         SwapActionContext[] memory ss = new SwapActionContext[](1);
         return ss[0];
