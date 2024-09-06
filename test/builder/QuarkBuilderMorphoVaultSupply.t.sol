@@ -418,7 +418,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         assertEq(result.quarkOperations.length, 2, "two operations");
         assertEq(
             result.quarkOperations[0].scriptAddress,
-            CodeJarHelper.getCodeAddress(type(MorphoVaultActions).creationCode),
+            CodeJarHelper.getCodeAddress(type(CCTPBridgeActions).creationCode),
             "script address is correct given the code jar address on mainnet"
         );
         assertEq(
