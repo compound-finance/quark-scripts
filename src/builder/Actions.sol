@@ -1201,6 +1201,11 @@ library Actions {
         return bs[0];
     }
 
+    function emptyMorphoBorrowActionContext() external pure returns (MorphoBorrowActionContext memory) {
+        MorphoBorrowActionContext[] memory mb = new MorphoBorrowActionContext[](1);
+        return mb[0];
+    }
+
     function emptyBridgeActionContext() external pure returns (BridgeActionContext memory) {
         BridgeActionContext[] memory bs = new BridgeActionContext[](1);
         return bs[0];
@@ -1216,16 +1221,21 @@ library Actions {
         return ds[0];
     }
 
-    function emptyMorphoRepayActionContext() external pure returns (MorphoRepayActionContext memory) {
-        MorphoRepayActionContext[] memory rs = new MorphoRepayActionContext[](1);
+    function emptyRepayActionContext() external pure returns (RepayActionContext memory) {
+        RepayActionContext[] memory rs = new RepayActionContext[](1);
         return rs[0];
+    }
+
+    function emptyMorphoRepayActionContext() external pure returns (MorphoRepayActionContext memory) {
+        MorphoRepayActionContext[] memory mr = new MorphoRepayActionContext[](1);
+        return mr[0];
     }
 
     function emptySupplyActionContext() external pure returns (SupplyActionContext memory) {
         SupplyActionContext[] memory ss = new SupplyActionContext[](1);
         return ss[0];
     }
-
+    
     function emptySwapActionContext() external pure returns (SwapActionContext memory) {
         SwapActionContext[] memory ss = new SwapActionContext[](1);
         return ss[0];
