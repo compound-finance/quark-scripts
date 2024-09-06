@@ -626,4 +626,29 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
         assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
     }
+
+    function testMorphoBorrowMaxCostTooHighForBridgePaymentToken() public {
+        QuarkBuilder builder = new QuarkBuilder();
+        PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
+        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 0.5e6}); // action costs .5 USDC
+
+        ChainPortfolio[] memory chainPortfolios = new ChainPortfolio[](1);
+        chainPortfolios[0] = ChainPortfolio({
+            chainId: 1,
+            account: address(0xa11ce),
+            nextNonce: 12,
+            assetSymbols: Arrays.stringArray("USDC", "USDT", "WBTC", "WETH"),
+            assetBalances: Arrays.uintArray(0.4e6, 0, 2e8, 1e18), // user does not have enough USDC
+            cometPortfolios: emptyCometPortfolios_(),
+            morphoPortfolios: emptyMorphoPortfolios_()
+        });
+
+        vm.expectRevert(abi.encodeWithSelector(Actions.NotEnoughFundsToBridge.selector, "usdc", 0.1e6, 0.1e6));
+
+        builder.morphoBorrow(
+            borrowIntent_(1, "WETH", 1e18, "WBTC", 0),
+            chainAccountsFromChainPortfolios(chainPortfolios),
+            paymentUsdc_(maxCosts)
+        );
+    }
 }

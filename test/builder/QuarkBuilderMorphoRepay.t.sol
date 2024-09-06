@@ -65,7 +65,7 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
             morphoPortfolios: emptyMorphoPortfolios_()
         });
 
-        vm.expectRevert(QuarkBuilder.MaxCostTooHigh.selector);
+        vm.expectRevert(abi.encodeWithSelector(Actions.NotEnoughFundsToBridge.selector, "usdc", 0.1e6, 0.1e6));
 
         builder.morphoRepay(
             repayIntent_(8453, "WETH", 1e18, "cbETH", 1e18),

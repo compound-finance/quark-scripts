@@ -1183,7 +1183,7 @@ contract QuarkBuilder {
     ) external pure returns (BuilderResult memory) {
         bool isMaxRepay = repayIntent.amount == type(uint256).max;
         bool useQuotecall = false; // never use Quotecall
-
+        bool paymentTokenIsRepaymentlAsset = Strings.stringEqIgnoreCase(repayIntent.assetSymbol, payment.currency);
         // Only use repayAmount for purpose of bridging, will still use uint256 max for MorphoScript
         uint256 repayAmount = repayIntent.amount;
         if (isMaxRepay) {
@@ -1228,6 +1228,36 @@ contract QuarkBuilder {
             for (uint256 i = 0; i < bridgeQuarkOperations.length; ++i) {
                 List.addAction(actions, bridgeActions[i]);
                 List.addQuarkOperation(quarkOperations, bridgeQuarkOperations[i]);
+            }
+        }
+
+        // Only bridge payment token if it is not the repayment asset (which the above briding action didn't cover)
+        if (payment.isToken && !paymentTokenIsRepaymentlAsset) {
+            uint256 maxCostOnDstChain = PaymentInfo.findMaxCost(payment, repayIntent.chainId);
+            if (Strings.stringEqIgnoreCase(payment.currency, repayIntent.assetSymbol)) {
+                maxCostOnDstChain = Math.subtractFlooredAtZero(maxCostOnDstChain, repayIntent.amount);
+            }
+
+            if (needsBridgedFunds(payment.currency, maxCostOnDstChain, repayIntent.chainId, chainAccountsList, payment))
+            {
+                (IQuarkWallet.QuarkOperation[] memory bridgeQuarkOperations, Actions.Action[] memory bridgeActions) =
+                Actions.constructBridgeOperations(
+                    Actions.BridgeOperationInfo({
+                        assetSymbol: payment.currency,
+                        amountNeededOnDst: maxCostOnDstChain,
+                        dstChainId: repayIntent.chainId,
+                        recipient: repayIntent.repayer,
+                        blockTimestamp: repayIntent.blockTimestamp,
+                        useQuotecall: useQuotecall
+                    }),
+                    chainAccountsList,
+                    payment
+                );
+
+                for (uint256 i = 0; i < bridgeQuarkOperations.length; ++i) {
+                    List.addQuarkOperation(quarkOperations, bridgeQuarkOperations[i]);
+                    List.addAction(actions, bridgeActions[i]);
+                }
             }
         }
 
