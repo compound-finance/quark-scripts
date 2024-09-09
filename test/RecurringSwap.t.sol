@@ -44,8 +44,8 @@ contract RecurringSwapTest is Test {
     address constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address constant COMP = 0xc00e94Cb662C3520282E6f5717214004A7f26888;
-    // Uniswap router info on mainnet
-    address constant UNISWAP_ROUTER = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
+    // Uniswap SwapRouter02 info on mainnet
+    address constant UNISWAP_ROUTER = 0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45;
     // Price feeds
     address constant ETH_USD_PRICE_FEED = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419; // Price is $1790.45
     address constant USDC_USD_PRICE_FEED = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
@@ -97,7 +97,6 @@ contract RecurringSwapTest is Test {
             abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig),
             ScriptType.ScriptAddress
         );
-        op.expiry = swapConfig.swapParams.deadline;
         (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 0 ether);
@@ -144,7 +143,6 @@ contract RecurringSwapTest is Test {
             abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig),
             ScriptType.ScriptAddress
         );
-        op.expiry = swapConfig.swapParams.deadline;
         (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 0 ether);
@@ -187,7 +185,6 @@ contract RecurringSwapTest is Test {
             tokenOut: USDC,
             amount: amountToSell,
             isExactOut: false,
-            deadline: type(uint256).max,
             path: abi.encodePacked(WETH, uint24(500), USDC)
         });
         RecurringSwap.SlippageParams memory slippageParams = RecurringSwap.SlippageParams({
@@ -208,7 +205,6 @@ contract RecurringSwapTest is Test {
             abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig),
             ScriptType.ScriptAddress
         );
-        op.expiry = swapConfig.swapParams.deadline;
         (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), startingWETH);
@@ -250,7 +246,6 @@ contract RecurringSwapTest is Test {
             tokenOut: USDC,
             amount: amountToSwap,
             isExactOut: true,
-            deadline: type(uint256).max,
             path: abi.encodePacked(USDC, uint24(500), WETH)
         });
         RecurringSwap.SlippageParams memory slippageParams = RecurringSwap.SlippageParams({
@@ -271,7 +266,6 @@ contract RecurringSwapTest is Test {
             abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig),
             ScriptType.ScriptAddress
         );
-        op.expiry = swapConfig.swapParams.deadline;
         (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), startingWETH);
@@ -315,7 +309,7 @@ contract RecurringSwapTest is Test {
             abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig),
             ScriptType.ScriptAddress
         );
-        op.expiry = swapConfig.swapParams.deadline;
+        op.expiry = type(uint256).max;
         (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 0 ether);
@@ -361,7 +355,7 @@ contract RecurringSwapTest is Test {
             abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig),
             ScriptType.ScriptAddress
         );
-        op.expiry = swapConfig.swapParams.deadline;
+        op.expiry = type(uint256).max;
         (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
 
         QuarkWallet.QuarkOperation memory cancelOp = new QuarkOperationHelper().newBasicOpWithCalldata(
@@ -418,7 +412,6 @@ contract RecurringSwapTest is Test {
             abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig),
             ScriptType.ScriptAddress
         );
-        op.expiry = swapConfig.swapParams.deadline;
         (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 0 ether);
@@ -458,7 +451,7 @@ contract RecurringSwapTest is Test {
                 abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig1),
                 ScriptType.ScriptAddress
             );
-            op1.expiry = swapConfig1.swapParams.deadline;
+            op1.expiry = type(uint256).max;
             RecurringSwap.SwapConfig memory swapConfig2 = _createSwapConfig({
                 startTime: block.timestamp,
                 swapInterval: swapInterval,
@@ -471,14 +464,14 @@ contract RecurringSwapTest is Test {
                 abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig2),
                 ScriptType.ScriptAddress
             );
-            op2.expiry = swapConfig2.swapParams.deadline;
+            op2.expiry = type(uint256).max;
             cancelOp = new QuarkOperationHelper().newBasicOpWithCalldata(
                 aliceWallet,
                 recurringSwap,
                 abi.encodeWithSelector(RecurringSwap.cancel.selector),
                 ScriptType.ScriptAddress
             );
-            cancelOp.expiry = op2.expiry;
+            cancelOp.expiry = type(uint256).max;
         }
         (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op1);
         (uint8 v2, bytes32 r2, bytes32 s2) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op2);
@@ -568,8 +561,6 @@ contract RecurringSwapTest is Test {
             abi.encodeWithSelector(RecurringSwap.swap.selector, invalidSwapConfig2),
             ScriptType.ScriptAddress
         );
-        op1.expiry = invalidSwapConfig1.swapParams.deadline;
-        op2.expiry = invalidSwapConfig2.swapParams.deadline;
         (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op1);
         (uint8 v2, bytes32 r2, bytes32 s2) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op2);
 
@@ -601,7 +592,6 @@ contract RecurringSwapTest is Test {
             abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig),
             ScriptType.ScriptAddress
         );
-        op.expiry = swapConfig.swapParams.deadline;
         (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 0 ether);
@@ -643,7 +633,6 @@ contract RecurringSwapTest is Test {
             abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig),
             ScriptType.ScriptAddress
         );
-        op.expiry = swapConfig.swapParams.deadline;
         (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 0 ether);
@@ -683,34 +672,6 @@ contract RecurringSwapTest is Test {
         aliceWallet.executeQuarkOperation(op, v1, r1, s1);
     }
 
-    function testRevertsForExpiredUniswapParams() public {
-        // gas: disable gas metering except while executing operations
-        vm.pauseGasMetering();
-
-        deal(USDC, address(aliceWallet), 100_000e6);
-        uint40 swapInterval = 86_400; // 1 day interval
-        uint256 amountToSwap = 10 ether;
-        RecurringSwap.SwapConfig memory swapConfig = _createSwapConfig({
-            startTime: block.timestamp,
-            swapInterval: swapInterval,
-            amount: amountToSwap,
-            isExactOut: true
-        });
-        swapConfig.swapParams.deadline = block.timestamp - 1; // Set Uniswap deadline to always expire
-        QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
-            aliceWallet,
-            recurringSwap,
-            abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig),
-            ScriptType.ScriptAddress
-        );
-        (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
-
-        // gas: meter execute
-        vm.resumeGasMetering();
-        vm.expectRevert(bytes("Transaction too old"));
-        aliceWallet.executeQuarkOperation(op, v1, r1, s1);
-    }
-
     function testRevertsWhenSlippageTooHigh() public {
         // gas: disable gas metering except while executing operations
         vm.pauseGasMetering();
@@ -736,7 +697,6 @@ contract RecurringSwapTest is Test {
             abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig),
             ScriptType.ScriptAddress
         );
-        op.expiry = swapConfig.swapParams.deadline;
         (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 0 ether);
@@ -772,7 +732,6 @@ contract RecurringSwapTest is Test {
             abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig),
             ScriptType.ScriptAddress
         );
-        op.expiry = swapConfig.swapParams.deadline;
         (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 0 ether);
@@ -852,7 +811,6 @@ contract RecurringSwapTest is Test {
             tokenOut: WETH,
             amount: amount,
             isExactOut: isExactOut,
-            deadline: type(uint256).max,
             path: swapPath
         });
         RecurringSwap.SwapConfig memory swapConfig = RecurringSwap.SwapConfig({

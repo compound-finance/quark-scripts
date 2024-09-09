@@ -86,7 +86,6 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
             tokenOut: swap.buyToken,
             amount: swap.isExactOut ? swap.buyAmount : swap.sellAmount,
             isExactOut: swap.isExactOut,
-            deadline: type(uint256).max,
             path: swap.path
         });
         (address[] memory priceFeeds, bool[] memory shouldInvert) =

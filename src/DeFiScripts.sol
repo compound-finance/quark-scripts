@@ -3,7 +3,7 @@ pragma solidity 0.8.23;
 
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
-import {ISwapRouter} from "v3-periphery/interfaces/ISwapRouter.sol";
+import {ISwapRouter02, IV3SwapRouter} from "src/vendor/uniswap-swap-router-contracts/ISwapRouter02.sol";
 
 import {QuarkScript} from "quark-core/src/QuarkScript.sol";
 
@@ -136,7 +136,6 @@ contract UniswapSwapActions {
         uint256 amount;
         // Minimum amount of target token to receive (revert if return amount is less than this)
         uint256 amountOutMinimum;
-        uint256 deadline;
         // Path of the swap
         bytes path;
     }
@@ -148,7 +147,6 @@ contract UniswapSwapActions {
         uint256 amount;
         // Maximum amount of input token to spend (revert if input amount is greater than this)
         uint256 amountInMaximum;
-        uint256 deadline;
         // Path of the swap
         bytes path;
     }
@@ -159,11 +157,10 @@ contract UniswapSwapActions {
      */
     function swapAssetExactIn(SwapParamsExactIn calldata params) external {
         IERC20(params.tokenFrom).forceApprove(params.uniswapRouter, params.amount);
-        ISwapRouter(params.uniswapRouter).exactInput(
-            ISwapRouter.ExactInputParams({
+        ISwapRouter02(params.uniswapRouter).exactInput(
+            IV3SwapRouter.ExactInputParams({
                 path: params.path,
                 recipient: params.recipient,
-                deadline: params.deadline,
                 amountIn: params.amount,
                 amountOutMinimum: params.amountOutMinimum
             })
@@ -176,11 +173,10 @@ contract UniswapSwapActions {
      */
     function swapAssetExactOut(SwapParamsExactOut calldata params) external {
         IERC20(params.tokenFrom).forceApprove(params.uniswapRouter, params.amountInMaximum);
-        uint256 amountIn = ISwapRouter(params.uniswapRouter).exactOutput(
-            ISwapRouter.ExactOutputParams({
+        uint256 amountIn = ISwapRouter02(params.uniswapRouter).exactOutput(
+            IV3SwapRouter.ExactOutputParams({
                 path: params.path,
                 recipient: params.recipient,
-                deadline: params.deadline,
                 amountOut: params.amount,
                 amountInMaximum: params.amountInMaximum
             })

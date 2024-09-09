@@ -1008,8 +1008,6 @@ library Actions {
             tokenOut: swap.buyToken,
             amount: swap.isExactOut ? swap.buyAmount : swap.sellAmount,
             isExactOut: swap.isExactOut,
-            // The swap never expires and needs to be cancelled explicity
-            deadline: type(uint256).max,
             path: swap.path
         });
         (address[] memory priceFeeds, bool[] memory shouldInvert) = PriceFeeds.findPriceFeedPath({

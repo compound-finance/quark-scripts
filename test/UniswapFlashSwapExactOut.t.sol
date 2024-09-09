@@ -16,7 +16,7 @@ import {QuarkWalletProxyFactory} from "quark-proxy/src/QuarkWalletProxyFactory.s
 
 import {Ethcall} from "src/Ethcall.sol";
 import {Multicall} from "src/Multicall.sol";
-import {PoolAddress} from "src/vendor/uniswap_v3_periphery/PoolAddress.sol";
+import {PoolAddress} from "src/vendor/uniswap-v3-periphery/PoolAddress.sol";
 import {UniswapFlashSwapExactOut} from "src/UniswapFlashSwapExactOut.sol";
 
 import {Counter} from "./lib/Counter.sol";

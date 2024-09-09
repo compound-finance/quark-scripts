@@ -6,7 +6,7 @@ import {SafeERC20} from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 import {IERC20Metadata} from "openzeppelin/token/ERC20/extensions/IERC20Metadata.sol";
 
 import {AggregatorV3Interface} from "src/vendor/chainlink/AggregatorV3Interface.sol";
-import {ISwapRouter} from "v3-periphery/interfaces/ISwapRouter.sol";
+import {ISwapRouter02, IV3SwapRouter} from "src/vendor/uniswap-swap-router-contracts/ISwapRouter02.sol";
 
 import {QuarkWallet} from "quark-core/src/QuarkWallet.sol";
 import {QuarkScript} from "quark-core/src/QuarkScript.sol";
@@ -65,7 +65,6 @@ contract RecurringSwap is QuarkScript {
         uint256 amount;
         /// @dev False for exact in; true for exact out
         bool isExactOut;
-        uint256 deadline;
         bytes path;
     }
 
@@ -210,11 +209,10 @@ contract RecurringSwap is QuarkScript {
 
         if (swapParams.isExactOut) {
             // Exact out swap
-            actualAmountIn = ISwapRouter(swapParams.uniswapRouter).exactOutput(
-                ISwapRouter.ExactOutputParams({
+            actualAmountIn = ISwapRouter02(swapParams.uniswapRouter).exactOutput(
+                IV3SwapRouter.ExactOutputParams({
                     path: swapParams.path,
                     recipient: swapParams.recipient,
-                    deadline: swapParams.deadline,
                     amountOut: amountOut,
                     amountInMaximum: amountIn
                 })
@@ -222,11 +220,10 @@ contract RecurringSwap is QuarkScript {
             actualAmountOut = amountOut;
         } else {
             // Exact in swap
-            actualAmountOut = ISwapRouter(swapParams.uniswapRouter).exactInput(
-                ISwapRouter.ExactInputParams({
+            actualAmountOut = ISwapRouter02(swapParams.uniswapRouter).exactInput(
+                IV3SwapRouter.ExactInputParams({
                     path: swapParams.path,
                     recipient: swapParams.recipient,
-                    deadline: swapParams.deadline,
                     amountIn: amountIn,
                     amountOutMinimum: amountOut
                 })
@@ -268,7 +265,6 @@ contract RecurringSwap is QuarkScript {
                     config.swapParams.tokenOut,
                     config.swapParams.amount,
                     config.swapParams.isExactOut,
-                    config.swapParams.deadline,
                     config.swapParams.path
                 ),
                 abi.encodePacked(

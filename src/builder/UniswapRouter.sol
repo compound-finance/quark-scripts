@@ -10,18 +10,17 @@ library UniswapRouter {
     }
 
     /// @dev Addresses fetched from: https://docs.uniswap.org/contracts/v3/reference/deployments/
-    /// Note: We use the addresses for SwapRouter, instead of SwapRouter02, which has a slightly different interface
+    /// Note: Make sure that these are the addresses for SwapRouter02, not SwapRouter.
     function knownChains() internal pure returns (RouterChain[] memory) {
         RouterChain[] memory chains = new RouterChain[](4);
         // Mainnet
         chains[0] = RouterChain({chainId: 1, router: 0xE592427A0AEce92De3Edee1F18E0157C05861564});
-        // TODO: These chains don't have SwapRouter, so we will add them back once we move to SwapRouter02
         // Base
-        // chains[1] = RouterChain({chainId: 8453, router: 0x2626664c2603336E57B271c5C0b26F421741e481});
+        chains[1] = RouterChain({chainId: 8453, router: 0x2626664c2603336E57B271c5C0b26F421741e481});
         // Sepolia
-        // chains[2] = RouterChain({chainId: 11155111, router: 0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E});
+        chains[2] = RouterChain({chainId: 11155111, router: 0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E});
         // Base Sepolia
-        // chains[3] = RouterChain({chainId: 84532, router: 0x94cC0AaC535CCDB3C01d6787D6413C739ae12bc4});
+        chains[3] = RouterChain({chainId: 84532, router: 0x94cC0AaC535CCDB3C01d6787D6413C739ae12bc4});
         return chains;
     }
 
