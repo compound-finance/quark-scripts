@@ -62,7 +62,7 @@ contract QuarkBuilderTest {
         pure
         returns (PaymentInfo.Payment memory)
     {
-        return PaymentInfo.Payment({isToken: true, currency: "USDC", maxCosts: maxCosts});
+        return PaymentInfo.Payment({isToken: true, currency: "usdc", maxCosts: maxCosts});
     }
 
     function paymentUsd_() internal pure returns (PaymentInfo.Payment memory) {
@@ -74,7 +74,7 @@ contract QuarkBuilderTest {
         pure
         returns (PaymentInfo.Payment memory)
     {
-        return PaymentInfo.Payment({isToken: false, currency: "USD", maxCosts: maxCosts});
+        return PaymentInfo.Payment({isToken: false, currency: "usd", maxCosts: maxCosts});
     }
 
     // TODO: refactor
