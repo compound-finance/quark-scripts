@@ -477,7 +477,7 @@ library Actions {
             scriptAddress: CodeJarHelper.getCodeAddress(scriptSources[0]),
             scriptCalldata: CCTP.encodeBridgeUSDC(
                 bridge.srcChainId, bridge.destinationChainId, bridge.amount, bridge.recipient, srcUSDCPositions.asset
-            ),
+                ),
             scriptSources: scriptSources,
             expiry: bridge.blockTimestamp + BRIDGE_EXPIRY_BUFFER
         });
@@ -698,8 +698,7 @@ library Actions {
         bytes memory scriptCalldata;
         if (Strings.stringEqIgnoreCase(cometSupply.assetSymbol, "ETH")) {
             // XXX handle wrapping ETH
-        }
-        else {
+        } else {
             scriptCalldata = abi.encodeWithSelector(
                 CometSupplyActions.supply.selector, cometSupply.comet, assetPositions.asset, cometSupply.amount
             );
@@ -757,8 +756,7 @@ library Actions {
         bytes memory scriptCalldata;
         if (Strings.stringEqIgnoreCase(cometWithdraw.assetSymbol, "ETH")) {
             // XXX handle unwrapping ETH
-        }
-        else {
+        } else {
             scriptCalldata = abi.encodeWithSelector(
                 CometWithdrawActions.withdraw.selector, cometWithdraw.comet, assetPositions.asset, cometWithdraw.amount
             );
@@ -881,7 +879,7 @@ library Actions {
             scriptAddress: CodeJarHelper.getCodeAddress(type(WrapperActions).creationCode),
             scriptCalldata: TokenWrapper.encodeActionToWrapOrUnwrap(
                 wrapOrUnwrap.chainId, wrapOrUnwrap.assetSymbol, wrapOrUnwrap.amount
-            ),
+                ),
             scriptSources: scriptSources,
             expiry: wrapOrUnwrap.blockTimestamp + STANDARD_EXPIRY_BUFFER
         });
