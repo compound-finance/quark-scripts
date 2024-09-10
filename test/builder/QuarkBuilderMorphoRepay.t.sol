@@ -5,83 +5,58 @@ import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
 import {Arrays} from "test/builder/lib/Arrays.sol";
-import {QuarkBuilderTest, Accounts, PaymentInfo, QuarkBuilder} from "test/builder/lib/QuarkBuilderTest.sol";
-
+import {QuarkBuilderTest, Accounts, PaymentInfo} from "test/builder/lib/QuarkBuilderTest.sol";
 import {Actions} from "src/builder/Actions.sol";
 import {CCTPBridgeActions} from "src/BridgeScripts.sol";
 import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
-import {CometRepayAndWithdrawMultipleAssets} from "src/DeFiScripts.sol";
-import {Multicall} from "src/Multicall.sol";
+import {MorphoActions} from "src/MorphoScripts.sol";
 import {Paycall} from "src/Paycall.sol";
 import {Strings} from "src/builder/Strings.sol";
+import {Multicall} from "src/Multicall.sol";
 import {WrapperActions} from "src/WrapperScripts.sol";
+import {MorphoInfo} from "src/builder/MorphoInfo.sol";
+import {QuarkBuilder} from "src/builder/QuarkBuilder.sol";
+import {TokenWrapper} from "src/builder/TokenWrapper.sol";
 
-contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
+contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
     function repayIntent_(
         uint256 chainId,
-        address comet,
         string memory assetSymbol,
         uint256 amount,
-        string[] memory collateralAssetSymbols,
-        uint256[] memory collateralAmounts
-    ) internal pure returns (QuarkBuilder.CometRepayIntent memory) {
-        return QuarkBuilder.CometRepayIntent({
+        string memory collateralAssetSymbol,
+        uint256 collateralAmount
+    ) internal pure returns (QuarkBuilder.MorphoRepayIntent memory) {
+        return QuarkBuilder.MorphoRepayIntent({
             amount: amount,
             assetSymbol: assetSymbol,
             blockTimestamp: BLOCK_TIMESTAMP,
+            repayer: address(0xa11ce),
             chainId: chainId,
-            collateralAmounts: collateralAmounts,
-            collateralAssetSymbols: collateralAssetSymbols,
-            comet: comet,
-            repayer: address(0xa11ce)
+            collateralAmount: collateralAmount,
+            collateralAssetSymbol: collateralAssetSymbol
         });
     }
 
-    function testCometRepayInvalidInput() public {
-        uint256[] memory collateralAmounts = new uint256[](2);
-        collateralAmounts[0] = 1e18;
-        collateralAmounts[1] = 1e18;
-
-        string[] memory collateralAssetSymbols = new string[](1);
-        collateralAssetSymbols[0] = "LINK";
-
-        QuarkBuilder builder = new QuarkBuilder();
-
-        vm.expectRevert(QuarkBuilder.InvalidInput.selector);
-
-        builder.cometRepay(
-            repayIntent_(1, cometUsdc_(1), "USDC", 1e6, collateralAssetSymbols, collateralAmounts),
-            chainAccountsList_(3e6),
-            paymentUsd_()
-        );
-    }
-
-    function testCometRepayFundsUnavailable() public {
-        uint256[] memory collateralAmounts = new uint256[](0);
-        string[] memory collateralAssetSymbols = new string[](0);
-
+    function testMorphoRepayFundsUnavailable() public {
         QuarkBuilder builder = new QuarkBuilder();
 
         vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "USDC", 1e6, 0));
 
-        builder.cometRepay(
-            repayIntent_(1, cometUsdc_(1), "USDC", 1e6, collateralAssetSymbols, collateralAmounts), // attempting to repay 1 USDC
+        builder.morphoRepay(
+            repayIntent_(1, "USDC", 1e6, "WBTC", 1e8),
             chainAccountsList_(0e6), // but user has 0 USDC
             paymentUsd_()
         );
     }
 
-    function testCometRepayMaxCostTooHigh() public {
+    function testMorphoRepayMaxCostTooHigh() public {
         QuarkBuilder builder = new QuarkBuilder();
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
-        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 0.5e6}); // action costs .5 USDC
-
-        uint256[] memory collateralAmounts = new uint256[](0);
-        string[] memory collateralAssetSymbols = new string[](0);
+        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 8453, amount: 0.5e6}); // action costs .5 USDC
 
         ChainPortfolio[] memory chainPortfolios = new ChainPortfolio[](1);
         chainPortfolios[0] = ChainPortfolio({
-            chainId: 1,
+            chainId: 8453,
             account: address(0xa11ce),
             nextNonce: 12,
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
@@ -90,28 +65,22 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             morphoPortfolios: emptyMorphoPortfolios_()
         });
 
-        vm.expectRevert(QuarkBuilder.MaxCostTooHigh.selector);
+        vm.expectRevert(abi.encodeWithSelector(Actions.NotEnoughFundsToBridge.selector, "usdc", 0.1e6, 0.1e6));
 
-        builder.cometRepay(
-            repayIntent_(1, cometWeth_(1), "WETH", 1e18, collateralAssetSymbols, collateralAmounts),
+        builder.morphoRepay(
+            repayIntent_(8453, "WETH", 1e18, "cbETH", 1e18),
             chainAccountsFromChainPortfolios(chainPortfolios),
             paymentUsdc_(maxCosts)
         );
     }
 
-    function testCometRepay() public {
-        uint256[] memory collateralAmounts = new uint256[](1);
-        collateralAmounts[0] = 1e18;
-
-        string[] memory collateralAssetSymbols = new string[](1);
-        collateralAssetSymbols[0] = "LINK";
-
+    function testMorphoRepay() public {
         ChainPortfolio[] memory chainPortfolios = new ChainPortfolio[](2);
         chainPortfolios[0] = ChainPortfolio({
             chainId: 1,
             account: address(0xa11ce),
             nextNonce: 12,
-            assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
+            assetSymbols: Arrays.stringArray("USDC", "USDT", "WBTC", "WETH"),
             assetBalances: Arrays.uintArray(1e6, 0, 0, 0), // has 1 USDC
             cometPortfolios: emptyCometPortfolios_(),
             morphoPortfolios: emptyMorphoPortfolios_()
@@ -120,62 +89,44 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             chainId: 8453,
             account: address(0xb0b),
             nextNonce: 2,
-            assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
+            assetSymbols: Arrays.stringArray("USDC", "USDT", "WBTC", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 0, 0),
             cometPortfolios: emptyCometPortfolios_(),
             morphoPortfolios: emptyMorphoPortfolios_()
         });
 
         QuarkBuilder builder = new QuarkBuilder();
-        QuarkBuilder.BuilderResult memory result = builder.cometRepay(
+        QuarkBuilder.BuilderResult memory result = builder.morphoRepay(
             repayIntent_(
                 1,
-                cometUsdc_(1),
                 "USDC",
                 1e6, // repaying 1 USDC
-                collateralAssetSymbols,
-                collateralAmounts // withdrawing 1 LINK
+                "WBTC",
+                1e8 // withdraw WBTC
             ),
             chainAccountsFromChainPortfolios(chainPortfolios),
             paymentUsd_()
         );
 
         assertEq(result.paymentCurrency, "usd", "usd currency");
-
+        address MorphoActionsAddress = CodeJarHelper.getCodeAddress(type(MorphoActions).creationCode);
         // Check the quark operations
         assertEq(result.quarkOperations.length, 1, "one operation");
         assertEq(
             result.quarkOperations[0].scriptAddress,
-            address(
-                uint160(
-                    uint256(
-                        keccak256(
-                            abi.encodePacked(
-                                bytes1(0xff),
-                                /* codeJar address */
-                                address(CodeJarHelper.CODE_JAR_ADDRESS),
-                                uint256(0),
-                                /* script bytecode */
-                                keccak256(type(CometRepayAndWithdrawMultipleAssets).creationCode)
-                            )
-                        )
-                    )
-                )
-            ),
+            MorphoActionsAddress,
             "script address is correct given the code jar address on mainnet"
         );
-        address[] memory collateralTokens = new address[](1);
-        collateralTokens[0] = link_(1);
         assertEq(
             result.quarkOperations[0].scriptCalldata,
             abi.encodeCall(
-                CometRepayAndWithdrawMultipleAssets.run,
-                (cometUsdc_(1), collateralTokens, collateralAmounts, usdc_(1), 1e6)
+                MorphoActions.repayAndWithdrawCollateral,
+                (MorphoInfo.getMorphoAddress(1), MorphoInfo.getMarketParams(1, "WBTC", "USDC"), 1e6, 1e8)
             ),
-            "calldata is CometRepayAndWithdrawMultipleAssets.run(COMET_1_USDC, [LINK], [1e18], USDC, 1e6);"
+            "calldata is MorphoActions.repayAndWithdrawCollateral(MorphoInfo.getMorphoAddress(1), MorphoInfo.getMarketParams(1, WBTC, USDC), 1e6, 1e8,  address(0xa11ce),  address(0xa11ce));"
         );
         assertEq(result.quarkOperations[0].scriptSources.length, 1);
-        assertEq(result.quarkOperations[0].scriptSources[0], type(CometRepayAndWithdrawMultipleAssets).creationCode);
+        assertEq(result.quarkOperations[0].scriptSources[0], type(MorphoActions).creationCode);
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
@@ -184,81 +135,64 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         assertEq(result.actions.length, 1, "one action");
         assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
         assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.actions[0].actionType, "REPAY", "action type is 'REPAY'");
+        assertEq(result.actions[0].actionType, "MORPHO_REPAY", "action type is 'MORPHO_REPAY'");
         assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
         assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
         assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
 
-        uint256[] memory collateralTokenPrices = new uint256[](1);
-        collateralTokenPrices[0] = LINK_PRICE;
-
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
-                Actions.RepayActionContext({
+                Actions.MorphoRepayActionContext({
                     amount: 1e6,
                     assetSymbol: "USDC",
                     chainId: 1,
-                    collateralAmounts: collateralAmounts,
-                    collateralAssetSymbols: collateralAssetSymbols,
-                    collateralTokenPrices: collateralTokenPrices,
-                    collateralTokens: collateralTokens,
-                    comet: cometUsdc_(1),
+                    collateralAmount: 1e8,
+                    collateralAssetSymbol: "WBTC",
+                    collateralTokenPrice: WBTC_PRICE,
+                    collateralToken: wbtc_(1),
                     price: USDC_PRICE,
-                    token: usdc_(1)
+                    token: usdc_(1),
+                    morpho: MorphoInfo.getMorphoAddress(1),
+                    morphoMarketId: MorphoInfo.marketId(MorphoInfo.getMarketParams(1, "WBTC", "USDC"))
                 })
             ),
-            "action context encoded from RepayActionContext"
+            "action context encoded from MorphoRepayActionContext"
         );
-
-        // TODO: Check the contents of the EIP712 data
         assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
         assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
     }
 
-    function testCometRepayWithAutoWrapper() public {
-        uint256[] memory collateralAmounts = new uint256[](1);
-        collateralAmounts[0] = 1e18;
-
-        string[] memory collateralAssetSymbols = new string[](1);
-        collateralAssetSymbols[0] = "LINK";
-
-        address[] memory collateralTokens = new address[](1);
-        collateralTokens[0] = link_(1);
-
-        uint256[] memory collateralTokenPrices = new uint256[](1);
-        collateralTokenPrices[0] = LINK_PRICE;
-
+    function testMorphoRepayWithAutoWrapper() public {
         ChainPortfolio[] memory chainPortfolios = new ChainPortfolio[](2);
         chainPortfolios[0] = ChainPortfolio({
             chainId: 1,
-            account: address(0xa11ce),
-            nextNonce: 12,
-            assetSymbols: Arrays.stringArray("USDC", "ETH", "LINK", "WETH"),
-            assetBalances: Arrays.uintArray(0, 1e18, 0, 0), // has 1 ETH
+            account: address(0xb0b),
+            nextNonce: 2,
+            assetSymbols: Arrays.stringArray("USDC", "ETH", "cbETH", "WETH"),
+            assetBalances: Arrays.uintArray(0, 0, 0, 0),
             cometPortfolios: emptyCometPortfolios_(),
             morphoPortfolios: emptyMorphoPortfolios_()
         });
         chainPortfolios[1] = ChainPortfolio({
             chainId: 8453,
-            account: address(0xb0b),
+            account: address(0xa11ce),
             nextNonce: 2,
-            assetSymbols: Arrays.stringArray("USDC", "ETH", "LINK", "WETH"),
-            assetBalances: Arrays.uintArray(0, 0, 0, 0),
+            assetSymbols: Arrays.stringArray("USDC", "ETH", "cbETH", "WETH"),
+            assetBalances: Arrays.uintArray(0, 1e18, 0, 0),
             cometPortfolios: emptyCometPortfolios_(),
             morphoPortfolios: emptyMorphoPortfolios_()
         });
 
         QuarkBuilder builder = new QuarkBuilder();
-        QuarkBuilder.BuilderResult memory result = builder.cometRepay(
+        QuarkBuilder.BuilderResult memory result = builder.morphoRepay(
             repayIntent_(
-                1,
-                cometWeth_(1),
+                8453,
                 "WETH",
                 1e18, // repaying 1 WETH
-                collateralAssetSymbols,
-                collateralAmounts // withdrawing 1 LINK
+                "cbETH",
+                0e18
             ),
             chainAccountsFromChainPortfolios(chainPortfolios),
             paymentUsd_()
@@ -268,8 +202,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
 
         address multicallAddress = CodeJarHelper.getCodeAddress(type(Multicall).creationCode);
         address wrapperActionsAddress = CodeJarHelper.getCodeAddress(type(WrapperActions).creationCode);
-        address cometRepayAndWithdrawMultipleAssetsAddress =
-            CodeJarHelper.getCodeAddress(type(CometRepayAndWithdrawMultipleAssets).creationCode);
+        address MorphoActionsAddress = CodeJarHelper.getCodeAddress(type(MorphoActions).creationCode);
+
         // Check the quark operations
         assertEq(result.quarkOperations.length, 1, "one merged operation");
         assertEq(
@@ -279,23 +213,24 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         );
         address[] memory callContracts = new address[](2);
         callContracts[0] = wrapperActionsAddress;
-        callContracts[1] = cometRepayAndWithdrawMultipleAssetsAddress;
+        callContracts[1] = MorphoActionsAddress;
         bytes[] memory callDatas = new bytes[](2);
-        callDatas[0] =
-            abi.encodeWithSelector(WrapperActions.wrapETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18);
+        callDatas[0] = abi.encodeWithSelector(
+            WrapperActions.wrapETH.selector, TokenWrapper.getKnownWrapperTokenPair(8453, "WETH").wrapper, 1e18
+        );
         callDatas[1] = abi.encodeCall(
-            CometRepayAndWithdrawMultipleAssets.run,
-            (cometWeth_(1), collateralTokens, collateralAmounts, weth_(1), 1e18)
+            MorphoActions.repayAndWithdrawCollateral,
+            (MorphoInfo.getMorphoAddress(8453), MorphoInfo.getMarketParams(8453, "cbETH", "WETH"), 1e18, 0e18)
         );
 
         assertEq(
             result.quarkOperations[0].scriptCalldata,
             abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
-            "calldata is Multicall.run([wrapperActionsAddress, cometRepayAndWithdrawMultipleAssetsAddress], [WrapperActions.wrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18), CometRepayAndWithdrawMultipleAssets.run(COMET_1_WETH, collateralTokens, collateralAmounts, weth_(1), 1e18)"
+            "calldata is Multicall.run([wrapperActionsAddress, MorphoActionsAddress], [WrapperActions.wrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18),  MorphoActions.repayAndWithdrawCollateral(MorphoInfo.getMorphoAddress(8453), MorphoInfo.getMarketParams(8453, WETH, USDC), 1e18, 0, 0e18, address(0xa11ce), address(0xa11ce))"
         );
         assertEq(result.quarkOperations[0].scriptSources.length, 3);
         assertEq(result.quarkOperations[0].scriptSources[0], type(WrapperActions).creationCode);
-        assertEq(result.quarkOperations[0].scriptSources[1], type(CometRepayAndWithdrawMultipleAssets).creationCode);
+        assertEq(result.quarkOperations[0].scriptSources[1], type(MorphoActions).creationCode);
         assertEq(result.quarkOperations[0].scriptSources[2], type(Multicall).creationCode);
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
@@ -303,50 +238,44 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
 
         // check the actions
         assertEq(result.actions.length, 1, "one action");
-        assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
+        assertEq(result.actions[0].chainId, 8453, "operation is on chainid 8453");
         assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.actions[0].actionType, "REPAY", "action type is 'REPAY'");
+        assertEq(result.actions[0].actionType, "MORPHO_REPAY", "action type is 'MORPHO_REPAY'");
         assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
         assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
         assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
+
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
-                Actions.RepayActionContext({
+                Actions.MorphoRepayActionContext({
                     amount: 1e18,
                     assetSymbol: "WETH",
-                    chainId: 1,
-                    collateralAmounts: collateralAmounts,
-                    collateralAssetSymbols: collateralAssetSymbols,
-                    collateralTokenPrices: collateralTokenPrices,
-                    collateralTokens: collateralTokens,
-                    comet: cometWeth_(1),
+                    chainId: 8453,
+                    collateralAmount: 0,
+                    collateralAssetSymbol: "cbETH",
+                    collateralTokenPrice: CBETH_PRICE,
+                    collateralToken: cbEth_(8453),
                     price: WETH_PRICE,
-                    token: weth_(1)
+                    token: weth_(8453),
+                    morpho: MorphoInfo.getMorphoAddress(8453),
+                    morphoMarketId: MorphoInfo.marketId(MorphoInfo.getMarketParams(8453, "cbETH", "WETH"))
                 })
             ),
-            "action context encoded from RepayActionContext"
+            "action context encoded from MorphoRepayActionContext"
         );
-
-        // TODO: Check the contents of the EIP712 data
         assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
         assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
     }
 
-    function testCometRepayWithPaycall() public {
-        string[] memory collateralAssetSymbols = new string[](1);
-        collateralAssetSymbols[0] = "LINK";
-
-        uint256[] memory collateralAmounts = new uint256[](1);
-        collateralAmounts[0] = 1e18;
-
+    function testMorphoRepayWithPaycall() public {
         ChainPortfolio[] memory chainPortfolios = new ChainPortfolio[](2);
         chainPortfolios[0] = ChainPortfolio({
             chainId: 1,
             account: address(0xa11ce),
             nextNonce: 12,
-            assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
+            assetSymbols: Arrays.stringArray("USDC", "USDT", "WBTC", "WETH"),
             assetBalances: Arrays.uintArray(2e6, 0, 0, 0),
             cometPortfolios: emptyCometPortfolios_(),
             morphoPortfolios: emptyMorphoPortfolios_()
@@ -355,7 +284,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             chainId: 8453,
             account: address(0xb0b),
             nextNonce: 2,
-            assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
+            assetSymbols: Arrays.stringArray("USDC", "USDT", "WBTC", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 0, 0),
             cometPortfolios: emptyCometPortfolios_(),
             morphoPortfolios: emptyMorphoPortfolios_()
@@ -365,21 +294,19 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 0.1e6});
 
         QuarkBuilder builder = new QuarkBuilder();
-        QuarkBuilder.BuilderResult memory result = builder.cometRepay(
+        QuarkBuilder.BuilderResult memory result = builder.morphoRepay(
             repayIntent_(
                 1,
-                cometUsdc_(1),
                 "USDC",
                 1e6, // repaying 1 USDC
-                collateralAssetSymbols,
-                collateralAmounts // withdrawing 1 LINK
+                "WBTC",
+                0e8
             ),
             chainAccountsFromChainPortfolios(chainPortfolios),
             paymentUsdc_(maxCosts) // and paying with USDC
         );
 
-        address cometRepayAndWithdrawMultipleAssetsAddress =
-            CodeJarHelper.getCodeAddress(type(CometRepayAndWithdrawMultipleAssets).creationCode);
+        address MorphoActionsAddress = CodeJarHelper.getCodeAddress(type(MorphoActions).creationCode);
         address paycallAddress = paycallUsdc_(1);
 
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
@@ -391,29 +318,21 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             paycallAddress,
             "script address is correct given the code jar address on mainnet"
         );
-
-        address[] memory collateralTokens = new address[](1);
-        collateralTokens[0] = link_(1);
-
         assertEq(
             result.quarkOperations[0].scriptCalldata,
             abi.encodeWithSelector(
                 Paycall.run.selector,
-                cometRepayAndWithdrawMultipleAssetsAddress,
-                abi.encodeWithSelector(
-                    CometRepayAndWithdrawMultipleAssets.run.selector,
-                    cometUsdc_(1),
-                    collateralTokens,
-                    collateralAmounts,
-                    usdc_(1),
-                    1e6
+                MorphoActionsAddress,
+                abi.encodeCall(
+                    MorphoActions.repayAndWithdrawCollateral,
+                    (MorphoInfo.getMorphoAddress(1), MorphoInfo.getMarketParams(1, "WBTC", "USDC"), 1e6, 0e8)
                 ),
                 0.1e6
             ),
-            "calldata is Paycall.run(CometRepayAndWithdrawMultipleAssets.run(cometUsdc_(1), [LINK_1], [1e18], USDC_1, 1e6), 0.1e6);"
+            "calldata is Paycall.run(MorphoActions.repayAndWithdrawCollateral(MorphoInfo.getMorphoAddress(1), MorphoInfo.getMarketParams(1, WBTC, USDC), 1e6, 0);"
         );
         assertEq(result.quarkOperations[0].scriptSources.length, 2);
-        assertEq(result.quarkOperations[0].scriptSources[0], type(CometRepayAndWithdrawMultipleAssets).creationCode);
+        assertEq(result.quarkOperations[0].scriptSources[0], type(MorphoActions).creationCode);
         assertEq(
             result.quarkOperations[0].scriptSources[1],
             abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
@@ -426,160 +345,39 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         assertEq(result.actions.length, 1, "one action");
         assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
         assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.actions[0].actionType, "REPAY", "action type is 'REPAY'");
+        assertEq(result.actions[0].actionType, "MORPHO_REPAY", "action type is 'MORPHO_REPAY'");
         assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
         assertEq(result.actions[0].paymentMaxCost, 0.1e6, "payment max is set to .1e6 in this test case");
 
+        uint256[] memory collateralAmounts = new uint256[](1);
+        collateralAmounts[0] = 0e18;
         uint256[] memory collateralTokenPrices = new uint256[](1);
-        collateralTokenPrices[0] = LINK_PRICE;
+        collateralTokenPrices[0] = WBTC_PRICE;
+        address[] memory collateralTokens = new address[](1);
+        collateralTokens[0] = wbtc_(1);
+        string[] memory collateralAssetSymbols = new string[](1);
+        collateralAssetSymbols[0] = "WBTC";
 
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
-                Actions.RepayActionContext({
+                Actions.MorphoRepayActionContext({
                     amount: 1e6,
                     assetSymbol: "USDC",
                     chainId: 1,
-                    collateralAmounts: collateralAmounts,
-                    collateralAssetSymbols: collateralAssetSymbols,
-                    collateralTokenPrices: collateralTokenPrices,
-                    collateralTokens: collateralTokens,
-                    comet: cometUsdc_(1),
+                    collateralAmount: 0,
+                    collateralAssetSymbol: "WBTC",
+                    collateralTokenPrice: WBTC_PRICE,
+                    collateralToken: wbtc_(1),
                     price: USDC_PRICE,
-                    token: usdc_(1)
+                    token: usdc_(1),
+                    morpho: MorphoInfo.getMorphoAddress(1),
+                    morphoMarketId: MorphoInfo.marketId(MorphoInfo.getMarketParams(1, "WBTC", "USDC"))
                 })
             ),
-            "action context encoded from RepayActionContext"
+            "action context encoded from MorphoRepayActionContext"
         );
-
-        // TODO: Check the contents of the EIP712 data
-        assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
-        assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
-        assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
-    }
-
-    // pay for a transaction with funds currently supplied as collateral
-    function testCometRepayPayFromWithdraw() public {
-        QuarkBuilder builder = new QuarkBuilder();
-        PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
-        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 0.5e6}); // action costs .5 USDC
-
-        uint256[] memory collateralAmounts = new uint256[](1);
-        collateralAmounts[0] = 1e6;
-
-        string[] memory collateralAssetSymbols = new string[](1);
-        collateralAssetSymbols[0] = "USDC";
-
-        ChainPortfolio[] memory chainPortfolios = new ChainPortfolio[](2);
-        chainPortfolios[0] = ChainPortfolio({
-            chainId: 1,
-            account: address(0xa11ce),
-            nextNonce: 12,
-            assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
-            assetBalances: Arrays.uintArray(0, 0, 0, 1e18),
-            cometPortfolios: emptyCometPortfolios_(),
-            morphoPortfolios: emptyMorphoPortfolios_()
-        });
-        chainPortfolios[1] = ChainPortfolio({
-            chainId: 8453,
-            account: address(0xb0b),
-            nextNonce: 2,
-            assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
-            assetBalances: Arrays.uintArray(0, 0, 0, 0),
-            cometPortfolios: emptyCometPortfolios_(),
-            morphoPortfolios: emptyMorphoPortfolios_()
-        });
-
-        QuarkBuilder.BuilderResult memory result = builder.cometRepay(
-            repayIntent_(
-                1,
-                cometWeth_(1),
-                "WETH",
-                1e18, // repaying 1 WETH
-                collateralAssetSymbols,
-                collateralAmounts // and withdrawing 1 USDC
-            ),
-            chainAccountsFromChainPortfolios(chainPortfolios),
-            paymentUsdc_(maxCosts) // user is paying with USDC that is currently supplied as collateral
-        );
-
-        address cometRepayAndWithdrawMultipleAssetsAddress =
-            CodeJarHelper.getCodeAddress(type(CometRepayAndWithdrawMultipleAssets).creationCode);
-        address paycallAddress = paycallUsdc_(1);
-
-        assertEq(result.paymentCurrency, "usdc", "usdc currency");
-
-        address[] memory collateralTokens = new address[](1);
-        collateralTokens[0] = usdc_(1);
-
-        // Check the quark operations
-        assertEq(result.quarkOperations.length, 1, "one operation");
-        assertEq(
-            result.quarkOperations[0].scriptAddress,
-            paycallAddress,
-            "script address is correct given the code jar address on mainnet"
-        );
-        assertEq(
-            result.quarkOperations[0].scriptCalldata,
-            abi.encodeWithSelector(
-                Paycall.run.selector,
-                cometRepayAndWithdrawMultipleAssetsAddress,
-                abi.encodeWithSelector(
-                    CometRepayAndWithdrawMultipleAssets.run.selector,
-                    cometWeth_(1),
-                    collateralTokens,
-                    collateralAmounts,
-                    weth_(1),
-                    1e18
-                ),
-                0.5e6
-            ),
-            "calldata is Paycall.run(CometRepayAndWithdrawMultipleAssets.run(cometWeth_(1), [USDC_1], [1e6], WETH_1, 1e18), 0.5e6);"
-        );
-
-        assertEq(result.quarkOperations[0].scriptSources.length, 2);
-        assertEq(result.quarkOperations[0].scriptSources[0], type(CometRepayAndWithdrawMultipleAssets).creationCode);
-        assertEq(
-            result.quarkOperations[0].scriptSources[1],
-            abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
-        );
-        assertEq(
-            result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
-        );
-
-        // check the actions
-        assertEq(result.actions.length, 1, "one action");
-        assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
-        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.actions[0].actionType, "REPAY", "action type is 'REPAY'");
-        assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
-        assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
-        assertEq(result.actions[0].paymentMaxCost, 0.5e6, "payment max is set to .5e6 in this test case");
-
-        uint256[] memory collateralTokenPrices = new uint256[](1);
-        collateralTokenPrices[0] = USDC_PRICE;
-
-        assertEq(
-            result.actions[0].actionContext,
-            abi.encode(
-                Actions.RepayActionContext({
-                    amount: 1e18,
-                    assetSymbol: "WETH",
-                    chainId: 1,
-                    collateralAmounts: collateralAmounts,
-                    collateralAssetSymbols: collateralAssetSymbols,
-                    collateralTokenPrices: collateralTokenPrices,
-                    collateralTokens: collateralTokens,
-                    comet: cometWeth_(1),
-                    price: WETH_PRICE,
-                    token: weth_(1)
-                })
-            ),
-            "action context encoded from RepayActionContext"
-        );
-
-        // TODO: Check the contents of the EIP712 data
         assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
         assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
@@ -592,18 +390,12 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 0.1e6});
         maxCosts[1] = PaymentInfo.PaymentMaxCost({chainId: 8453, amount: 0.2e6});
 
-        string[] memory collateralAssetSymbols = new string[](1);
-        collateralAssetSymbols[0] = "LINK";
-
-        uint256[] memory collateralAmounts = new uint256[](1);
-        collateralAmounts[0] = 1e18;
-
         ChainPortfolio[] memory chainPortfolios = new ChainPortfolio[](2);
         chainPortfolios[0] = ChainPortfolio({
             chainId: 1,
             account: address(0xa11ce),
             nextNonce: 12,
-            assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
+            assetSymbols: Arrays.stringArray("USDC", "USDT", "WBTC", "WETH"),
             assetBalances: Arrays.uintArray(4e6, 0, 0, 0), // 4 USDC on mainnet
             cometPortfolios: emptyCometPortfolios_(),
             morphoPortfolios: emptyMorphoPortfolios_()
@@ -612,20 +404,19 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             chainId: 8453,
             account: address(0xb0b),
             nextNonce: 2,
-            assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
+            assetSymbols: Arrays.stringArray("USDC", "USDT", "WBTC", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 0, 0), // no assets on base
             cometPortfolios: emptyCometPortfolios_(),
             morphoPortfolios: emptyMorphoPortfolios_()
         });
 
-        QuarkBuilder.BuilderResult memory result = builder.cometRepay(
+        QuarkBuilder.BuilderResult memory result = builder.morphoRepay(
             repayIntent_(
                 8453,
-                cometUsdc_(8453),
                 "USDC", // repaying 2 USDC, bridged from mainnet to base
                 2e6,
-                collateralAssetSymbols,
-                collateralAmounts
+                "WETH",
+                0e18
             ),
             chainAccountsFromChainPortfolios(chainPortfolios),
             paymentUsdc_(maxCosts)
@@ -634,8 +425,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         address paycallAddress = paycallUsdc_(1);
         address paycallAddressBase = paycallUsdc_(8453);
         address cctpBridgeActionsAddress = CodeJarHelper.getCodeAddress(type(CCTPBridgeActions).creationCode);
-        address cometRepayAndWithdrawMultipleAssetsAddress =
-            CodeJarHelper.getCodeAddress(type(CometRepayAndWithdrawMultipleAssets).creationCode);
+        address MorphoActionsAddress = CodeJarHelper.getCodeAddress(type(MorphoActions).creationCode);
 
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
 
@@ -681,28 +471,21 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             "script address[1] has been wrapped with paycall address"
         );
 
-        address[] memory collateralTokens = new address[](1);
-        collateralTokens[0] = link_(8453);
-
         assertEq(
             result.quarkOperations[1].scriptCalldata,
             abi.encodeWithSelector(
                 Paycall.run.selector,
-                cometRepayAndWithdrawMultipleAssetsAddress,
-                abi.encodeWithSelector(
-                    CometRepayAndWithdrawMultipleAssets.run.selector,
-                    cometUsdc_(8453),
-                    collateralTokens,
-                    collateralAmounts,
-                    usdc_(8453),
-                    2e6
+                MorphoActionsAddress,
+                abi.encodeCall(
+                    MorphoActions.repayAndWithdrawCollateral,
+                    (MorphoInfo.getMorphoAddress(8453), MorphoInfo.getMarketParams(8453, "WETH", "USDC"), 2e6, 0e18)
                 ),
                 0.2e6
             ),
-            "calldata is Paycall.run(CometRepayAndWithdrawMultipleAssets.run(cometUsdc_(8453), [LINK_8453], [1e18], USDC_8453, 2e6), 0.2e6);"
+            "calldata is Paycall.run(MorphoActions.repayAndWithdrawCollateral(MorphoInfo.getMorphoAddress(8453), MorphoInfo.getMarketParams(8453, WETH, USDC), 2e6, 0, 0);"
         );
         assertEq(result.quarkOperations[1].scriptSources.length, 2);
-        assertEq(result.quarkOperations[1].scriptSources[0], type(CometRepayAndWithdrawMultipleAssets).creationCode);
+        assertEq(result.quarkOperations[1].scriptSources[0], type(MorphoActions).creationCode);
         assertEq(
             result.quarkOperations[1].scriptSources[1],
             abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_8453, USDC_8453))
@@ -739,34 +522,30 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         // second action
         assertEq(result.actions[1].chainId, 8453, "operation is on chainid 8453");
         assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.actions[1].actionType, "REPAY", "action type is 'REPAY'");
+        assertEq(result.actions[1].actionType, "MORPHO_REPAY", "action type is 'MORPHO_REPAY'");
         assertEq(result.actions[1].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[1].paymentToken, USDC_8453, "payment token is USDC on Base");
         assertEq(result.actions[1].paymentMaxCost, 0.2e6, "payment should have max cost of 0.2e6");
 
-        uint256[] memory collateralTokenPrices = new uint256[](1);
-        collateralTokenPrices[0] = LINK_PRICE;
-
         assertEq(
             result.actions[1].actionContext,
             abi.encode(
-                Actions.RepayActionContext({
+                Actions.MorphoRepayActionContext({
                     amount: 2e6,
                     assetSymbol: "USDC",
                     chainId: 8453,
-                    collateralAmounts: collateralAmounts,
-                    collateralAssetSymbols: collateralAssetSymbols,
-                    collateralTokenPrices: collateralTokenPrices,
-                    collateralTokens: collateralTokens,
-                    comet: cometUsdc_(8453),
+                    collateralAmount: 0,
+                    collateralAssetSymbol: "WETH",
+                    collateralTokenPrice: WETH_PRICE,
+                    collateralToken: weth_(8453),
                     price: USDC_PRICE,
-                    token: usdc_(8453)
+                    token: usdc_(8453),
+                    morpho: MorphoInfo.getMorphoAddress(8453),
+                    morphoMarketId: MorphoInfo.marketId(MorphoInfo.getMarketParams(8453, "WETH", "USDC"))
                 })
             ),
-            "action context encoded from RepayActionContext"
+            "action context encoded from MorphoRepayActionContext"
         );
-
-        // TODO: Check the contents of the EIP712 data
         assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
         assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
@@ -776,17 +555,13 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
         maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 0.1e6});
 
-        address[] memory collateralTokens = new address[](0);
-        uint256[] memory collateralAmounts = new uint256[](0);
-        string[] memory collateralAssetSymbols = new string[](0);
-
-        CometPortfolio[] memory cometPortfolios = new CometPortfolio[](1);
-        cometPortfolios[0] = CometPortfolio({
-            comet: cometUsdc_(1),
-            baseSupplied: 0,
-            baseBorrowed: 10e6, // currently borrowing 10 USDC
-            collateralAssetSymbols: Arrays.stringArray("LINK"),
-            collateralAssetBalances: Arrays.uintArray(0)
+        MorphoPortfolio[] memory morphoPortfolios = new MorphoPortfolio[](1);
+        morphoPortfolios[0] = MorphoPortfolio({
+            marketId: MorphoInfo.marketId(MorphoInfo.getMarketParams(1, "WBTC", "USDC")),
+            loanToken: "USDC",
+            collateralToken: "WBTC",
+            borrowedBalance: 10e6,
+            collateralBalance: 1e8
         });
 
         ChainPortfolio[] memory chainPortfolios = new ChainPortfolio[](1);
@@ -794,21 +569,20 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             chainId: 1,
             account: address(0xa11ce),
             nextNonce: 12,
-            assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
-            assetBalances: Arrays.uintArray(50e6, 0, 0, 0), // has 50 USDC
-            cometPortfolios: cometPortfolios,
-            morphoPortfolios: emptyMorphoPortfolios_()
+            assetSymbols: Arrays.stringArray("USDC", "USDT", "WBTC", "WETH"),
+            assetBalances: Arrays.uintArray(20e6, 0, 0, 0), // has 20 USDC
+            cometPortfolios: emptyCometPortfolios_(),
+            morphoPortfolios: morphoPortfolios
         });
 
         QuarkBuilder builder = new QuarkBuilder();
-        QuarkBuilder.BuilderResult memory result = builder.cometRepay(
+        QuarkBuilder.BuilderResult memory result = builder.morphoRepay(
             repayIntent_(
                 1,
-                cometUsdc_(1),
                 "USDC",
                 type(uint256).max, // repaying max (all 10 USDC)
-                collateralAssetSymbols,
-                collateralAmounts
+                "WBTC",
+                0e8 // no collateral withdrawal
             ),
             chainAccountsFromChainPortfolios(chainPortfolios),
             paymentUsdc_(maxCosts)
@@ -819,8 +593,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         address paycallAddress = CodeJarHelper.getCodeAddress(
             abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
         );
-        address cometRepayAndWithdrawMultipleAssetsAddress =
-            CodeJarHelper.getCodeAddress(type(CometRepayAndWithdrawMultipleAssets).creationCode);
+        address MorphoActionsAddress = CodeJarHelper.getCodeAddress(type(MorphoActions).creationCode);
 
         // Check the quark operations
         assertEq(result.quarkOperations.length, 1, "one operation");
@@ -834,22 +607,23 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             result.quarkOperations[0].scriptCalldata,
             abi.encodeWithSelector(
                 Paycall.run.selector,
-                cometRepayAndWithdrawMultipleAssetsAddress,
-                abi.encodeWithSelector(
-                    CometRepayAndWithdrawMultipleAssets.run.selector,
-                    cometUsdc_(1),
-                    collateralTokens,
-                    collateralAmounts,
-                    usdc_(1),
-                    type(uint256).max
+                MorphoActionsAddress,
+                abi.encodeCall(
+                    MorphoActions.repayAndWithdrawCollateral,
+                    (
+                        MorphoInfo.getMorphoAddress(1),
+                        MorphoInfo.getMarketParams(1, "WBTC", "USDC"),
+                        type(uint256).max,
+                        0
+                    )
                 ),
                 0.1e6
             ),
-            "calldata is Paycall.run(CometRepayAndWithdrawMultipleAssets.run(cometUsdc_(1), [], [], USDC_1, uint256.max), 0.1e6);"
+            "calldata is Paycall.run(MorphoActions.repayAndWithdrawCollateral(MorphoInfo.getMorphoAddress(1), MorphoInfo.getMarketParams(1, WBTC, USDC), type(uint256).max, 0);"
         );
 
         assertEq(result.quarkOperations[0].scriptSources.length, 2);
-        assertEq(result.quarkOperations[0].scriptSources[0], type(CometRepayAndWithdrawMultipleAssets).creationCode);
+        assertEq(result.quarkOperations[0].scriptSources[0], type(MorphoActions).creationCode);
         assertEq(
             result.quarkOperations[0].scriptSources[1],
             abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
@@ -862,33 +636,30 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         assertEq(result.actions.length, 1, "one action");
         assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
         assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.actions[0].actionType, "REPAY", "action type is 'REPAY'");
+        assertEq(result.actions[0].actionType, "MORPHO_REPAY", "action type is 'MORPHO_REPAY'");
         assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC on mainnet");
         assertEq(result.actions[0].paymentMaxCost, 0.1e6, "payment should have max cost of 0.1e6");
 
-        uint256[] memory collateralTokenPrices = new uint256[](0);
-
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
-                Actions.RepayActionContext({
+                Actions.MorphoRepayActionContext({
                     amount: type(uint256).max,
                     assetSymbol: "USDC",
                     chainId: 1,
-                    collateralAmounts: collateralAmounts,
-                    collateralAssetSymbols: collateralAssetSymbols,
-                    collateralTokenPrices: collateralTokenPrices,
-                    collateralTokens: collateralTokens,
-                    comet: cometUsdc_(1),
+                    collateralAmount: 0,
+                    collateralAssetSymbol: "WBTC",
+                    collateralTokenPrice: WBTC_PRICE,
+                    collateralToken: wbtc_(1),
                     price: USDC_PRICE,
-                    token: usdc_(1)
+                    token: usdc_(1),
+                    morpho: MorphoInfo.getMorphoAddress(1),
+                    morphoMarketId: MorphoInfo.marketId(MorphoInfo.getMarketParams(1, "WBTC", "USDC"))
                 })
             ),
-            "action context encoded from RepayActionContext"
+            "action context encoded from MorphoRepayActionContext"
         );
-
-        // TODO: Check the contents of the EIP712 data
         assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
         assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
@@ -899,17 +670,13 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 0.1e6});
         maxCosts[1] = PaymentInfo.PaymentMaxCost({chainId: 8453, amount: 0.1e6});
 
-        address[] memory collateralTokens = new address[](0);
-        uint256[] memory collateralAmounts = new uint256[](0);
-        string[] memory collateralAssetSymbols = new string[](0);
-
-        CometPortfolio[] memory cometPortfolios = new CometPortfolio[](1);
-        cometPortfolios[0] = CometPortfolio({
-            comet: cometUsdc_(8453),
-            baseSupplied: 0,
-            baseBorrowed: 10e6, // currently borrowing 10 USDC on Base Comet
-            collateralAssetSymbols: Arrays.stringArray("LINK"),
-            collateralAssetBalances: Arrays.uintArray(0)
+        MorphoPortfolio[] memory morphoPortfolios = new MorphoPortfolio[](1);
+        morphoPortfolios[0] = MorphoPortfolio({
+            marketId: MorphoInfo.marketId(MorphoInfo.getMarketParams(8453, "WETH", "USDC")),
+            loanToken: "USDC",
+            collateralToken: "WETH",
+            borrowedBalance: 10e6,
+            collateralBalance: 1e8
         });
 
         ChainPortfolio[] memory chainPortfolios = new ChainPortfolio[](2);
@@ -917,8 +684,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             chainId: 1,
             account: address(0xa11ce),
             nextNonce: 12,
-            assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
-            assetBalances: Arrays.uintArray(50e6, 0, 0, 0), // has 50 USDC on mainnet
+            assetSymbols: Arrays.stringArray("USDC", "USDT", "WBTC", "WETH"),
+            assetBalances: Arrays.uintArray(50e6, 0, 0, 0), // has 50 USDC
             cometPortfolios: emptyCometPortfolios_(),
             morphoPortfolios: emptyMorphoPortfolios_()
         });
@@ -926,21 +693,20 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             chainId: 8453,
             account: address(0xa11ce),
             nextNonce: 12,
-            assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
+            assetSymbols: Arrays.stringArray("USDC", "USDT", "WBTC", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 0, 0), // has 0 USDC on base
-            cometPortfolios: cometPortfolios,
-            morphoPortfolios: emptyMorphoPortfolios_()
+            cometPortfolios: emptyCometPortfolios_(),
+            morphoPortfolios: morphoPortfolios
         });
 
         QuarkBuilder builder = new QuarkBuilder();
-        QuarkBuilder.BuilderResult memory result = builder.cometRepay(
+        QuarkBuilder.BuilderResult memory result = builder.morphoRepay(
             repayIntent_(
                 8453,
-                cometUsdc_(8453),
                 "USDC",
                 type(uint256).max, // repaying max (all 10 USDC)
-                collateralAssetSymbols,
-                collateralAmounts
+                "WETH",
+                0
             ),
             chainAccountsFromChainPortfolios(chainPortfolios),
             paymentUsdc_(maxCosts)
@@ -949,8 +715,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         assertEq(result.paymentCurrency, "usdc", "usdc currency");
 
         address cctpBridgeActionsAddress = CodeJarHelper.getCodeAddress(type(CCTPBridgeActions).creationCode);
-        address cometRepayAndWithdrawMultipleAssetsAddress =
-            CodeJarHelper.getCodeAddress(type(CometRepayAndWithdrawMultipleAssets).creationCode);
+        address MorphoActionsAddress = CodeJarHelper.getCodeAddress(type(MorphoActions).creationCode);
         address paycallAddress = CodeJarHelper.getCodeAddress(
             abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
         );
@@ -1003,21 +768,23 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             result.quarkOperations[1].scriptCalldata,
             abi.encodeWithSelector(
                 Paycall.run.selector,
-                cometRepayAndWithdrawMultipleAssetsAddress,
-                abi.encodeWithSelector(
-                    CometRepayAndWithdrawMultipleAssets.run.selector,
-                    cometUsdc_(8453),
-                    collateralTokens,
-                    collateralAmounts,
-                    usdc_(8453),
-                    type(uint256).max
+                MorphoActionsAddress,
+                abi.encodeCall(
+                    MorphoActions.repayAndWithdrawCollateral,
+                    (
+                        MorphoInfo.getMorphoAddress(8453),
+                        MorphoInfo.getMarketParams(8453, "WETH", "USDC"),
+                        type(uint256).max,
+                        0
+                    ) // Repaying in shares
                 ),
                 0.1e6
             ),
-            "calldata is Paycall.run(CometRepayAndWithdrawMultipleAssets.run(cometUsdc_(8453), [], [], USDC_8453, uint256.max), 0.1e6);"
+            "calldata is Paycall.run(MorphoActions.repayAndWithdrawCollateral(MorphoInfo.getMorphoAddress(8453), MorphoInfo.getMarketParams(8453, WETH, USDC), type(uint256).max, 0);"
         );
+
         assertEq(result.quarkOperations[1].scriptSources.length, 2);
-        assertEq(result.quarkOperations[1].scriptSources[0], type(CometRepayAndWithdrawMultipleAssets).creationCode);
+        assertEq(result.quarkOperations[1].scriptSources[0], type(MorphoActions).creationCode);
         assertEq(
             result.quarkOperations[1].scriptSources[1],
             abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_8453, USDC_8453))
@@ -1054,33 +821,30 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         // second action
         assertEq(result.actions[1].chainId, 8453, "operation is on chainid 8453");
         assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
-        assertEq(result.actions[1].actionType, "REPAY", "action type is 'REPAY'");
+        assertEq(result.actions[1].actionType, "MORPHO_REPAY", "action type is 'MORPHO_REPAY'");
         assertEq(result.actions[1].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[1].paymentToken, USDC_8453, "payment token is USDC on Base");
         assertEq(result.actions[1].paymentMaxCost, 0.1e6, "payment should have max cost of 0.1e6");
 
-        uint256[] memory collateralTokenPrices = new uint256[](0);
-
         assertEq(
             result.actions[1].actionContext,
             abi.encode(
-                Actions.RepayActionContext({
+                Actions.MorphoRepayActionContext({
                     amount: type(uint256).max,
                     assetSymbol: "USDC",
                     chainId: 8453,
-                    collateralAmounts: collateralAmounts,
-                    collateralAssetSymbols: collateralAssetSymbols,
-                    collateralTokenPrices: collateralTokenPrices,
-                    collateralTokens: collateralTokens,
-                    comet: cometUsdc_(8453),
+                    collateralAmount: 0,
+                    collateralAssetSymbol: "WETH",
+                    collateralTokenPrice: WETH_PRICE,
+                    collateralToken: weth_(8453),
                     price: USDC_PRICE,
-                    token: usdc_(8453)
+                    token: usdc_(8453),
+                    morpho: MorphoInfo.getMorphoAddress(8453),
+                    morphoMarketId: MorphoInfo.marketId(MorphoInfo.getMarketParams(8453, "WETH", "USDC"))
                 })
             ),
-            "action context encoded from RepayActionContext"
+            "action context encoded from MorphoRepayActionContext"
         );
-
-        // TODO: Check the contents of the EIP712 data
         assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
         assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");

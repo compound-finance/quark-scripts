@@ -8,6 +8,7 @@ import {Accounts} from "./Accounts.sol";
 import {BridgeRoutes} from "./BridgeRoutes.sol";
 import {EIP712Helper} from "./EIP712Helper.sol";
 import {Math} from "src/lib/Math.sol";
+import {MorphoInfo} from "./MorphoInfo.sol";
 import {Strings} from "./Strings.sol";
 import {PaycallWrapper} from "./PaycallWrapper.sol";
 import {QuotecallWrapper} from "./QuotecallWrapper.sol";
@@ -30,6 +31,7 @@ contract QuarkBuilder {
     error InvalidInput();
     error MaxCostTooHigh();
     error MissingWrapperCounterpart();
+    error InvalidRepayActionContext();
 
     /* ===== Input Types ===== */
 
@@ -70,6 +72,19 @@ contract QuarkBuilder {
         address repayer
     ) internal pure returns (uint256) {
         uint256 totalBorrowForAccount = Accounts.totalBorrowForAccount(chainAccountsList, chainId, comet, repayer);
+        uint256 buffer = totalBorrowForAccount / 1000; // 0.1%
+        return totalBorrowForAccount + buffer;
+    }
+
+    function morphoRepayMaxAmount(
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        uint256 chainId,
+        address loanToken,
+        address collateralToken,
+        address repayer
+    ) internal pure returns (uint256) {
+        uint256 totalBorrowForAccount =
+            Accounts.totalMorphoBorrowForAccount(chainAccountsList, chainId, loanToken, collateralToken, repayer);
         uint256 buffer = totalBorrowForAccount / 1000; // 0.1%
         return totalBorrowForAccount + buffer;
     }
@@ -982,6 +997,344 @@ contract QuarkBuilder {
         });
     }
 
+    struct MorphoBorrowIntent {
+        uint256 amount;
+        string assetSymbol;
+        uint256 blockTimestamp;
+        address borrower;
+        uint256 chainId;
+        uint256 collateralAmount;
+        string collateralAssetSymbol;
+    }
+
+    function morphoBorrow(
+        MorphoBorrowIntent memory borrowIntent,
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        PaymentInfo.Payment memory payment
+    ) external pure returns (BuilderResult memory) {
+        List.DynamicArray memory actions = List.newList();
+        List.DynamicArray memory quarkOperations = List.newList();
+
+        bool useQuotecall = false; // never use Quotecall
+        bool paymentTokenIsCollateralAsset =
+            Strings.stringEqIgnoreCase(borrowIntent.collateralAssetSymbol, payment.currency);
+
+        assertFundsAvailable(
+            borrowIntent.chainId,
+            borrowIntent.collateralAssetSymbol,
+            borrowIntent.collateralAmount,
+            chainAccountsList,
+            payment
+        );
+
+        if (
+            needsBridgedFunds(
+                borrowIntent.collateralAssetSymbol,
+                borrowIntent.collateralAmount,
+                borrowIntent.chainId,
+                chainAccountsList,
+                payment
+            )
+        ) {
+            uint256 amountNeededOnDst = borrowIntent.collateralAmount;
+            if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, borrowIntent.collateralAssetSymbol)) {
+                amountNeededOnDst += PaymentInfo.findMaxCost(payment, borrowIntent.chainId);
+            }
+            (IQuarkWallet.QuarkOperation[] memory bridgeQuarkOperations, Actions.Action[] memory bridgeActions) =
+            Actions.constructBridgeOperations(
+                Actions.BridgeOperationInfo({
+                    assetSymbol: borrowIntent.collateralAssetSymbol,
+                    amountNeededOnDst: amountNeededOnDst,
+                    dstChainId: borrowIntent.chainId,
+                    recipient: borrowIntent.borrower,
+                    blockTimestamp: borrowIntent.blockTimestamp,
+                    useQuotecall: useQuotecall
+                }),
+                chainAccountsList,
+                payment
+            );
+
+            for (uint256 j = 0; j < bridgeQuarkOperations.length; ++j) {
+                List.addQuarkOperation(quarkOperations, bridgeQuarkOperations[j]);
+                List.addAction(actions, bridgeActions[j]);
+            }
+        }
+
+        // when paying with tokens, you may need to bridge the payment token to cover the cost
+        if (payment.isToken && !paymentTokenIsCollateralAsset) {
+            uint256 maxCostOnDstChain = PaymentInfo.findMaxCost(payment, borrowIntent.chainId);
+            // but if you're borrowing the payment token, you can use the
+            // borrowed amount to cover the cost
+
+            if (Strings.stringEqIgnoreCase(payment.currency, borrowIntent.assetSymbol)) {
+                maxCostOnDstChain = Math.subtractFlooredAtZero(maxCostOnDstChain, borrowIntent.amount);
+            }
+
+            if (
+                needsBridgedFunds(payment.currency, maxCostOnDstChain, borrowIntent.chainId, chainAccountsList, payment)
+            ) {
+                (IQuarkWallet.QuarkOperation[] memory bridgeQuarkOperations, Actions.Action[] memory bridgeActions) =
+                Actions.constructBridgeOperations(
+                    Actions.BridgeOperationInfo({
+                        assetSymbol: payment.currency,
+                        amountNeededOnDst: maxCostOnDstChain,
+                        dstChainId: borrowIntent.chainId,
+                        recipient: borrowIntent.borrower,
+                        blockTimestamp: borrowIntent.blockTimestamp,
+                        useQuotecall: useQuotecall
+                    }),
+                    chainAccountsList,
+                    payment
+                );
+
+                for (uint256 i = 0; i < bridgeQuarkOperations.length; ++i) {
+                    List.addQuarkOperation(quarkOperations, bridgeQuarkOperations[i]);
+                    List.addAction(actions, bridgeActions[i]);
+                }
+            }
+        }
+
+        // Auto-wrap on collateral supply
+        checkAndInsertWrapOrUnwrapAction(
+            actions,
+            quarkOperations,
+            chainAccountsList,
+            payment,
+            borrowIntent.collateralAssetSymbol,
+            borrowIntent.collateralAmount,
+            borrowIntent.chainId,
+            borrowIntent.borrower,
+            borrowIntent.blockTimestamp,
+            useQuotecall
+        );
+
+        (IQuarkWallet.QuarkOperation memory borrowQuarkOperation, Actions.Action memory borrowAction) = Actions
+            .morphoBorrow(
+            Actions.MorphoBorrow({
+                chainAccountsList: chainAccountsList,
+                assetSymbol: borrowIntent.assetSymbol,
+                amount: borrowIntent.amount,
+                chainId: borrowIntent.chainId,
+                borrower: borrowIntent.borrower,
+                blockTimestamp: borrowIntent.blockTimestamp,
+                collateralAmount: borrowIntent.collateralAmount,
+                collateralAssetSymbol: borrowIntent.collateralAssetSymbol
+            }),
+            payment
+        );
+
+        List.addQuarkOperation(quarkOperations, borrowQuarkOperation);
+        List.addAction(actions, borrowAction);
+
+        // Convert actions and quark operations to arrays
+        Actions.Action[] memory actionsArray = List.toActionArray(actions);
+        IQuarkWallet.QuarkOperation[] memory quarkOperationsArray = List.toQuarkOperationArray(quarkOperations);
+
+        // Validate generated actions for affordability
+        if (payment.isToken) {
+            uint256 supplementalPaymentTokenBalance = 0;
+            if (Strings.stringEqIgnoreCase(payment.currency, borrowIntent.assetSymbol)) {
+                supplementalPaymentTokenBalance += borrowIntent.amount;
+            }
+
+            assertSufficientPaymentTokenBalances(
+                actionsArray,
+                chainAccountsList,
+                borrowIntent.chainId,
+                borrowIntent.borrower,
+                supplementalPaymentTokenBalance
+            );
+        }
+
+        // Merge operations that are from the same chain into one Multicall operation
+        (quarkOperationsArray, actionsArray) =
+            QuarkOperationHelper.mergeSameChainOperations(quarkOperationsArray, actionsArray);
+
+        // Wrap operations around Paycall/Quotecall if payment is with token
+        if (payment.isToken) {
+            quarkOperationsArray = QuarkOperationHelper.wrapOperationsWithTokenPayment(
+                quarkOperationsArray, actionsArray, payment, useQuotecall
+            );
+        }
+
+        return BuilderResult({
+            version: VERSION,
+            actions: actionsArray,
+            quarkOperations: quarkOperationsArray,
+            paymentCurrency: payment.currency,
+            eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
+        });
+    }
+
+    struct MorphoRepayIntent {
+        uint256 amount;
+        string assetSymbol;
+        uint256 blockTimestamp;
+        address repayer;
+        uint256 chainId;
+        uint256 collateralAmount;
+        string collateralAssetSymbol;
+    }
+
+    function morphoRepay(
+        MorphoRepayIntent memory repayIntent,
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        PaymentInfo.Payment memory payment
+    ) external pure returns (BuilderResult memory) {
+        bool isMaxRepay = repayIntent.amount == type(uint256).max;
+        bool useQuotecall = false; // never use Quotecall
+        bool paymentTokenIsRepaymentlAsset = Strings.stringEqIgnoreCase(repayIntent.assetSymbol, payment.currency);
+        // Only use repayAmount for purpose of bridging, will still use uint256 max for MorphoScript
+        uint256 repayAmount = repayIntent.amount;
+        if (isMaxRepay) {
+            repayAmount = morphoRepayMaxAmount(
+                chainAccountsList,
+                repayIntent.chainId,
+                Accounts.findAssetPositions(repayIntent.assetSymbol, repayIntent.chainId, chainAccountsList).asset,
+                Accounts.findAssetPositions(repayIntent.collateralAssetSymbol, repayIntent.chainId, chainAccountsList)
+                    .asset,
+                repayIntent.repayer
+            );
+        }
+
+        assertFundsAvailable(repayIntent.chainId, repayIntent.assetSymbol, repayAmount, chainAccountsList, payment);
+
+        List.DynamicArray memory actions = List.newList();
+        List.DynamicArray memory quarkOperations = List.newList();
+
+        if (needsBridgedFunds(repayIntent.assetSymbol, repayAmount, repayIntent.chainId, chainAccountsList, payment)) {
+            // Note: Assumes that the asset uses the same # of decimals on each chain
+            uint256 amountNeededOnDst = repayAmount;
+            // If action is paid for with tokens and the payment token is the
+            // repay token, we need to add the max cost to the
+            // amountNeededOnDst for target chain
+            if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, repayIntent.assetSymbol)) {
+                amountNeededOnDst += PaymentInfo.findMaxCost(payment, repayIntent.chainId);
+            }
+            (IQuarkWallet.QuarkOperation[] memory bridgeQuarkOperations, Actions.Action[] memory bridgeActions) =
+            Actions.constructBridgeOperations(
+                Actions.BridgeOperationInfo({
+                    assetSymbol: repayIntent.assetSymbol,
+                    amountNeededOnDst: amountNeededOnDst,
+                    dstChainId: repayIntent.chainId,
+                    recipient: repayIntent.repayer,
+                    blockTimestamp: repayIntent.blockTimestamp,
+                    useQuotecall: useQuotecall
+                }),
+                chainAccountsList,
+                payment
+            );
+
+            for (uint256 i = 0; i < bridgeQuarkOperations.length; ++i) {
+                List.addAction(actions, bridgeActions[i]);
+                List.addQuarkOperation(quarkOperations, bridgeQuarkOperations[i]);
+            }
+        }
+
+        // Only bridge payment token if it is not the repayment asset (which the above briding action didn't cover)
+        if (payment.isToken && !paymentTokenIsRepaymentlAsset) {
+            uint256 maxCostOnDstChain = PaymentInfo.findMaxCost(payment, repayIntent.chainId);
+            if (Strings.stringEqIgnoreCase(payment.currency, repayIntent.assetSymbol)) {
+                maxCostOnDstChain = Math.subtractFlooredAtZero(maxCostOnDstChain, repayIntent.amount);
+            }
+
+            if (needsBridgedFunds(payment.currency, maxCostOnDstChain, repayIntent.chainId, chainAccountsList, payment))
+            {
+                (IQuarkWallet.QuarkOperation[] memory bridgeQuarkOperations, Actions.Action[] memory bridgeActions) =
+                Actions.constructBridgeOperations(
+                    Actions.BridgeOperationInfo({
+                        assetSymbol: payment.currency,
+                        amountNeededOnDst: maxCostOnDstChain,
+                        dstChainId: repayIntent.chainId,
+                        recipient: repayIntent.repayer,
+                        blockTimestamp: repayIntent.blockTimestamp,
+                        useQuotecall: useQuotecall
+                    }),
+                    chainAccountsList,
+                    payment
+                );
+
+                for (uint256 i = 0; i < bridgeQuarkOperations.length; ++i) {
+                    List.addQuarkOperation(quarkOperations, bridgeQuarkOperations[i]);
+                    List.addAction(actions, bridgeActions[i]);
+                }
+            }
+        }
+
+        // Auto-wrap
+        checkAndInsertWrapOrUnwrapAction(
+            actions,
+            quarkOperations,
+            chainAccountsList,
+            payment,
+            repayIntent.assetSymbol,
+            repayAmount,
+            repayIntent.chainId,
+            repayIntent.repayer,
+            repayIntent.blockTimestamp,
+            useQuotecall
+        );
+
+        (IQuarkWallet.QuarkOperation memory repayQuarkOperations, Actions.Action memory repayActions) = Actions
+            .morphoRepay(
+            Actions.MorphoRepay({
+                chainAccountsList: chainAccountsList,
+                assetSymbol: repayIntent.assetSymbol,
+                amount: repayIntent.amount,
+                chainId: repayIntent.chainId,
+                repayer: repayIntent.repayer,
+                blockTimestamp: repayIntent.blockTimestamp,
+                collateralAmount: repayIntent.collateralAmount,
+                collateralAssetSymbol: repayIntent.collateralAssetSymbol
+            }),
+            payment
+        );
+
+        List.addAction(actions, repayActions);
+        List.addQuarkOperation(quarkOperations, repayQuarkOperations);
+
+        // Convert actions and quark operations to arrays
+        Actions.Action[] memory actionsArray = List.toActionArray(actions);
+        IQuarkWallet.QuarkOperation[] memory quarkOperationsArray = List.toQuarkOperationArray(quarkOperations);
+
+        // Validate generated actions for affordability
+        if (payment.isToken) {
+            // if you are withdrawing the payment token, you can pay with the
+            // withdrawn funds
+            uint256 supplementalPaymentTokenBalance = 0;
+            if (Strings.stringEqIgnoreCase(payment.currency, repayIntent.collateralAssetSymbol)) {
+                supplementalPaymentTokenBalance += repayIntent.collateralAmount;
+            }
+
+            assertSufficientPaymentTokenBalances(
+                actionsArray,
+                chainAccountsList,
+                repayIntent.chainId,
+                repayIntent.repayer,
+                supplementalPaymentTokenBalance
+            );
+        }
+
+        // Merge operations that are from the same chain into one Multicall operation
+        (quarkOperationsArray, actionsArray) =
+            QuarkOperationHelper.mergeSameChainOperations(quarkOperationsArray, actionsArray);
+
+        // Wrap operations around Paycall/Quotecall if payment is with token
+        if (payment.isToken) {
+            quarkOperationsArray = QuarkOperationHelper.wrapOperationsWithTokenPayment(
+                quarkOperationsArray, actionsArray, payment, useQuotecall
+            );
+        }
+
+        return BuilderResult({
+            version: VERSION,
+            actions: actionsArray,
+            quarkOperations: quarkOperationsArray,
+            paymentCurrency: payment.currency,
+            eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
+        });
+    }
+
     // For some reason, funds that may otherwise be bridgeable or held by the user cannot
     // be made available to fulfill the transaction.
     // Funds cannot be bridged, e.g. no bridge exists
@@ -1208,15 +1561,30 @@ contract QuarkBuilder {
 
             if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_BORROW)) {
                 continue;
+            } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_MORPHO_BORROW)) {
+                continue;
+            } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_MORPHO_REPAY)) {
+                Actions.MorphoRepayActionContext memory morphoRepayActionContext =
+                    abi.decode(nonBridgeAction.actionContext, (Actions.MorphoRepayActionContext));
+                if (morphoRepayActionContext.amount == type(uint256).max) {
+                    paymentTokenCost += morphoRepayMaxAmount(
+                        chainAccountsList,
+                        morphoRepayActionContext.chainId,
+                        morphoRepayActionContext.token,
+                        morphoRepayActionContext.collateralToken,
+                        account
+                    );
+                } else {
+                    paymentTokenCost += morphoRepayActionContext.amount;
+                }
             } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_REPAY)) {
                 Actions.RepayActionContext memory cometRepayActionContext =
                     abi.decode(nonBridgeAction.actionContext, (Actions.RepayActionContext));
                 if (Strings.stringEqIgnoreCase(cometRepayActionContext.assetSymbol, paymentTokenSymbol)) {
                     if (cometRepayActionContext.amount == type(uint256).max) {
-                        uint256 repayAmount = cometRepayMaxAmount(
+                        paymentTokenCost += cometRepayMaxAmount(
                             chainAccountsList, cometRepayActionContext.chainId, cometRepayActionContext.comet, account
                         );
-                        paymentTokenCost += repayAmount;
                     } else {
                         paymentTokenCost += cometRepayActionContext.amount;
                     }

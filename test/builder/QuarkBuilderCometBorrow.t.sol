@@ -87,7 +87,8 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
             nextNonce: 12,
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 10e18, 0), // user has 10 LINK
-            cometPortfolios: emptyCometPortfolios_()
+            cometPortfolios: emptyCometPortfolios_(),
+            morphoPortfolios: emptyMorphoPortfolios_()
         });
         chainPortfolios[1] = ChainPortfolio({
             chainId: 8453,
@@ -95,7 +96,8 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
             nextNonce: 2,
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 0, 0),
-            cometPortfolios: emptyCometPortfolios_()
+            cometPortfolios: emptyCometPortfolios_(),
+            morphoPortfolios: emptyMorphoPortfolios_()
         });
 
         QuarkBuilder builder = new QuarkBuilder();
@@ -208,7 +210,8 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
             nextNonce: 12,
             assetSymbols: Arrays.stringArray("USDC", "ETH", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(0, 10e18, 0, 0), // user has 10 ETH
-            cometPortfolios: emptyCometPortfolios_()
+            cometPortfolios: emptyCometPortfolios_(),
+            morphoPortfolios: emptyMorphoPortfolios_()
         });
         chainPortfolios[1] = ChainPortfolio({
             chainId: 8453,
@@ -216,7 +219,8 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
             nextNonce: 2,
             assetSymbols: Arrays.stringArray("USDC", "ETH", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 0, 0),
-            cometPortfolios: emptyCometPortfolios_()
+            cometPortfolios: emptyCometPortfolios_(),
+            morphoPortfolios: emptyMorphoPortfolios_()
         });
 
         QuarkBuilder builder = new QuarkBuilder();
@@ -315,7 +319,8 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
             nextNonce: 12,
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(1e6, 0, 10e18, 0), // user has 1 USDC, 10 LINK
-            cometPortfolios: emptyCometPortfolios_()
+            cometPortfolios: emptyCometPortfolios_(),
+            morphoPortfolios: emptyMorphoPortfolios_()
         });
         chainPortfolios[1] = ChainPortfolio({
             chainId: 8453,
@@ -323,7 +328,8 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
             nextNonce: 2,
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 0, 0),
-            cometPortfolios: emptyCometPortfolios_()
+            cometPortfolios: emptyCometPortfolios_(),
+            morphoPortfolios: emptyMorphoPortfolios_()
         });
 
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
@@ -441,7 +447,8 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
             nextNonce: 12,
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 10e18, 0), // user has 10 LINK and 0 USDC
-            cometPortfolios: emptyCometPortfolios_()
+            cometPortfolios: emptyCometPortfolios_(),
+            morphoPortfolios: emptyMorphoPortfolios_()
         });
         chainPortfolios[1] = ChainPortfolio({
             chainId: 8453,
@@ -449,7 +456,8 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
             nextNonce: 2,
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 0, 0),
-            cometPortfolios: emptyCometPortfolios_()
+            cometPortfolios: emptyCometPortfolios_(),
+            morphoPortfolios: emptyMorphoPortfolios_()
         });
 
         QuarkBuilder.BuilderResult memory result = builder.cometBorrow(
@@ -564,7 +572,8 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
             nextNonce: 12,
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(3e6, 0, 0, 0), // 3 USDC on mainnet
-            cometPortfolios: emptyCometPortfolios_()
+            cometPortfolios: emptyCometPortfolios_(),
+            morphoPortfolios: emptyMorphoPortfolios_()
         });
         chainPortfolios[1] = ChainPortfolio({
             chainId: 8453,
@@ -572,7 +581,8 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
             nextNonce: 2,
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 5e18, 0),
-            cometPortfolios: emptyCometPortfolios_()
+            cometPortfolios: emptyCometPortfolios_(),
+            morphoPortfolios: emptyMorphoPortfolios_()
         });
 
         QuarkBuilder.BuilderResult memory result = builder.cometBorrow(
@@ -748,7 +758,8 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
             nextNonce: 12,
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(4e6, 0, 0, 0), // 4 USDC on mainnet
-            cometPortfolios: emptyCometPortfolios_()
+            cometPortfolios: emptyCometPortfolios_(),
+            morphoPortfolios: emptyMorphoPortfolios_()
         });
         chainPortfolios[1] = ChainPortfolio({
             chainId: 8453,
@@ -756,7 +767,8 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
             nextNonce: 2,
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 0, 0), // no assets on base
-            cometPortfolios: emptyCometPortfolios_()
+            cometPortfolios: emptyCometPortfolios_(),
+            morphoPortfolios: emptyMorphoPortfolios_()
         });
 
         QuarkBuilder.BuilderResult memory result = builder.cometBorrow(

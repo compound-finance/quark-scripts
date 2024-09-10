@@ -248,7 +248,8 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
             chainId: 1,
             quarkStates: quarkStates_(address(0xa11ce), 12),
             assetPositionsList: assetPositionsList,
-            cometPositions: emptyCometPositions_()
+            cometPositions: emptyCometPositions_(),
+            morphoPositions: emptyMorphoPositions_()
         });
         QuarkBuilder.BuilderResult memory result = builder.swap(
             buyUsdc_(1, weth_(1), 1e18, 3000e6, address(0xa11ce), BLOCK_TIMESTAMP), // swap 1 ETH on chain 1 to 3000 USDC
@@ -405,19 +406,22 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
             chainId: 1,
             quarkStates: quarkStates_(address(0xa11ce), 12),
             assetPositionsList: assetPositionsList_(1, address(0xa11ce), uint256(9005e6)),
-            cometPositions: emptyCometPositions_()
+            cometPositions: emptyCometPositions_(),
+            morphoPositions: emptyMorphoPositions_()
         });
         chainAccountsList[1] = Accounts.ChainAccounts({
             chainId: 8453,
             quarkStates: quarkStates_(address(0xb0b), 2),
             assetPositionsList: assetPositionsList_(8453, address(0xb0b), uint256(0)),
-            cometPositions: emptyCometPositions_()
+            cometPositions: emptyCometPositions_(),
+            morphoPositions: emptyMorphoPositions_()
         });
         chainAccountsList[2] = Accounts.ChainAccounts({
             chainId: 7777,
             quarkStates: quarkStates_(address(0xc0b), 5),
             assetPositionsList: assetPositionsList_(7777, address(0xc0b), uint256(0)),
-            cometPositions: emptyCometPositions_()
+            cometPositions: emptyCometPositions_(),
+            morphoPositions: emptyMorphoPositions_()
         });
 
         QuarkBuilder.BuilderResult memory result = builder.swap(
