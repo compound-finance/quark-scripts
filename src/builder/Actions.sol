@@ -394,7 +394,7 @@ library Actions {
                         // then we need to re-adjust this.
                         amountToBridge = Math.subtractFlooredAtZero(
                             srcAccountBalances[j].balance, PaymentInfo.findMaxCost(payment, srcChainAccounts.chainId)
-                        );       
+                        );
                     }
                 } else {
                     if (srcAccountBalances[j].balance >= amountLeftToBridge) {
