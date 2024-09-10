@@ -826,6 +826,7 @@ contract QuarkBuilder {
         address feeToken;
         uint256 feeAmount;
         address sender;
+        bool isExactOut;
         uint256 blockTimestamp;
     }
 
@@ -947,6 +948,7 @@ contract QuarkBuilder {
                 feeAmount: swapIntent.feeAmount,
                 chainId: swapIntent.chainId,
                 sender: swapIntent.sender,
+                isExactOut: swapIntent.isExactOut,
                 blockTimestamp: swapIntent.blockTimestamp
             }),
             payment,
