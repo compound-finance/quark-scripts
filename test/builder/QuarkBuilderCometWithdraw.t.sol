@@ -498,7 +498,7 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
     }
 
     function testCometWithdrawCostTooHigh() public {
-        PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
+        PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](2);
         maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 5e6});
         maxCosts[1] = PaymentInfo.PaymentMaxCost({chainId: 8453, amount: 5e6});
         QuarkBuilder builder = new QuarkBuilder();
