@@ -116,6 +116,7 @@ library Actions {
         uint256 feeAmount;
         uint256 chainId;
         address sender;
+        bool isExactOut;
         uint256 blockTimestamp;
     }
 
@@ -246,6 +247,7 @@ library Actions {
         string outputAssetSymbol;
         address outputToken;
         uint256 outputTokenPrice;
+        bool isExactOut;
     }
 
     struct RecurringSwapActionContext {
@@ -965,7 +967,8 @@ library Actions {
             outputAmount: swap.buyAmount,
             outputAssetSymbol: swap.buyAssetSymbol,
             outputToken: swap.buyToken,
-            outputTokenPrice: buyTokenAssetPositions.usdPrice
+            outputTokenPrice: buyTokenAssetPositions.usdPrice,
+            isExactOut: swap.isExactOut
         });
 
         Action memory action = Actions.Action({
