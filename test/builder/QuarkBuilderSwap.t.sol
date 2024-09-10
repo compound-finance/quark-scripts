@@ -1060,7 +1060,7 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
 
         // Note: Need to bridge 1 USDC to cover max cost on chain 8453, but there is 0 available to bridge from chain 1 because they
         // are all reserved for the max cost on chain 1.
-        vm.expectRevert(abi.encodeWithSelector(Actions.NotEnoughFundsToBridge.selector, "usdc", 1e6, 1e6));
+        vm.expectRevert(abi.encodeWithSelector(Actions.NotEnoughFundsToBridge.selector, "USDC", 1e6, 1e6));
         builder.swap(
             buyWeth_(8453, usdt_(8453), 3000e6, 1e18, address(0xa11ce), BLOCK_TIMESTAMP), // swap 3000 USDT on chain 8453 to 1 WETH
             chainAccountsList_(6000e6), // holding 6000 USDT in total across chains 1, 8453

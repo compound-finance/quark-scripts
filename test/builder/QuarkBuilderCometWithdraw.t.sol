@@ -235,7 +235,7 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](2);
         maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 1000e6}); // max cost is 1000 USDC
         maxCosts[1] = PaymentInfo.PaymentMaxCost({chainId: 8453, amount: 0.1e6});
-        vm.expectRevert(abi.encodeWithSelector(Actions.NotEnoughFundsToBridge.selector, "usdc", 9.98e8, 9.971e8));
+        vm.expectRevert(abi.encodeWithSelector(Actions.NotEnoughFundsToBridge.selector, "USDC", 9.98e8, 9.971e8));
         builder.cometWithdraw(
             cometWithdraw_(1, cometUsdc_(1), "USDC", 1e6),
             chainAccountsList_(2e6), // holding 2 USDC in total across 1, 8453
@@ -503,7 +503,7 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
         maxCosts[1] = PaymentInfo.PaymentMaxCost({chainId: 8453, amount: 5e6});
         QuarkBuilder builder = new QuarkBuilder();
 
-        vm.expectRevert(abi.encodeWithSelector(Actions.NotEnoughFundsToBridge.selector, "usdc", 4e6, 4e6));
+        vm.expectRevert(abi.encodeWithSelector(Actions.NotEnoughFundsToBridge.selector, "USDC", 4e6, 4e6));
 
         builder.cometWithdraw(
             cometWithdraw_(1, cometUsdc_(1), "USDC", 1e6),
