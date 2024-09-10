@@ -496,4 +496,19 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
             paymentUsdc_(maxCosts) // user will pay for transaction with withdrawn funds, but it is not enough
         );
     }
+
+    function testCometWithdrawCostTooHigh() public {
+        PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](2);
+        maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 5e6});
+        maxCosts[1] = PaymentInfo.PaymentMaxCost({chainId: 8453, amount: 5e6});
+        QuarkBuilder builder = new QuarkBuilder();
+
+        vm.expectRevert(abi.encodeWithSelector(Actions.NotEnoughFundsToBridge.selector, "usdc", 4e6, 4e6));
+
+        builder.cometWithdraw(
+            cometWithdraw_(1, cometUsdc_(1), "USDC", 1e6),
+            chainAccountsList_(0e6),
+            paymentUsdc_(maxCosts) // user will pay for transaction with withdrawn funds, but it is not enough
+        );
+    }
 }
