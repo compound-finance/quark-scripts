@@ -4,6 +4,7 @@ pragma solidity ^0.8.23;
 import {Accounts} from "./Accounts.sol";
 import {BridgeRoutes, CCTP} from "./BridgeRoutes.sol";
 import {CodeJarHelper} from "./CodeJarHelper.sol";
+import {Math} from "src/lib/Math.sol";
 import {PriceFeeds} from "./PriceFeeds.sol";
 import {Strings} from "./Strings.sol";
 import {UniswapRouter} from "./UniswapRouter.sol";
@@ -391,8 +392,9 @@ library Actions {
                     } else {
                         // NOTE: This logic only works when the user has only a single account on each chain. If there are multiple,
                         // then we need to re-adjust this.
-                        amountToBridge =
-                            srcAccountBalances[j].balance - PaymentInfo.findMaxCost(payment, srcChainAccounts.chainId);
+                        amountToBridge = Math.subtractFlooredAtZero(
+                            srcAccountBalances[j].balance, PaymentInfo.findMaxCost(payment, srcChainAccounts.chainId)
+                        );       
                     }
                 } else {
                     if (srcAccountBalances[j].balance >= amountLeftToBridge) {
