@@ -19,9 +19,7 @@ contract MorphoInfoTest is Test {
     function testEthMainnet() public {
         // Fork setup to get on-chain on eth mainnet
         vm.createSelectFork(
-            string.concat(
-                "https://node-provider.compound.finance/ethereum-mainnet/", vm.envString("NODE_PROVIDER_BYPASS_KEY")
-            ),
+            vm.envString("MAINNET_RPC_URL"),
             20580267 // 2024-08-21 16:27:00 PST
         );
 
@@ -32,9 +30,7 @@ contract MorphoInfoTest is Test {
     function testBaseMainnet() public {
         // Fork setup to get on-chain on base mainnet
         vm.createSelectFork(
-            string.concat(
-                "https://node-provider.compound.finance/base-mainnet/", vm.envString("NODE_PROVIDER_BYPASS_KEY")
-            ),
+            vm.envString("MAINNET_RPC_URL"),
             18746757 // 2024-08-21 16:27:00 PST
         );
 
@@ -45,9 +41,7 @@ contract MorphoInfoTest is Test {
     function testEthSepolia() public {
         // Fork setup to get on-chain on base sepolia
         vm.createSelectFork(
-            string.concat(
-                "https://node-provider.compound.finance/ethereum-sepolia/", vm.envString("NODE_PROVIDER_BYPASS_KEY")
-            ),
+            vm.envString("MAINNET_RPC_URL"),
             6546096 // 2024-08-21 16:27:00 PST
         );
 
@@ -58,9 +52,7 @@ contract MorphoInfoTest is Test {
     function testBaseSepolia() public {
         // Fork setup to get on-chain on base sepolia
         vm.createSelectFork(
-            string.concat(
-                "https://node-provider.compound.finance/base-sepolia/", vm.envString("NODE_PROVIDER_BYPASS_KEY")
-            ),
+            vm.envString("MAINNET_RPC_URL"),
             14257289 // 2024-08-21 16:27:00 PST
         );
 
