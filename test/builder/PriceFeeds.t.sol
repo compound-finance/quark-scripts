@@ -15,7 +15,7 @@ contract PriceFeedsTest is Test {
         uint256 chainId = 1;
         PriceFeeds.PriceFeed[] memory priceFeeds = PriceFeeds.findPriceFeeds(assetSymbol, chainId);
 
-        assertEq(priceFeeds.length, 3);
+        assertEq(priceFeeds.length, 6);
         for (uint256 i = 0; i < priceFeeds.length; ++i) {
             // Check that ETH is either the baseSymbol or the quoteSymbol in each price feed
             bool isBaseOrQuoteSymbol = Strings.stringEq(priceFeeds[i].baseSymbol, assetSymbol)

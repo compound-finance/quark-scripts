@@ -48,7 +48,7 @@ library PriceFeeds {
 
     // Mainnet
     function knownPriceFeeds_1() internal pure returns (PriceFeed[] memory) {
-        PriceFeed[] memory priceFeeds = new PriceFeed[](4);
+        PriceFeed[] memory priceFeeds = new PriceFeed[](10);
         priceFeeds[0] = PriceFeed({
             chainId: 1,
             baseSymbol: "USDC",
@@ -73,12 +73,48 @@ library PriceFeeds {
             quoteSymbol: "ETH",
             priceFeed: 0xDC530D9457755926550b59e8ECcdaE7624181557
         });
+        priceFeeds[4] = PriceFeed({
+            chainId: 1,
+            baseSymbol: "wstETH",
+            quoteSymbol: "USD",
+            priceFeed: 0x164b276057258d81941e97B0a900D4C7B358bCe0
+        });
+        priceFeeds[5] = PriceFeed({
+            chainId: 1,
+            baseSymbol: "stETH",
+            quoteSymbol: "ETH",
+            priceFeed: 0x86392dC19c0b719886221c78AB11eb8Cf5c52812
+        });
+        priceFeeds[6] = PriceFeed({
+            chainId: 1,
+            baseSymbol: "rETH",
+            quoteSymbol: "ETH",
+            priceFeed: 0x536218f9E9Eb48863970252233c8F271f554C2d0
+        });
+        priceFeeds[7] = PriceFeed({
+            chainId: 1,
+            baseSymbol: "WBTC",
+            quoteSymbol: "BTC",
+            priceFeed: 0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23
+        });
+        priceFeeds[8] = PriceFeed({
+            chainId: 1,
+            baseSymbol: "BTC",
+            quoteSymbol: "USD",
+            priceFeed: 0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c
+        });
+        priceFeeds[9] = PriceFeed({
+            chainId: 1,
+            baseSymbol: "BTC",
+            quoteSymbol: "ETH",
+            priceFeed: 0xdeb288F737066589598e9214E782fa5A8eD689e8
+        });
         return priceFeeds;
     }
 
     // Base
     function knownPriceFeeds_8453() internal pure returns (PriceFeed[] memory) {
-        PriceFeed[] memory priceFeeds = new PriceFeed[](3);
+        PriceFeed[] memory priceFeeds = new PriceFeed[](5);
         priceFeeds[0] = PriceFeed({
             chainId: 8453,
             baseSymbol: "ETH",
@@ -96,6 +132,18 @@ library PriceFeeds {
             baseSymbol: "LINK",
             quoteSymbol: "ETH",
             priceFeed: 0xc5E65227fe3385B88468F9A01600017cDC9F3A12
+        });
+        priceFeeds[3] = PriceFeed({
+            chainId: 8453,
+            baseSymbol: "cbETH",
+            quoteSymbol: "USD",
+            priceFeed: 0xd7818272B9e248357d13057AAb0B417aF31E817d
+        });
+        priceFeeds[4] = PriceFeed({
+            chainId: 8453,
+            baseSymbol: "cbETH",
+            quoteSymbol: "ETH",
+            priceFeed: 0x806b4Ac04501c29769051e42783cF04dCE41440b
         });
         return priceFeeds;
     }
