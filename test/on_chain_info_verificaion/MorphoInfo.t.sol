@@ -30,7 +30,7 @@ contract MorphoInfoTest is Test {
     function testBaseMainnet() public {
         // Fork setup to get on-chain on base mainnet
         vm.createSelectFork(
-            vm.envString("MAINNET_RPC_URL"),
+            vm.envString("BASE_MAINNET_RPC_URL"),
             18746757 // 2024-08-21 16:27:00 PST
         );
 
@@ -41,7 +41,7 @@ contract MorphoInfoTest is Test {
     function testEthSepolia() public {
         // Fork setup to get on-chain on base sepolia
         vm.createSelectFork(
-            vm.envString("MAINNET_RPC_URL"),
+            vm.envString("SEPOLIA_RPC_URL"),
             6546096 // 2024-08-21 16:27:00 PST
         );
 
@@ -52,7 +52,7 @@ contract MorphoInfoTest is Test {
     function testBaseSepolia() public {
         // Fork setup to get on-chain on base sepolia
         vm.createSelectFork(
-            vm.envString("MAINNET_RPC_URL"),
+            vm.envString("BASE_SEPOLIA_RPC_URL"),
             14257289 // 2024-08-21 16:27:00 PST
         );
 
