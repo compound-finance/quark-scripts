@@ -35,16 +35,14 @@ contract UniswapSwapActionsTest is Test {
     address constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address constant COMP = 0xc00e94Cb662C3520282E6f5717214004A7f26888;
-    // Uniswap router info on mainnet
-    address constant uniswapRouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
+    // Uniswap SwapRouter02 info on mainnet
+    address constant uniswapRouter = 0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45;
     bytes swapScript = new YulHelper().getCode("DeFiScripts.sol/UniswapSwapActions.json");
 
     function setUp() public {
         // Fork setup
         vm.createSelectFork(
-            string.concat(
-                "https://node-provider.compound.finance/ethereum-mainnet/", vm.envString("NODE_PROVIDER_BYPASS_KEY")
-            ),
+            vm.envString("MAINNET_RPC_URL"),
             18429607 // 2023-10-25 13:24:00 PST
         );
         factory = new QuarkWalletProxyFactory(address(new QuarkWallet(new CodeJar(), new QuarkStateManager())));
@@ -70,7 +68,6 @@ contract UniswapSwapActionsTest is Test {
                     tokenFrom: USDC,
                     amount: 2000e6,
                     amountOutMinimum: 1 ether,
-                    deadline: block.timestamp + 1000,
                     path: abi.encodePacked(USDC, uint24(500), WETH) // Path: USDC - 0.05% -> WETH
                 })
             ),
@@ -99,7 +96,6 @@ contract UniswapSwapActionsTest is Test {
                     tokenFrom: USDC,
                     amount: 1 ether,
                     amountInMaximum: 2000e6,
-                    deadline: block.timestamp + 1000,
                     path: abi.encodePacked(WETH, uint24(500), USDC) // Path: WETH - 0.05% -> USDC
                 })
             ),
@@ -132,7 +128,6 @@ contract UniswapSwapActionsTest is Test {
                     tokenFrom: USDC,
                     amount: 2000e6,
                     amountOutMinimum: 40e18,
-                    deadline: block.timestamp + 1000,
                     path: abi.encodePacked(USDC, uint24(500), WETH, uint24(3000), COMP) // Path: USDC - 0.05% -> WETH - 0.3% -> COMP
                 })
             ),
@@ -159,7 +154,6 @@ contract UniswapSwapActionsTest is Test {
                     tokenFrom: USDC,
                     amount: 40e18,
                     amountInMaximum: 2000e6,
-                    deadline: block.timestamp + 1000,
                     path: abi.encodePacked(COMP, uint24(3000), WETH, uint24(500), USDC) // Path: COMP - 0.05% -> WETH - 0.3% -> USDC
                 })
             ),
@@ -191,7 +185,6 @@ contract UniswapSwapActionsTest is Test {
                     tokenFrom: WETH,
                     amount: 1 ether,
                     amountOutMinimum: 1000e6,
-                    deadline: block.timestamp + 1000,
                     path: abi.encodePacked(WETH, uint24(500), USDC) // Path: WETH - 0.05% -> USDC
                 })
             ),
@@ -217,7 +210,6 @@ contract UniswapSwapActionsTest is Test {
                     tokenFrom: WETH,
                     amount: 1600e6,
                     amountInMaximum: 1 ether,
-                    deadline: block.timestamp + 1000,
                     path: abi.encodePacked(USDC, uint24(500), WETH) // Path: USDC - 0.05% -> WETH
                 })
             ),
@@ -249,7 +241,6 @@ contract UniswapSwapActionsTest is Test {
                     tokenFrom: COMP,
                     amount: 50e18,
                     amountOutMinimum: 1800e6,
-                    deadline: block.timestamp + 1000,
                     path: abi.encodePacked(COMP, uint24(3000), WETH, uint24(500), USDC) // Path: COMP - 0.05% -> WETH - 0.3% -> USDC
                 })
             ),
@@ -275,7 +266,6 @@ contract UniswapSwapActionsTest is Test {
                     tokenFrom: COMP,
                     amount: 1500e6,
                     amountInMaximum: 50e18,
-                    deadline: block.timestamp + 1000,
                     path: abi.encodePacked(USDC, uint24(500), WETH, uint24(3000), COMP) // Path: USDC - 0.05% -> WETH - 0.3% -> COMP
                 })
             ),
@@ -309,7 +299,6 @@ contract UniswapSwapActionsTest is Test {
                     tokenFrom: USDC,
                     amount: 1 ether,
                     amountInMaximum: 10000e6, // Give it a high amount to trigger approval refund
-                    deadline: block.timestamp + 1000,
                     path: abi.encodePacked(WETH, uint24(500), USDC) // Path: WETH - 0.05% -> USDC
                 })
             ),

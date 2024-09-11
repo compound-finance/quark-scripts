@@ -5,6 +5,7 @@ import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
 import {QuarkWalletMetadata} from "quark-core/src/QuarkWallet.sol";
 
 import {Actions} from "./Actions.sol";
+import {Errors} from "./Errors.sol";
 
 library EIP712Helper {
     /* ===== Constants ===== */
@@ -41,10 +42,6 @@ library EIP712Helper {
             keccak256(bytes(QuarkWalletMetadata.VERSION))
         )
     );
-
-    /* ===== Custom Errors ===== */
-
-    error BadData();
 
     /* ===== Output Types ===== */
 
@@ -128,7 +125,7 @@ library EIP712Helper {
         Actions.Action[] memory actions
     ) internal pure returns (bytes32) {
         if (ops.length != actions.length) {
-            revert BadData();
+            revert Errors.BadData();
         }
 
         bytes32[] memory opDigests = new bytes32[](ops.length);
