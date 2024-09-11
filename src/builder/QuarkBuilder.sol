@@ -1851,8 +1851,8 @@ contract QuarkBuilder {
                 }
             } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_MORPHO_VAULT_SUPPLY))
             {
-                Actions.MorphoVaultSupplyContext memory morphoVaultSupplyActionContext =
-                    abi.decode(nonBridgeAction.actionContext, (Actions.MorphoVaultSupplyContext));
+                Actions.MorphoVaultSupplyActionContext memory morphoVaultSupplyActionContext =
+                    abi.decode(nonBridgeAction.actionContext, (Actions.MorphoVaultSupplyActionContext));
                 if (Strings.stringEqIgnoreCase(morphoVaultSupplyActionContext.assetSymbol, paymentTokenSymbol)) {
                     paymentTokenCost += morphoVaultSupplyActionContext.amount;
                 }

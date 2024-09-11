@@ -151,7 +151,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
-                Actions.MorphoVaultSupplyContext({
+                Actions.MorphoVaultSupplyActionContext({
                     amount: 1e6,
                     assetSymbol: "USDC",
                     chainId: 1,
@@ -222,7 +222,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
-                Actions.MorphoVaultSupplyContext({
+                Actions.MorphoVaultSupplyActionContext({
                     amount: 3e6,
                     assetSymbol: "USDC",
                     chainId: 1,
@@ -318,7 +318,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
-                Actions.MorphoVaultSupplyContext({
+                Actions.MorphoVaultSupplyActionContext({
                     amount: 1e18,
                     assetSymbol: "WETH",
                     chainId: 1,
@@ -385,7 +385,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
-                Actions.MorphoVaultSupplyContext({
+                Actions.MorphoVaultSupplyActionContext({
                     amount: 1e6,
                     assetSymbol: "USDC",
                     chainId: 1,
@@ -492,7 +492,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         assertEq(
             result.actions[1].actionContext,
             abi.encode(
-                Actions.MorphoVaultSupplyContext({
+                Actions.MorphoVaultSupplyActionContext({
                     amount: 5e6,
                     assetSymbol: "USDC",
                     chainId: 8453,
@@ -599,7 +599,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         assertEq(
             result.actions[1].actionContext,
             abi.encode(
-                Actions.MorphoVaultSupplyContext({
+                Actions.MorphoVaultSupplyActionContext({
                     amount: 6e6,
                     assetSymbol: "USDC",
                     chainId: 8453,
@@ -722,7 +722,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         assertEq(
             result.actions[1].actionContext,
             abi.encode(
-                Actions.MorphoVaultSupplyContext({
+                Actions.MorphoVaultSupplyActionContext({
                     amount: 5.4e6,
                     assetSymbol: "USDC",
                     chainId: 8453,
@@ -845,7 +845,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         assertEq(
             result.actions[1].actionContext,
             abi.encode(
-                Actions.MorphoVaultSupplyContext({
+                Actions.MorphoVaultSupplyActionContext({
                     amount: 5e6,
                     assetSymbol: "USDC",
                     chainId: 8453,

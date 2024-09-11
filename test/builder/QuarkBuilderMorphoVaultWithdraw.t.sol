@@ -68,7 +68,7 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
-                Actions.MorphoVaultWithdrawContext({
+                Actions.MorphoVaultWithdrawActionContext({
                     amount: 2e6,
                     assetSymbol: "USDC",
                     chainId: 1,
@@ -133,7 +133,7 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
-                Actions.MorphoVaultWithdrawContext({
+                Actions.MorphoVaultWithdrawActionContext({
                     amount: 2e6,
                     assetSymbol: "USDC",
                     chainId: 1,
@@ -198,7 +198,7 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
-                Actions.MorphoVaultWithdrawContext({
+                Actions.MorphoVaultWithdrawActionContext({
                     amount: 2e6,
                     assetSymbol: "USDC",
                     chainId: 1,
@@ -348,7 +348,7 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
         assertEq(
             result.actions[1].actionContext,
             abi.encode(
-                Actions.MorphoVaultWithdrawContext({
+                Actions.MorphoVaultWithdrawActionContext({
                     amount: 1e18,
                     assetSymbol: "WETH",
                     chainId: 8453,
@@ -435,7 +435,7 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
-                Actions.MorphoVaultWithdrawContext({
+                Actions.MorphoVaultWithdrawActionContext({
                     amount: type(uint256).max,
                     assetSymbol: "USDC",
                     chainId: 1,

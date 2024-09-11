@@ -367,15 +367,6 @@ library Actions {
         address token;
     }
 
-    struct MorphoVaultSupplyContext {
-        uint256 amount;
-        string assetSymbol;
-        uint256 chainId;
-        address morphoVault;
-        uint256 price;
-        address token;
-    }
-
     struct MorphoBorrowActionContext {
         uint256 amount;
         string assetSymbol;
@@ -386,15 +377,6 @@ library Actions {
         address collateralToken;
         address morpho;
         bytes32 morphoMarketId;
-        uint256 price;
-        address token;
-    }
-
-    struct MorphoVaultWithdrawContext {
-        uint256 amount;
-        string assetSymbol;
-        uint256 chainId;
-        address morphoVault;
         uint256 price;
         address token;
     }
@@ -1103,7 +1085,7 @@ library Actions {
         });
 
         // Construct Action
-        MorphoVaultSupplyContext memory vaultSupplyActionContext = MorphoVaultSupplyContext({
+        MorphoVaultSupplyActionContext memory vaultSupplyActionContext = MorphoVaultSupplyActionContext({
             amount: vaultSupply.amount,
             assetSymbol: assetPositions.symbol,
             chainId: vaultSupply.chainId,
@@ -1160,7 +1142,7 @@ library Actions {
         });
 
         // Construct Action
-        MorphoVaultWithdrawContext memory vaultWithdrawActionContext = MorphoVaultWithdrawContext({
+        MorphoVaultWithdrawActionContext memory vaultWithdrawActionContext = MorphoVaultWithdrawActionContext({
             amount: vaultWithdraw.amount,
             assetSymbol: assetPositions.symbol,
             chainId: vaultWithdraw.chainId,
