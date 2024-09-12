@@ -11,7 +11,7 @@ import {Quotecall} from "src/Quotecall.sol";
 import {PaymentInfo} from "src/builder/PaymentInfo.sol";
 import {QuarkBuilder} from "src/builder/QuarkBuilder.sol";
 import {Strings} from "src/builder/Strings.sol";
-
+import {MorphoInfo} from "src/builder/MorphoInfo.sol";
 import {Arrays} from "test/builder/lib/Arrays.sol";
 
 contract QuarkBuilderTest {
@@ -41,6 +41,16 @@ contract QuarkBuilderTest {
     address constant WETH_7777 = address(0xDEEDBEEF);
     address constant WETH_8453 = 0x4200000000000000000000000000000000000006;
     uint256 constant WETH_PRICE = 3000e8;
+
+    address constant WBTC_1 = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
+    address constant WBTC_7777 = address(0xDEADBEEF);
+    address constant WBTC_8453 = address(0xDEADBEEF);
+    uint256 constant WBTC_PRICE = 66000e8;
+
+    address constant CBETH_1 = 0xBe9895146f7AF43049ca1c1AE358B0541Ea49704;
+    address constant CBETH_7777 = address(0xDEADBEEF);
+    address constant CBETH_8453 = 0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22;
+    uint256 constant CBETH_PRICE = 3300e8;
 
     address constant ETH_USD_PRICE_FEED_1 = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address constant ETH_USD_PRICE_FEED_8453 = 0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70;
@@ -84,19 +94,22 @@ contract QuarkBuilderTest {
             chainId: 1,
             quarkStates: quarkStates_(address(0xa11ce), 12),
             assetPositionsList: assetPositionsList_(1, address(0xa11ce), uint256(amount / 2)),
-            cometPositions: emptyCometPositions_()
+            cometPositions: emptyCometPositions_(),
+            morphoPositions: emptyMorphoPositions_()
         });
         chainAccountsList[1] = Accounts.ChainAccounts({
             chainId: 8453,
             quarkStates: quarkStates_(address(0xb0b), 2),
             assetPositionsList: assetPositionsList_(8453, address(0xb0b), uint256(amount / 2)),
-            cometPositions: emptyCometPositions_()
+            cometPositions: emptyCometPositions_(),
+            morphoPositions: emptyMorphoPositions_()
         });
         chainAccountsList[2] = Accounts.ChainAccounts({
             chainId: 7777,
             quarkStates: quarkStates_(address(0xc0b), 5),
             assetPositionsList: assetPositionsList_(7777, address(0xc0b), uint256(0)),
-            cometPositions: emptyCometPositions_()
+            cometPositions: emptyCometPositions_(),
+            morphoPositions: emptyMorphoPositions_()
         });
         return chainAccountsList;
     }
@@ -104,6 +117,11 @@ contract QuarkBuilderTest {
     function emptyCometPositions_() internal pure returns (Accounts.CometPositions[] memory) {
         Accounts.CometPositions[] memory emptyCometPositions = new Accounts.CometPositions[](0);
         return emptyCometPositions;
+    }
+
+    function emptyMorphoPositions_() internal pure returns (Accounts.MorphoPositions[] memory) {
+        Accounts.MorphoPositions[] memory emptyMorphoPositions = new Accounts.MorphoPositions[](0);
+        return emptyMorphoPositions;
     }
 
     function quarkStates_() internal pure returns (Accounts.QuarkState[] memory) {
@@ -163,6 +181,20 @@ contract QuarkBuilderTest {
         Accounts.AccountBalance[] memory accountBalances = new Accounts.AccountBalance[](1);
         accountBalances[0] = Accounts.AccountBalance({account: account, balance: balance});
         return accountBalances;
+    }
+
+    function wbtc_(uint256 chainId) internal pure returns (address) {
+        if (chainId == 1) return WBTC_1;
+        if (chainId == 7777) return WBTC_7777;
+        if (chainId == 8453) return WBTC_8453;
+        revert("no mock WBTC for chain id");
+    }
+
+    function cbEth_(uint256 chainId) internal pure returns (address) {
+        if (chainId == 1) return CBETH_1;
+        if (chainId == 7777) return CBETH_7777;
+        if (chainId == 8453) return CBETH_8453;
+        revert("no mock cbETH for chain id");
     }
 
     function link_(uint256 chainId) internal pure returns (address) {
@@ -266,6 +298,7 @@ contract QuarkBuilderTest {
         string[] assetSymbols;
         uint256[] assetBalances;
         CometPortfolio[] cometPortfolios;
+        MorphoPortfolio[] morphoPortfolios;
     }
 
     struct CometPortfolio {
@@ -276,9 +309,22 @@ contract QuarkBuilderTest {
         uint256[] collateralAssetBalances;
     }
 
+    struct MorphoPortfolio {
+        bytes32 marketId;
+        string loanToken;
+        string collateralToken;
+        uint256 borrowedBalance;
+        uint256 collateralBalance;
+    }
+
     function emptyCometPortfolios_() internal pure returns (CometPortfolio[] memory) {
         CometPortfolio[] memory emptyCometPortfolios = new CometPortfolio[](0);
         return emptyCometPortfolios;
+    }
+
+    function emptyMorphoPortfolios_() internal pure returns (MorphoPortfolio[] memory) {
+        MorphoPortfolio[] memory emptyMorphoPortfolios = new MorphoPortfolio[](0);
+        return emptyMorphoPortfolios;
     }
 
     function chainAccountsFromChainPortfolios(ChainPortfolio[] memory chainPortfolios)
@@ -300,6 +346,9 @@ contract QuarkBuilderTest {
                 // cometPositions: cometPositionsFor
                 cometPositions: cometPositionsForCometPorfolios(
                     chainPortfolios[i].chainId, chainPortfolios[i].account, chainPortfolios[i].cometPortfolios
+                    ),
+                morphoPositions: morphoPositionsForMorphoPortfolios(
+                    chainPortfolios[i].chainId, chainPortfolios[i].account, chainPortfolios[i].morphoPortfolios
                     )
             });
         }
@@ -341,6 +390,37 @@ contract QuarkBuilderTest {
         }
 
         return cometPositions;
+    }
+
+    function morphoPositionsForMorphoPortfolios(
+        uint256 chainId,
+        address account,
+        MorphoPortfolio[] memory morphoPortfolios
+    ) internal pure returns (Accounts.MorphoPositions[] memory) {
+        Accounts.MorphoPositions[] memory morphoPositions = new Accounts.MorphoPositions[](morphoPortfolios.length);
+
+        for (uint256 i = 0; i < morphoPortfolios.length; ++i) {
+            MorphoPortfolio memory morphoPortfolio = morphoPortfolios[i];
+            (address loanAsset,,) = assetInfo(morphoPortfolio.loanToken, chainId);
+            (address collateralAsset,,) = assetInfo(morphoPortfolio.collateralToken, chainId);
+
+            morphoPositions[i] = Accounts.MorphoPositions({
+                marketId: morphoPortfolio.marketId,
+                morpho: MorphoInfo.getMorphoAddress(chainId),
+                loanToken: loanAsset,
+                collateralToken: collateralAsset,
+                borrowPosition: Accounts.MorphoBorrowPosition({
+                    accounts: Arrays.addressArray(account),
+                    borrowed: Arrays.uintArray(morphoPortfolio.borrowedBalance)
+                }),
+                collateralPosition: Accounts.MorphoCollateralPosition({
+                    accounts: Arrays.addressArray(account),
+                    balances: Arrays.uintArray(morphoPortfolio.collateralBalance)
+                })
+            });
+        }
+
+        return morphoPositions;
     }
 
     function baseAssetForComet(uint256 chainId, address comet) internal pure returns (address) {
@@ -386,8 +466,12 @@ contract QuarkBuilderTest {
             return (eth_(), 18, WETH_PRICE);
         } else if (Strings.stringEq(assetSymbol, "LINK")) {
             return (link_(chainId), 18, LINK_PRICE);
+        } else if (Strings.stringEq(assetSymbol, "WBTC")) {
+            return (wbtc_(chainId), 8, WBTC_PRICE);
+        } else if (Strings.stringEq(assetSymbol, "cbETH")) {
+            return (cbEth_(chainId), 18, CBETH_PRICE);
         } else {
-            revert("unknown assetSymbol");
+            revert("[Testlib QuarkBuilderTest]: unknown assetSymbol");
         }
     }
 }

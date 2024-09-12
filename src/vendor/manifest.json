@@ -131,7 +131,7 @@
                     ]
                   }
             ]
-        },
+        }, 
         "uniswap-swap-router-contracts/IApproveAndCall.sol": {
             "source": {
                 "git": {
@@ -205,9 +205,9 @@
                     "commit": "0448402af51b8293ed36653de43cbee8d4d2bfda",
                     "path": "src/libraries/MathLib.sol"
                 }
-            },
+            }, 
             "patches": []
-        },
+        }, 
         "morpho_blue_periphery/SharesMathLib.sol":{
             "source": {
                 "git": {

@@ -7,6 +7,7 @@ library PaymentInfo {
     string constant PAYMENT_METHOD_OFFCHAIN = "OFFCHAIN";
     string constant PAYMENT_METHOD_PAYCALL = "PAY_CALL";
     string constant PAYMENT_METHOD_QUOTECALL = "QUOTE_CALL";
+    address constant NON_TOKEN_PAYMENT = address(0);
 
     error NoKnownPaymentToken(uint256 chainId);
     error MaxCostMissingForChain(uint256 chainId);

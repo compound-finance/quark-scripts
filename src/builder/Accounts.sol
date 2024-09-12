@@ -13,6 +13,7 @@ library Accounts {
         QuarkState[] quarkStates;
         AssetPositions[] assetPositionsList;
         CometPositions[] cometPositions;
+        MorphoPositions[] morphoPositions;
     }
 
     // We map this to the Portfolio data structure that the client will already have.
@@ -57,6 +58,25 @@ library Accounts {
         uint256[] balances;
     }
 
+    struct MorphoPositions {
+        bytes32 marketId;
+        address morpho;
+        address loanToken;
+        address collateralToken;
+        MorphoBorrowPosition borrowPosition;
+        MorphoCollateralPosition collateralPosition;
+    }
+
+    struct MorphoBorrowPosition {
+        address[] accounts;
+        uint256[] borrowed;
+    }
+
+    struct MorphoCollateralPosition {
+        address[] accounts;
+        uint256[] balances;
+    }
+
     function findChainAccounts(uint256 chainId, ChainAccounts[] memory chainAccountsList)
         internal
         pure
@@ -78,6 +98,23 @@ library Accounts {
         for (uint256 i = 0; i < chainAccounts.cometPositions.length; ++i) {
             if (chainAccounts.cometPositions[i].comet == comet) {
                 return found = chainAccounts.cometPositions[i];
+            }
+        }
+    }
+
+    function findMorphoPositions(
+        uint256 chainId,
+        address loanToken,
+        address collateralToken,
+        ChainAccounts[] memory chainAccountsList
+    ) internal pure returns (MorphoPositions memory found) {
+        ChainAccounts memory chainAccounts = findChainAccounts(chainId, chainAccountsList);
+        for (uint256 i = 0; i < chainAccounts.morphoPositions.length; ++i) {
+            if (
+                chainAccounts.morphoPositions[i].loanToken == loanToken
+                    && chainAccounts.morphoPositions[i].collateralToken == collateralToken
+            ) {
+                return found = chainAccounts.morphoPositions[i];
             }
         }
     }
@@ -250,6 +287,22 @@ library Accounts {
         for (uint256 i = 0; i < cometPositions.basePosition.accounts.length; ++i) {
             if (cometPositions.basePosition.accounts[i] == account) {
                 totalBorrow = cometPositions.basePosition.borrowed[i];
+            }
+        }
+    }
+
+    function totalMorphoBorrowForAccount(
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        uint256 chainId,
+        address loanToken,
+        address collateralToken,
+        address account
+    ) internal pure returns (uint256 totalBorrow) {
+        Accounts.MorphoPositions memory morphoPositions =
+            findMorphoPositions(chainId, loanToken, collateralToken, chainAccountsList);
+        for (uint256 i = 0; i < morphoPositions.borrowPosition.accounts.length; ++i) {
+            if (morphoPositions.borrowPosition.accounts[i] == account) {
+                totalBorrow = morphoPositions.borrowPosition.borrowed[i];
             }
         }
     }
