@@ -14,6 +14,7 @@ library Accounts {
         AssetPositions[] assetPositionsList;
         CometPositions[] cometPositions;
         MorphoPositions[] morphoPositions;
+        MorphoVaultPositions[] morphoVaultPositions;
     }
 
     // We map this to the Portfolio data structure that the client will already have.
@@ -77,6 +78,13 @@ library Accounts {
         uint256[] balances;
     }
 
+    struct MorphoVaultPositions {
+        address asset;
+        address[] accounts;
+        uint256[] balances;
+        address vault;
+    }
+
     function findChainAccounts(uint256 chainId, ChainAccounts[] memory chainAccountsList)
         internal
         pure
@@ -115,6 +123,19 @@ library Accounts {
                     && chainAccounts.morphoPositions[i].collateralToken == collateralToken
             ) {
                 return found = chainAccounts.morphoPositions[i];
+            }
+        }
+    }
+
+    function findMorphoVaultPositions(uint256 chainId, address asset, ChainAccounts[] memory chainAccountsList)
+        internal
+        pure
+        returns (MorphoVaultPositions memory found)
+    {
+        ChainAccounts memory chainAccounts = findChainAccounts(chainId, chainAccountsList);
+        for (uint256 i = 0; i < chainAccounts.morphoVaultPositions.length; ++i) {
+            if (chainAccounts.morphoVaultPositions[i].asset == asset) {
+                return found = chainAccounts.morphoVaultPositions[i];
             }
         }
     }
