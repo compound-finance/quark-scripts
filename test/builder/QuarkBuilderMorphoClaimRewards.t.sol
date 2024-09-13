@@ -17,15 +17,15 @@ import {Paycall} from "src/Paycall.sol";
 import {QuarkBuilder} from "src/builder/QuarkBuilder.sol";
 
 contract QuarkBuilderMorphoClaimRewardsTest is Test, QuarkBuilderTest {
-    // Mock morpho reward data to pass in
-    address[] mockDistributors =
+    // Fixtures of morpho reward data to pass in
+    address[] fixtureDistributors =
         [0x330eefa8a787552DC5cAd3C3cA644844B1E61Ddb, 0x330eefa8a787552DC5cAd3C3cA644844B1E61Ddb];
-    address[] mockAccounts = [address(0xa11ce), address(0xa11ce)];
-    address[] mockRewards = [usdc_(1), weth_(1)];
-    address[] mockInvalidRewards = [usdc_(1)];
-    uint256[] mockClaimables = [100e6, 2e18];
-    uint256[] mockClaimablesLessUSDC = [1e6, 2e18];
-    bytes32[][] mockProofs = [
+    address[] fixtureAccounts = [address(0xa11ce), address(0xa11ce)];
+    address[] fixtureRewards = [usdc_(1), weth_(1)];
+    address[] fixtureInvalidRewards = [usdc_(1)];
+    uint256[] fixtureClaimables = [100e6, 2e18];
+    uint256[] fixtureClaimablesLessUSDC = [1e6, 2e18];
+    bytes32[][] fixtureProofs = [
         [
             bytes32(0xce63a4c1fabb68437d0e5edc21b732c5a215f1c5a9ed6a52902f0415e148cc0a),
             bytes32(0x23b2ad869c44ff4946d49f0e048edd1303f0cef3679d3e21143c4cfdcde97f20),
@@ -77,7 +77,7 @@ contract QuarkBuilderMorphoClaimRewardsTest is Test, QuarkBuilderTest {
     function testMorphoClaimRewards() public {
         QuarkBuilder builder = new QuarkBuilder();
         QuarkBuilder.BuilderResult memory result = builder.morphoClaimRewards(
-            morphoClaimRewardsIntent_(1, mockAccounts, mockClaimables, mockDistributors, mockRewards, mockProofs),
+            morphoClaimRewardsIntent_(1, fixtureAccounts, fixtureClaimables, fixtureDistributors, fixtureRewards, fixtureProofs),
             chainAccountsList_(2e6), // holding 2 USDC in total across 1, 8453
             paymentUsd_()
         );
@@ -94,9 +94,9 @@ contract QuarkBuilderMorphoClaimRewardsTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[0].scriptCalldata,
             abi.encodeCall(
-                MorphoRewardsActions.claimAll, (mockDistributors, mockAccounts, mockRewards, mockClaimables, mockProofs)
+                MorphoRewardsActions.claimAll, (fixtureDistributors, fixtureAccounts, fixtureRewards, fixtureClaimables, fixtureProofs)
             ),
-            "calldata is MorphoRewardsActions.claimAll(mockDistributors, mockAccounts, mockRewards, mockClaimables, mockProofs);"
+            "calldata is MorphoRewardsActions.claimAll(fixtureDistributors, fixtureAccounts, fixtureRewards, fixtureClaimables, fixtureProofs);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
@@ -123,7 +123,7 @@ contract QuarkBuilderMorphoClaimRewardsTest is Test, QuarkBuilderTest {
             result.actions[0].actionContext,
             abi.encode(
                 Actions.MorphoClaimRewardsActionContext({
-                    amounts: mockClaimables,
+                    amounts: fixtureClaimables,
                     assetSymbols: assetSymbols,
                     chainId: 1,
                     prices: prices,
@@ -144,7 +144,7 @@ contract QuarkBuilderMorphoClaimRewardsTest is Test, QuarkBuilderTest {
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
         maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 1e6});
         QuarkBuilder.BuilderResult memory result = builder.morphoClaimRewards(
-            morphoClaimRewardsIntent_(1, mockAccounts, mockClaimables, mockDistributors, mockRewards, mockProofs),
+            morphoClaimRewardsIntent_(1, fixtureAccounts, fixtureClaimables, fixtureDistributors, fixtureRewards, fixtureProofs),
             chainAccountsList_(0),
             paymentUsdc_(maxCosts)
         );
@@ -166,11 +166,11 @@ contract QuarkBuilderMorphoClaimRewardsTest is Test, QuarkBuilderTest {
                 CodeJarHelper.getCodeAddress(type(MorphoRewardsActions).creationCode),
                 abi.encodeCall(
                     MorphoRewardsActions.claimAll,
-                    (mockDistributors, mockAccounts, mockRewards, mockClaimables, mockProofs)
+                    (fixtureDistributors, fixtureAccounts, fixtureRewards, fixtureClaimables, fixtureProofs)
                 ),
                 1e6
             ),
-            "calldata is Paycall.run(MorphoRewardsActions.claimAll(mockDistributors, mockAccounts, mockRewards, mockClaimables, mockProofs));"
+            "calldata is Paycall.run(MorphoRewardsActions.claimAll(fixtureDistributors, fixtureAccounts, fixtureRewards, fixtureClaimables, fixtureProofs));"
         );
 
         assertEq(
@@ -203,7 +203,7 @@ contract QuarkBuilderMorphoClaimRewardsTest is Test, QuarkBuilderTest {
             result.actions[0].actionContext,
             abi.encode(
                 Actions.MorphoClaimRewardsActionContext({
-                    amounts: mockClaimables,
+                    amounts: fixtureClaimables,
                     assetSymbols: assetSymbols,
                     chainId: 1,
                     prices: prices,
@@ -227,7 +227,7 @@ contract QuarkBuilderMorphoClaimRewardsTest is Test, QuarkBuilderTest {
         vm.expectRevert(abi.encodeWithSelector(Actions.NotEnoughFundsToBridge.selector, "usdc", 3e6, 3e6));
         builder.morphoClaimRewards(
             morphoClaimRewardsIntent_(
-                1, mockAccounts, mockClaimablesLessUSDC, mockDistributors, mockRewards, mockProofs
+                1, fixtureAccounts, fixtureClaimablesLessUSDC, fixtureDistributors, fixtureRewards, fixtureProofs
             ),
             chainAccountsList_(2e6),
             paymentUsdc_(maxCosts)
@@ -238,7 +238,7 @@ contract QuarkBuilderMorphoClaimRewardsTest is Test, QuarkBuilderTest {
         QuarkBuilder builder = new QuarkBuilder();
         vm.expectRevert(QuarkBuilder.InvalidInput.selector);
         builder.morphoClaimRewards(
-            morphoClaimRewardsIntent_(1, mockAccounts, mockClaimables, mockDistributors, mockInvalidRewards, mockProofs),
+            morphoClaimRewardsIntent_(1, fixtureAccounts, fixtureClaimables, fixtureDistributors, fixtureInvalidRewards, fixtureProofs),
             chainAccountsList_(2e6),
             paymentUsd_()
         );
