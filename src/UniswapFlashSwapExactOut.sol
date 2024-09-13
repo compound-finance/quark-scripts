@@ -8,7 +8,7 @@ import "v3-core/contracts/libraries/SafeCast.sol";
 
 import "quark-core/src/QuarkScript.sol";
 
-import "./vendor/uniswap_v3_periphery/PoolAddress.sol";
+import "./vendor/uniswap-v3-periphery/PoolAddress.sol";
 import "./lib/UniswapFactoryAddress.sol";
 
 contract UniswapFlashSwapExactOut is IUniswapV3SwapCallback, QuarkScript {

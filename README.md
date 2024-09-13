@@ -10,13 +10,13 @@ Quark is an Ethereum smart contract wallet system, designed to run custom code â
 
 Replayable scripts are Quark scripts that can re-executed multiple times using the same signature of a _Quark operation_. More specifically, replayable scripts explicitly clear the nonce used by the transaction (can be done via the `allowReplay` helper function in [`QuarkScript.sol`](./lib/quark/src/quark-core/src/QuarkScript.sol)) to allow for the same nonce to be re-used with the same script address.
 
-An example use-case for replayable scripts is recurring purchases. If a user wanted to buy X WETH using 1,000 USDC every Wednesday until 10,000 USDC is spent, they can achieve this by signing a single _Quark operation_ of a replayable script ([example](./test/lib/RecurringPurchase.sol)). A submitter can then submit this same signed _Quark operation_ every Wednesday to execute the recurring purchase. The replayable script should have checks to ensure conditions are met before purchasing the WETH.
+An example use-case for replayable scripts is recurring purchases. If a user wanted to buy X WETH using 1,000 USDC every Wednesday until 10,000 USDC is spent, they can achieve this by signing a single _Quark operation_ of a replayable script ([example](./src/RecurringSwap.sol)). A submitter can then submit this same signed _Quark operation_ every Wednesday to execute the recurring purchase. The replayable script should have checks to ensure conditions are met before purchasing the WETH.
 
 #### Same script address, but different calldata
 
 For replayable transactions where the nonce is cleared, _Quark State Manager_ requires future transactions using that nonce to use the same script. This is to ensure that the same nonce is not accidentally used by two different scripts. However, it does not require the `calldata` passed to that script to be the same. This means that a cleared nonce can be executed with the same script but different calldata.
 
-Allowing the calldata to change greatly increases the flexibility of replayable scripts. One can think of a replayable script like a sub-module of a wallet that supports different functionality. In the [example script](./test/lib/RecurringPurchase.sol) for recurring purchases, there is a separate `cancel` function that the user can sign to cancel the nonce, and therefore, cancel all the recurring purchases that use this nonce. The user can also also sign multiple `purchase` calls, each with different purchase configurations. This means that multiple variations of recurring purchases can exist on the same nonce and can all be cancelled together.
+Allowing the calldata to change greatly increases the flexibility of replayable scripts. One can think of a replayable script like a sub-module of a wallet that supports different functionality. In the [example script](./src/RecurringSwap.sol) for recurring purchases, there is a separate `cancel` function that the user can sign to cancel the nonce, and therefore, cancel all the recurring purchases that use this nonce. The user can also also sign multiple `purchase` calls, each with different purchase configurations. This means that multiple variations of recurring purchases can exist on the same nonce and can all be cancelled together.
 
 One danger of flexible `calldata` in replayable scripts is that previously signed `calldata` can always be re-executed. The Quark system does not disallow previously used calldata when a new calldata is executed. This means that scripts may need to implement their own method of invalidating previously-used `calldata`.
 
@@ -32,23 +32,18 @@ Callbacks need to be explicitly turned on by Quark scripts. Specifically, this i
 
 [Quark Builder Helper](./src/builder/QuarkBuilderHelper.sol) is a contract with functions outside of constructing _Quark operations_ that might still be helpful for those using the QuarkBuilder. For example, there is a helper function to determine the bridgeability of assets on different chains.
 
-## Fork tests and NODE_PROVIDER_BYPASS_KEY
+## Fork tests and MAINNET_RPC_URL
 
 Some tests require forking mainnet, e.g. to exercise use-cases like
 supplying and borrowing in a comet market.
 
-For a "fork url" we use our rate-limited node provider endpoint at
-`https://node-provider.compound.finance/ethereum-mainnet`. Setting up a
-fork quickly exceeds the rate limits, so we use a bypass key to allow fork
-tests to exceed the rate limits.
+The "fork url" is specified using the environment variable `MAINNET_RPC_URL`.
+It can be any node provider for Ethereum mainnet, such as Infura or Alchemy.
 
-A bypass key for Quark development can be found in 1Password as a
-credential named "Quark Dev node-provider Bypass Key". The key can then be
-set during tests via the environment variable `NODE_PROVIDER_BYPASS_KEY`,
-like so:
+The environment variable can be set when running tests, like so:
 
 ```
-$ NODE_PROVIDER_BYPASS_KEY=... forge test
+$ MAINNET_RPC_URL=... forge test
 ```
 
 ## Updating gas snapshots
@@ -61,7 +56,7 @@ You can accept the diff and update the baseline if the increased gas usage
 is intentional. Just run the following command:
 
 ```sh
-$ NODE_PROVIDER_BYPASS_KEY=... ./script/update-snapshot.sh
+$ MAINNET_RPC_URL=... ./script/update-snapshot.sh
 ```
 
 Then commit the updated snapshot file:
