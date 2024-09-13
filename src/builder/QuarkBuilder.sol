@@ -54,6 +54,7 @@ contract QuarkBuilder {
     /* ===== Helper Functions ===== */
 
     /* ===== Main Implementation ===== */
+
     struct CometRepayIntent {
         uint256 amount;
         string assetSymbol;
@@ -839,6 +840,7 @@ contract QuarkBuilder {
         address feeToken;
         uint256 feeAmount;
         address sender;
+        bool isExactOut;
         uint256 blockTimestamp;
     }
 
@@ -958,6 +960,133 @@ contract QuarkBuilder {
                 feeToken: swapIntent.feeToken,
                 feeAssetSymbol: feeAssetSymbol,
                 feeAmount: swapIntent.feeAmount,
+                chainId: swapIntent.chainId,
+                sender: swapIntent.sender,
+                isExactOut: swapIntent.isExactOut,
+                blockTimestamp: swapIntent.blockTimestamp
+            }),
+            payment,
+            useQuotecall
+        );
+        List.addAction(actions, action);
+        List.addQuarkOperation(quarkOperations, operation);
+
+        // Convert actions and quark operations to arrays
+        Actions.Action[] memory actionsArray = List.toActionArray(actions);
+        IQuarkWallet.QuarkOperation[] memory quarkOperationsArray = List.toQuarkOperationArray(quarkOperations);
+        // Validate generated actions for affordability
+        if (payment.isToken) {
+            assertSufficientPaymentTokenBalances(actionsArray, chainAccountsList, swapIntent.chainId, swapIntent.sender);
+        }
+
+        // Merge operations that are from the same chain into one Multicall operation
+        (quarkOperationsArray, actionsArray) =
+            QuarkOperationHelper.mergeSameChainOperations(quarkOperationsArray, actionsArray);
+
+        // Wrap operations around Paycall/Quotecall if payment is with token
+        if (payment.isToken) {
+            quarkOperationsArray = QuarkOperationHelper.wrapOperationsWithTokenPayment(
+                quarkOperationsArray, actionsArray, payment, useQuotecall
+            );
+        }
+
+        return BuilderResult({
+            version: VERSION,
+            actions: actionsArray,
+            quarkOperations: quarkOperationsArray,
+            paymentCurrency: payment.currency,
+            eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
+        });
+    }
+
+    struct RecurringSwapIntent {
+        uint256 chainId;
+        address sellToken;
+        // For exact out swaps, this will be an estimate of the expected input token amount for the first swap
+        uint256 sellAmount;
+        address buyToken;
+        uint256 buyAmount;
+        bool isExactOut;
+        bytes path;
+        uint256 interval;
+        address sender;
+        uint256 blockTimestamp;
+    }
+
+    // Note: We don't currently bridge the input token or the payment token for recurring swaps. Recurring swaps
+    // are actions tied to assets on a single chain.
+    function recurringSwap(
+        RecurringSwapIntent memory swapIntent,
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        PaymentInfo.Payment memory payment
+    ) external pure returns (BuilderResult memory) {
+        // If the action is paid for with tokens, filter out any chain accounts that do not have corresponding payment information
+        if (payment.isToken) {
+            chainAccountsList = Accounts.findChainAccountsWithPaymentInfo(chainAccountsList, payment);
+        }
+
+        string memory sellAssetSymbol =
+            Accounts.findAssetPositions(swapIntent.sellToken, swapIntent.chainId, chainAccountsList).symbol;
+        string memory buyAssetSymbol =
+            Accounts.findAssetPositions(swapIntent.buyToken, swapIntent.chainId, chainAccountsList).symbol;
+
+        // Check there are enough of the input token on the target chain
+        if (needsBridgedFunds(sellAssetSymbol, swapIntent.sellAmount, swapIntent.chainId, chainAccountsList, payment)) {
+            uint256 balanceOnChain = getBalanceOnChain(sellAssetSymbol, swapIntent.chainId, chainAccountsList, payment);
+            uint256 amountNeededOnChain =
+                getAmountNeededOnChain(sellAssetSymbol, swapIntent.sellAmount, swapIntent.chainId, payment);
+            uint256 maxCostOnChain = payment.isToken ? PaymentInfo.findMaxCost(payment, swapIntent.chainId) : 0;
+            uint256 availableAssetBalance = balanceOnChain >= maxCostOnChain ? balanceOnChain - maxCostOnChain : 0;
+            revert FundsUnavailable(sellAssetSymbol, amountNeededOnChain, availableAssetBalance);
+        }
+
+        // Check there are enough of the payment token on the target chain
+        if (payment.isToken) {
+            uint256 maxCostOnChain = PaymentInfo.findMaxCost(payment, swapIntent.chainId);
+            if (needsBridgedFunds(payment.currency, maxCostOnChain, swapIntent.chainId, chainAccountsList, payment)) {
+                uint256 balanceOnChain =
+                    getBalanceOnChain(payment.currency, swapIntent.chainId, chainAccountsList, payment);
+                revert FundsUnavailable(payment.currency, maxCostOnChain, balanceOnChain);
+            }
+        }
+
+        // We don't support max swap for recurring swaps, so quote call is never used
+        bool useQuotecall = false;
+        List.DynamicArray memory actions = List.newList();
+        List.DynamicArray memory quarkOperations = List.newList();
+
+        // TODO: Handle wrapping/unwrapping once the new Quark is out. That will allow us to construct a replayable
+        // Multicall transaction that contains 1) the wrapping/unwrapping action and 2) the recurring swap. The wrapping
+        // action will need to be smart: for exact in, it will check that balance < sellAmount before wrapping. For exact out,
+        // it will always wrap all.
+        // // Auto-wrap/unwrap
+        // checkAndInsertWrapOrUnwrapAction(
+        //     actions,
+        //     quarkOperations,
+        //     chainAccountsList,
+        //     payment,
+        //     sellAssetSymbol,
+        //     // TODO: We will need to set this to type(uint256).max if isExactOut is true
+        //     swapIntent.sellAmount,
+        //     swapIntent.chainId,
+        //     swapIntent.sender,
+        //     swapIntent.blockTimestamp,
+        //     useQuotecall
+        // );
+
+        // Then, set up the recurring swap operation
+        (IQuarkWallet.QuarkOperation memory operation, Actions.Action memory action) = Actions.recurringSwap(
+            Actions.RecurringSwapParams({
+                chainAccountsList: chainAccountsList,
+                sellToken: swapIntent.sellToken,
+                sellAssetSymbol: sellAssetSymbol,
+                sellAmount: swapIntent.sellAmount,
+                buyToken: swapIntent.buyToken,
+                buyAssetSymbol: buyAssetSymbol,
+                buyAmount: swapIntent.buyAmount,
+                isExactOut: swapIntent.isExactOut,
+                path: swapIntent.path,
+                interval: swapIntent.interval,
                 chainId: swapIntent.chainId,
                 sender: swapIntent.sender,
                 blockTimestamp: swapIntent.blockTimestamp
@@ -1668,19 +1797,13 @@ contract QuarkBuilder {
         revert MissingWrapperCounterpart();
     }
 
-    function needsBridgedFunds(
+    function getBalanceOnChain(
         string memory assetSymbol,
-        uint256 amount,
         uint256 chainId,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) internal pure returns (bool) {
+    ) internal pure returns (uint256) {
         uint256 balanceOnChain = Accounts.getBalanceOnChain(assetSymbol, chainId, chainAccountsList);
-        // If action is paid for with tokens and the payment token is the transfer token, then add the payment max cost for the target chain to the amount needed
-        uint256 amountNeededOnDstChain = amount;
-        if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, assetSymbol)) {
-            amountNeededOnDstChain += PaymentInfo.findMaxCost(payment, chainId);
-        }
 
         // If there exists a counterpart token, try to wrap/unwrap first before attempting to bridge
         if (TokenWrapper.hasWrapperContract(chainId, assetSymbol)) {
@@ -1699,7 +1822,35 @@ contract QuarkBuilder {
             balanceOnChain += counterpartBalance;
         }
 
-        return balanceOnChain < amountNeededOnDstChain;
+        return balanceOnChain;
+    }
+
+    function getAmountNeededOnChain(
+        string memory assetSymbol,
+        uint256 amount,
+        uint256 chainId,
+        PaymentInfo.Payment memory payment
+    ) internal pure returns (uint256) {
+        // If action is paid for with tokens and the payment token is the transfer token, then add the payment max cost for the target chain to the amount needed
+        uint256 amountNeededOnChain = amount;
+        if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, assetSymbol)) {
+            amountNeededOnChain += PaymentInfo.findMaxCost(payment, chainId);
+        }
+
+        return amountNeededOnChain;
+    }
+
+    function needsBridgedFunds(
+        string memory assetSymbol,
+        uint256 amount,
+        uint256 chainId,
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        PaymentInfo.Payment memory payment
+    ) internal pure returns (bool) {
+        uint256 balanceOnChain = getBalanceOnChain(assetSymbol, chainId, chainAccountsList, payment);
+        uint256 amountNeededOnChain = getAmountNeededOnChain(assetSymbol, amount, chainId, payment);
+
+        return balanceOnChain < amountNeededOnChain;
     }
 
     /**
@@ -1861,6 +2012,12 @@ contract QuarkBuilder {
                     abi.decode(nonBridgeAction.actionContext, (Actions.SwapActionContext));
                 if (Strings.stringEqIgnoreCase(swapActionContext.inputAssetSymbol, paymentTokenSymbol)) {
                     paymentTokenCost += swapActionContext.inputAmount;
+                }
+            } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_RECURRING_SWAP)) {
+                Actions.RecurringSwapActionContext memory recurringSwapActionContext =
+                    abi.decode(nonBridgeAction.actionContext, (Actions.RecurringSwapActionContext));
+                if (Strings.stringEqIgnoreCase(recurringSwapActionContext.inputAssetSymbol, paymentTokenSymbol)) {
+                    paymentTokenCost += recurringSwapActionContext.inputAmount;
                 }
             } else if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_TRANSFER)) {
                 Actions.TransferActionContext memory transferActionContext =

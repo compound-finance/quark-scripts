@@ -16,7 +16,7 @@ import {QuarkWalletProxyFactory} from "quark-proxy/src/QuarkWalletProxyFactory.s
 
 import {Ethcall} from "src/Ethcall.sol";
 import {Multicall} from "src/Multicall.sol";
-import {PoolAddress} from "src/vendor/uniswap_v3_periphery/PoolAddress.sol";
+import {PoolAddress} from "src/vendor/uniswap-v3-periphery/PoolAddress.sol";
 import {UniswapFlashLoan} from "src/UniswapFlashLoan.sol";
 
 import {Counter} from "./lib/Counter.sol";
@@ -51,9 +51,7 @@ contract UniswapFlashLoanTest is Test {
 
     function setUp() public {
         vm.createSelectFork(
-            string.concat(
-                "https://node-provider.compound.finance/ethereum-mainnet/", vm.envString("NODE_PROVIDER_BYPASS_KEY")
-            ),
+            vm.envString("MAINNET_RPC_URL"),
             18429607 // 2023-10-25 13:24:00 PST
         );
         factory = new QuarkWalletProxyFactory(address(new QuarkWallet(new CodeJar(), new QuarkStateManager())));

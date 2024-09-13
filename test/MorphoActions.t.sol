@@ -41,9 +41,7 @@ contract MorphoActionsTest is Test {
     function setUp() public {
         // Fork setup
         vm.createSelectFork(
-            string.concat(
-                "https://node-provider.compound.finance/ethereum-mainnet/", vm.envString("NODE_PROVIDER_BYPASS_KEY")
-            ),
+            vm.envString("MAINNET_RPC_URL"),
             20564787 // 2024-08-19 12:34:00 PST
         );
         factory = new QuarkWalletProxyFactory(address(new QuarkWallet(new CodeJar(), new QuarkStateManager())));

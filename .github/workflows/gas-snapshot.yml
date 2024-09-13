@@ -29,11 +29,14 @@ jobs:
         run: |
           set -euo pipefail
           # grep -E '^test'  -- skip over test results, just get diffs
-          forge snapshot --diff \
+          FOUNDRY_PROFILE=ir forge snapshot --no-match-path test/builder/**/*.t.sol --diff \
             | grep -E '^test'   \
             | tee .gas-snapshot.new
         env:
-          NODE_PROVIDER_BYPASS_KEY: ${{ secrets.NODE_PROVIDER_BYPASS_KEY }}
+          MAINNET_RPC_URL: ${{ secrets.MAINNET_RPC_URL }}
+          BASE_MAINNET_RPC_URL: ${{ secrets.BASE_MAINNET_RPC_URL }}
+          SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
+          BASE_SEPOLIA_RPC_URL: ${{ secrets.BASE_SEPOLIA_RPC_URL }}
 
       - name: Check diff tolerance
         run: |

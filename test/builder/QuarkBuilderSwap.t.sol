@@ -90,6 +90,7 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
             feeToken: buyToken,
             feeAmount: 10,
             sender: sender,
+            isExactOut: false,
             blockTimestamp: blockTimestamp
         });
     }
@@ -205,7 +206,8 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
                     outputToken: WETH_1,
                     outputTokenPrice: WETH_PRICE,
                     outputAssetSymbol: "WETH",
-                    outputAmount: 1e18
+                    outputAmount: 1e18,
+                    isExactOut: false
                 })
             ),
             "action context encoded from SwapActionContext"
@@ -311,7 +313,8 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
                     outputToken: USDC_1,
                     outputTokenPrice: USDC_PRICE,
                     outputAssetSymbol: "USDC",
-                    outputAmount: 3000e6
+                    outputAmount: 3000e6,
+                    isExactOut: false
                 })
             ),
             "action context encoded from SwapActionContext"
@@ -386,7 +389,8 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
                     outputToken: WETH_1,
                     outputTokenPrice: WETH_PRICE,
                     outputAssetSymbol: "WETH",
-                    outputAmount: 1e18
+                    outputAmount: 1e18,
+                    isExactOut: false
                 })
             ),
             "action context encoded from SwapActionContext"
@@ -487,7 +491,8 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
                     outputToken: WETH_1,
                     outputTokenPrice: WETH_PRICE,
                     outputAssetSymbol: "WETH",
-                    outputAmount: 3e18
+                    outputAmount: 3e18,
+                    isExactOut: false
                 })
             ),
             "action context encoded from SwapActionContext"
@@ -625,7 +630,8 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
                     outputToken: WETH_8453,
                     outputTokenPrice: WETH_PRICE,
                     outputAssetSymbol: "WETH",
-                    outputAmount: 1e18
+                    outputAmount: 1e18,
+                    isExactOut: false
                 })
             ),
             "action context encoded from SwapActionContext"
@@ -760,7 +766,8 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
                     outputToken: WETH_8453,
                     outputTokenPrice: WETH_PRICE,
                     outputAssetSymbol: "WETH",
-                    outputAmount: 1e18
+                    outputAmount: 1e18,
+                    isExactOut: false
                 })
             ),
             "action context encoded from SwapActionContext"
@@ -894,7 +901,8 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
                     outputToken: WETH_8453,
                     outputTokenPrice: WETH_PRICE,
                     outputAssetSymbol: "WETH",
-                    outputAmount: 2e18
+                    outputAmount: 2e18,
+                    isExactOut: false
                 })
             ),
             "action context encoded from SwapActionContext"
@@ -1029,7 +1037,8 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
                     outputToken: WETH_8453,
                     outputTokenPrice: WETH_PRICE,
                     outputAssetSymbol: "WETH",
-                    outputAmount: 1e18
+                    outputAmount: 1e18,
+                    isExactOut: false
                 })
             ),
             "action context encoded from SwapActionContext"

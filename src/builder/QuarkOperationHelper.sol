@@ -7,6 +7,7 @@ import {Multicall} from "../Multicall.sol";
 
 import {Actions} from "./Actions.sol";
 import {CodeJarHelper} from "./CodeJarHelper.sol";
+import {Errors} from "./Errors.sol";
 import {PaycallWrapper} from "./PaycallWrapper.sol";
 import {PaymentInfo} from "./PaymentInfo.sol";
 import {QuotecallWrapper} from "./QuotecallWrapper.sol";
@@ -15,17 +16,13 @@ import {HashMap} from "./HashMap.sol";
 
 // Helper library to for transforming Quark Operations
 library QuarkOperationHelper {
-    /* ===== Custom Errors ===== */
-
-    error BadData();
-
     /* ===== Main Implementation ===== */
 
     function mergeSameChainOperations(
         IQuarkWallet.QuarkOperation[] memory quarkOperations,
         Actions.Action[] memory actions
     ) internal pure returns (IQuarkWallet.QuarkOperation[] memory, Actions.Action[] memory) {
-        if (quarkOperations.length != actions.length) revert BadData();
+        if (quarkOperations.length != actions.length) revert Errors.BadData();
 
         // Group operations and actions by chain id
         HashMap.Map memory groupedQuarkOperations = HashMap.newMap();
