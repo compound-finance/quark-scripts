@@ -77,7 +77,9 @@ contract QuarkBuilderMorphoClaimRewardsTest is Test, QuarkBuilderTest {
     function testMorphoClaimRewards() public {
         QuarkBuilder builder = new QuarkBuilder();
         QuarkBuilder.BuilderResult memory result = builder.morphoClaimRewards(
-            morphoClaimRewardsIntent_(1, fixtureAccounts, fixtureClaimables, fixtureDistributors, fixtureRewards, fixtureProofs),
+            morphoClaimRewardsIntent_(
+                1, fixtureAccounts, fixtureClaimables, fixtureDistributors, fixtureRewards, fixtureProofs
+            ),
             chainAccountsList_(2e6), // holding 2 USDC in total across 1, 8453
             paymentUsd_()
         );
@@ -94,7 +96,8 @@ contract QuarkBuilderMorphoClaimRewardsTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[0].scriptCalldata,
             abi.encodeCall(
-                MorphoRewardsActions.claimAll, (fixtureDistributors, fixtureAccounts, fixtureRewards, fixtureClaimables, fixtureProofs)
+                MorphoRewardsActions.claimAll,
+                (fixtureDistributors, fixtureAccounts, fixtureRewards, fixtureClaimables, fixtureProofs)
             ),
             "calldata is MorphoRewardsActions.claimAll(fixtureDistributors, fixtureAccounts, fixtureRewards, fixtureClaimables, fixtureProofs);"
         );
@@ -144,7 +147,9 @@ contract QuarkBuilderMorphoClaimRewardsTest is Test, QuarkBuilderTest {
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
         maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 1e6});
         QuarkBuilder.BuilderResult memory result = builder.morphoClaimRewards(
-            morphoClaimRewardsIntent_(1, fixtureAccounts, fixtureClaimables, fixtureDistributors, fixtureRewards, fixtureProofs),
+            morphoClaimRewardsIntent_(
+                1, fixtureAccounts, fixtureClaimables, fixtureDistributors, fixtureRewards, fixtureProofs
+            ),
             chainAccountsList_(0),
             paymentUsdc_(maxCosts)
         );
@@ -238,7 +243,9 @@ contract QuarkBuilderMorphoClaimRewardsTest is Test, QuarkBuilderTest {
         QuarkBuilder builder = new QuarkBuilder();
         vm.expectRevert(QuarkBuilder.InvalidInput.selector);
         builder.morphoClaimRewards(
-            morphoClaimRewardsIntent_(1, fixtureAccounts, fixtureClaimables, fixtureDistributors, fixtureInvalidRewards, fixtureProofs),
+            morphoClaimRewardsIntent_(
+                1, fixtureAccounts, fixtureClaimables, fixtureDistributors, fixtureInvalidRewards, fixtureProofs
+            ),
             chainAccountsList_(2e6),
             paymentUsd_()
         );
