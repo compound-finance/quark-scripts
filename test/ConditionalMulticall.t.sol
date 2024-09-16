@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-pragma solidity 0.8.23;
+pragma solidity 0.8.27;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
@@ -10,7 +10,7 @@ import {IERC20} from "forge-std/interfaces/IERC20.sol";
 import {CodeJar} from "codejar/src/CodeJar.sol";
 
 import {QuarkWallet} from "quark-core/src/QuarkWallet.sol";
-import {QuarkStateManager} from "quark-core/src/QuarkStateManager.sol";
+import {QuarkNonceManager} from "quark-core/src/QuarkNonceManager.sol";
 
 import {QuarkWalletProxyFactory} from "quark-proxy/src/QuarkWalletProxyFactory.sol";
 
@@ -35,8 +35,7 @@ contract ConditionalMulticallTest is Test {
     address constant comet = 0xc3d688B66703497DAA19211EEdff47f25384cdc3;
     address constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    // Uniswap router info on mainnet
-    address constant uniswapRouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
+
     bytes ethcall = new YulHelper().getCode("Ethcall.sol/Ethcall.json");
     bytes conditionalMulticall = new YulHelper().getCode("ConditionalMulticall.sol/ConditionalMulticall.json");
     address ethcallAddress;
@@ -46,7 +45,7 @@ contract ConditionalMulticallTest is Test {
             vm.envString("MAINNET_RPC_URL"),
             18429607 // 2023-10-25 13:24:00 PST
         );
-        factory = new QuarkWalletProxyFactory(address(new QuarkWallet(new CodeJar(), new QuarkStateManager())));
+        factory = new QuarkWalletProxyFactory(address(new QuarkWallet(new CodeJar(), new QuarkNonceManager())));
         counter = new Counter();
         counter.setNumber(0);
         ethcallAddress = QuarkWallet(payable(factory.walletImplementation())).codeJar().saveCode(ethcall);

@@ -1,18 +1,13 @@
 // SPDX-License-Identifier: BSD-3-Clause
-pragma solidity 0.8.23;
+pragma solidity 0.8.27;
 
 import "forge-std/Script.sol";
 import "forge-std/console.sol";
 
 import {CodeJar} from "codejar/src/CodeJar.sol";
 
-import {QuarkWallet} from "quark-core/src/QuarkWallet.sol";
-import {QuarkStateManager} from "quark-core/src/QuarkStateManager.sol";
-
 import {Ethcall} from "quark-core-scripts/src/Ethcall.sol";
 import {Multicall} from "quark-core-scripts/src/Multicall.sol";
-
-import {QuarkWalletProxyFactory} from "quark-proxy/src/QuarkWalletProxyFactory.sol";
 
 import {
     CometSupplyActions,

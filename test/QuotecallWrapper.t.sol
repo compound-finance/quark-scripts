@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-pragma solidity 0.8.23;
+pragma solidity 0.8.27;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
@@ -7,13 +7,15 @@ import "forge-std/StdUtils.sol";
 
 import {CodeJar} from "codejar/src/CodeJar.sol";
 import {QuarkWallet} from "quark-core/src/QuarkWallet.sol";
-import {QuarkStateManager} from "quark-core/src/QuarkStateManager.sol";
+import {QuarkNonceManager} from "quark-core/src/QuarkNonceManager.sol";
 import {QuarkWalletProxyFactory} from "quark-proxy/src/QuarkWalletProxyFactory.sol";
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
 import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
 import {Quotecall} from "src/Quotecall.sol";
 import {QuotecallWrapper} from "src/builder/QuotecallWrapper.sol";
 import {TransferActions} from "src/DeFiScripts.sol";
+
+import {QuarkOperationHelper} from "test/lib/QuarkOperationHelper.sol";
 
 contract QuotecallWrapperTest is Test {
     QuarkWalletProxyFactory public factory;
@@ -25,7 +27,7 @@ contract QuotecallWrapperTest is Test {
     address constant ETH_USD_PRICE_FEED = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
 
     function setUp() public {
-        factory = new QuarkWalletProxyFactory(address(new QuarkWallet(new CodeJar(), new QuarkStateManager())));
+        factory = new QuarkWalletProxyFactory(address(new QuarkWallet(new CodeJar(), new QuarkNonceManager())));
         codeJar = QuarkWallet(payable(factory.walletImplementation())).codeJar();
     }
 
@@ -36,7 +38,8 @@ contract QuotecallWrapperTest is Test {
         bytes[] memory scriptSources = new bytes[](1);
         scriptSources[0] = type(TransferActions).creationCode;
         IQuarkWallet.QuarkOperation memory op = IQuarkWallet.QuarkOperation({
-            nonce: wallet.stateManager().nextNonce(address(wallet)),
+            nonce: new QuarkOperationHelper().semiRandomNonce(wallet),
+            isReplayable: false,
             scriptAddress: CodeJarHelper.getCodeAddress(type(TransferActions).creationCode),
             scriptCalldata: abi.encodeWithSelector(TransferActions.transferERC20Token.selector, USDC, address(this), 10e6),
             scriptSources: scriptSources,
