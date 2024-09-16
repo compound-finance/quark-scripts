@@ -22,6 +22,7 @@ import {Reverts} from "./lib/Reverts.sol";
 import {YulHelper} from "./lib/YulHelper.sol";
 import {SignatureHelper} from "./lib/SignatureHelper.sol";
 import {QuarkOperationHelper, ScriptType} from "./lib/QuarkOperationHelper.sol";
+import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
 import "src/vendor/chainlink/AggregatorV3Interface.sol";
 
 import "src/DeFiScripts.sol";
@@ -446,5 +447,19 @@ contract PaycallTest is Test {
         wallet.executeQuarkOperation(op, v, r, s);
 
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 1000e6);
+    }
+
+    function testPaycallAddress() public {
+        // If this test fails, the paycall code has been updated which means the
+        // backend must be updated accordingly
+        vm.createSelectFork(
+            string.concat(
+                "https://node-provider.compound.finance/ethereum-mainnet/", vm.envString("NODE_PROVIDER_BYPASS_KEY")
+            ),
+            20764080 // 2024-09-16 08:31:00 PST
+        );
+
+        CodeJar mainnetCodejar = CodeJar(CodeJarHelper.CODE_JAR_ADDRESS);
+        assertEq(mainnetCodejar.getCodeAddress(paycall), 0x1aF2e314e3291c6a4cD52A210a1AF027c7799cce);
     }
 }
