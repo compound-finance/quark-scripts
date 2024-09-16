@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-pragma solidity 0.8.23;
+pragma solidity 0.8.27;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
@@ -11,7 +11,7 @@ import {IERC4626} from "openzeppelin/interfaces/IERC4626.sol";
 import {IERC20} from "openzeppelin/interfaces/IERC20.sol";
 import {IMorpho, MarketParams, Position} from "src/interfaces/IMorpho.sol";
 import {QuarkWallet} from "quark-core/src/QuarkWallet.sol";
-import {QuarkStateManager} from "quark-core/src/QuarkStateManager.sol";
+import {QuarkNonceManager} from "quark-core/src/QuarkNonceManager.sol";
 
 import {QuarkWalletProxyFactory} from "quark-proxy/src/QuarkWalletProxyFactory.sol";
 
@@ -44,7 +44,7 @@ contract MorphoActionsTest is Test {
             vm.envString("MAINNET_RPC_URL"),
             20564787 // 2024-08-19 12:34:00 PST
         );
-        factory = new QuarkWalletProxyFactory(address(new QuarkWallet(new CodeJar(), new QuarkStateManager())));
+        factory = new QuarkWalletProxyFactory(address(new QuarkWallet(new CodeJar(), new QuarkNonceManager())));
     }
 
     function testRepayAndWithdrawCollateral() public {

@@ -2,8 +2,8 @@
 src = "src"
 out = "out"
 test = "test"
-solc = "0.8.23"
-evm_version = "paris"
+solc = "0.8.27"
+evm_version = "cancun"
 bytecode_hash = "none"
 cbor_metadata = false
 

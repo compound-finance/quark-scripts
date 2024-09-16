@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-pragma solidity ^0.8.23;
+pragma solidity ^0.8.27;
 
 import {Accounts} from "./Accounts.sol";
 import {BridgeRoutes, CCTP} from "./BridgeRoutes.sol";
@@ -593,7 +593,8 @@ library Actions {
 
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
+            nonce: bytes32(uint256(accountState.quarkNextNonce)),
+            isReplayable: false,
             scriptAddress: CodeJarHelper.getCodeAddress(scriptSources[0]),
             scriptCalldata: CCTP.encodeBridgeUSDC(
                 bridge.srcChainId, bridge.destinationChainId, bridge.amount, bridge.recipient, srcUSDCPositions.asset
@@ -668,7 +669,8 @@ library Actions {
 
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
+            nonce: bytes32(uint256(accountState.quarkNextNonce)),
+            isReplayable: false,
             scriptAddress: CodeJarHelper.getCodeAddress(type(CometSupplyMultipleAssetsAndBorrow).creationCode),
             scriptCalldata: scriptCalldata,
             scriptSources: scriptSources,
@@ -742,7 +744,8 @@ library Actions {
 
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
+            nonce: bytes32(uint256(accountState.quarkNextNonce)),
+            isReplayable: false,
             scriptAddress: CodeJarHelper.getCodeAddress(type(CometRepayAndWithdrawMultipleAssets).creationCode),
             scriptCalldata: scriptCalldata,
             scriptSources: scriptSources,
@@ -804,7 +807,8 @@ library Actions {
         }
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
+            nonce: bytes32(uint256(accountState.quarkNextNonce)),
+            isReplayable: false,
             scriptAddress: CodeJarHelper.getCodeAddress(type(CometSupplyActions).creationCode),
             scriptCalldata: scriptCalldata,
             scriptSources: scriptSources,
@@ -863,7 +867,8 @@ library Actions {
         }
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
+            nonce: bytes32(uint256(accountState.quarkNextNonce)),
+            isReplayable: false,
             scriptAddress: CodeJarHelper.getCodeAddress(type(CometWithdrawActions).creationCode),
             scriptCalldata: scriptCalldata,
             scriptSources: scriptSources,
@@ -925,7 +930,8 @@ library Actions {
         }
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
+            nonce: bytes32(uint256(accountState.quarkNextNonce)),
+            isReplayable: false,
             scriptAddress: CodeJarHelper.getCodeAddress(type(TransferActions).creationCode),
             scriptCalldata: scriptCalldata,
             scriptSources: scriptSources,
@@ -987,7 +993,8 @@ library Actions {
 
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
+            nonce: bytes32(uint256(accountState.quarkNextNonce)),
+            isReplayable: false,
             scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoActions).creationCode),
             scriptCalldata: scriptCalldata,
             scriptSources: scriptSources,
@@ -1054,7 +1061,8 @@ library Actions {
 
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
+            nonce: bytes32(uint256(accountState.quarkNextNonce)),
+            isReplayable: false,
             scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoActions).creationCode),
             scriptCalldata: scriptCalldata,
             scriptSources: scriptSources,
@@ -1118,7 +1126,8 @@ library Actions {
 
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
+            nonce: bytes32(uint256(accountState.quarkNextNonce)),
+            isReplayable: false,
             scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoVaultActions).creationCode),
             scriptCalldata: scriptCalldata,
             scriptSources: scriptSources,
@@ -1175,7 +1184,8 @@ library Actions {
 
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
+            nonce: bytes32(uint256(accountState.quarkNextNonce)),
+            isReplayable: false,
             scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoVaultActions).creationCode),
             scriptCalldata: scriptCalldata,
             scriptSources: scriptSources,
@@ -1226,7 +1236,8 @@ library Actions {
         Accounts.QuarkState memory accountState = Accounts.findQuarkState(wrapOrUnwrap.sender, accounts.quarkStates);
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
+            nonce: bytes32(uint256(accountState.quarkNextNonce)),
+            isReplayable: false,
             scriptAddress: CodeJarHelper.getCodeAddress(type(WrapperActions).creationCode),
             scriptCalldata: TokenWrapper.encodeActionToWrapOrUnwrap(
                 wrapOrUnwrap.chainId, wrapOrUnwrap.assetSymbol, wrapOrUnwrap.amount
@@ -1296,7 +1307,8 @@ library Actions {
 
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
+            nonce: bytes32(uint256(accountState.quarkNextNonce)),
+            isReplayable: false,
             scriptAddress: CodeJarHelper.getCodeAddress(type(ApproveAndSwap).creationCode),
             scriptCalldata: scriptCalldata,
             scriptSources: scriptSources,
@@ -1385,7 +1397,8 @@ library Actions {
 
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
+            nonce: bytes32(uint256(accountState.quarkNextNonce)),
+            isReplayable: true,
             scriptAddress: CodeJarHelper.getCodeAddress(type(RecurringSwap).creationCode),
             scriptCalldata: scriptCalldata,
             scriptSources: scriptSources,
