@@ -452,10 +452,9 @@ contract PaycallTest is Test {
     function testPaycallAddress() public {
         // If this test fails, the paycall code has been updated which means the
         // backend must be updated accordingly
+
         vm.createSelectFork(
-            string.concat(
-                "https://node-provider.compound.finance/ethereum-mainnet/", vm.envString("NODE_PROVIDER_BYPASS_KEY")
-            ),
+            vm.envString("MAINNET_RPC_URL"),
             20764080 // 2024-09-16 08:31:00 PST
         );
 
