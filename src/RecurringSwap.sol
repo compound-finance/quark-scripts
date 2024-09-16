@@ -80,12 +80,6 @@ contract RecurringSwap is QuarkScript {
         bool[] shouldInvert;
     }
 
-    /// @notice Cancel the recurring swap for the current nonce
-    function cancel() external {
-        // A no-op that can be called with `QuarkOperation.isReplayable = false` to cancel the
-        // replayable operation
-    }
-
     /**
      * @notice Execute a swap given a configuration for a recurring swap
      * @param config The configuration for a recurring swap order
