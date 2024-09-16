@@ -4,8 +4,10 @@ out = "out"
 test = "test"
 solc = "0.8.23"
 evm_version = "paris"
+bytecode_hash = "none"
+cbor_metadata = false
 
-libs = [ "./lib" ]
+libs = ["./lib"]
 
 [profile.ir]
 via_ir = true
@@ -14,6 +16,3 @@ optimizer_runs = 100000000
 
 [fmt]
 ignore = ["src/vendor/**/*"]
-
-bytecode_hash = "none"
-cbor_metadata = false
