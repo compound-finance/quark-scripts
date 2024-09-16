@@ -11,6 +11,7 @@ import {QuarkWallet} from "quark-core/src/QuarkWallet.sol";
 
 import {QuarkMinimalProxy} from "quark-proxy/src/QuarkMinimalProxy.sol";
 
+import {Cancel} from "src/Cancel.sol";
 import {RecurringSwap} from "src/RecurringSwap.sol";
 
 import {YulHelper} from "./lib/YulHelper.sol";
@@ -362,9 +363,7 @@ contract RecurringSwapTest is Test {
         op.expiry = type(uint256).max;
         (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
 
-        QuarkWallet.QuarkOperation memory cancelOp = new QuarkOperationHelper().newBasicOpWithCalldata(
-            aliceWallet, recurringSwap, abi.encodeWithSelector(RecurringSwap.cancel.selector), ScriptType.ScriptAddress
-        );
+        QuarkWallet.QuarkOperation memory cancelOp = new QuarkOperationHelper().cancelReplayableByNop(aliceWallet, op);
         cancelOp.nonce = op.nonce;
         (uint8 v2, bytes32 r2, bytes32 s2) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, cancelOp);
 
@@ -485,12 +484,7 @@ contract RecurringSwapTest is Test {
             op2.expiry = type(uint256).max;
             op2.nonce = op1.nonce;
             op2.isReplayable = true;
-            cancelOp = new QuarkOperationHelper().newBasicOpWithCalldata(
-                aliceWallet,
-                recurringSwap,
-                abi.encodeWithSelector(RecurringSwap.cancel.selector),
-                ScriptType.ScriptAddress
-            );
+            cancelOp = new QuarkOperationHelper().cancelReplayableByNop(aliceWallet, op1);
             cancelOp.expiry = type(uint256).max;
             cancelOp.nonce = op1.nonce;
         }
