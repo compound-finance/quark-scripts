@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-pragma solidity 0.8.23;
+pragma solidity 0.8.27;
 
 /// @dev Interface for Morpho blue markets
 /// Reference: https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol

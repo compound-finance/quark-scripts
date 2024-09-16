@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BSD-3-Clause
-pragma solidity 0.8.23;
+pragma solidity 0.8.27;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
 import {CodeJar} from "codejar/src/CodeJar.sol";
 
-import {QuarkStateManager} from "quark-core/src/QuarkStateManager.sol";
+import {QuarkNonceManager} from "quark-core/src/QuarkNonceManager.sol";
 import {QuarkWallet} from "quark-core/src/QuarkWallet.sol";
 
 import {QuarkMinimalProxy} from "quark-proxy/src/QuarkMinimalProxy.sol";
@@ -31,7 +31,7 @@ contract RecurringSwapTest is Test {
     );
 
     CodeJar public codeJar;
-    QuarkStateManager public stateManager;
+    QuarkNonceManager public nonceManager;
     QuarkWallet public walletImplementation;
 
     uint256 alicePrivateKey = 0x8675309;
@@ -60,10 +60,10 @@ contract RecurringSwapTest is Test {
         codeJar = new CodeJar();
         console.log("CodeJar deployed to: %s", address(codeJar));
 
-        stateManager = new QuarkStateManager();
-        console.log("QuarkStateManager deployed to: %s", address(stateManager));
+        nonceManager = new QuarkNonceManager();
+        console.log("QuarkNonceManager deployed to: %s", address(nonceManager));
 
-        walletImplementation = new QuarkWallet(codeJar, stateManager);
+        walletImplementation = new QuarkWallet(codeJar, nonceManager);
         console.log("QuarkWallet implementation: %s", address(walletImplementation));
 
         aliceWallet =
@@ -303,11 +303,13 @@ contract RecurringSwapTest is Test {
             amount: amountToSwap,
             isExactOut: true
         });
-        QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
+        (QuarkWallet.QuarkOperation memory op, bytes32[] memory submissionTokens) = new QuarkOperationHelper()
+            .newReplayableOpWithCalldata(
             aliceWallet,
             recurringSwap,
             abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig),
-            ScriptType.ScriptAddress
+            ScriptType.ScriptAddress,
+            1
         );
         op.expiry = type(uint256).max;
         (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
@@ -327,11 +329,11 @@ contract RecurringSwapTest is Test {
                 RecurringSwap.SwapWindowNotOpen.selector, block.timestamp + swapInterval, block.timestamp
             )
         );
-        aliceWallet.executeQuarkOperation(op, v1, r1, s1);
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[1], v1, r1, s1);
 
         // 2b. Execute recurring swap a second time after warping 1 day
         vm.warp(block.timestamp + swapInterval);
-        aliceWallet.executeQuarkOperation(op, v1, r1, s1);
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[1], v1, r1, s1);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 2 * amountToSwap);
     }
@@ -349,11 +351,13 @@ contract RecurringSwapTest is Test {
             amount: amountToSwap,
             isExactOut: true
         });
-        QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
+        (QuarkWallet.QuarkOperation memory op, bytes32[] memory submissionTokens) = new QuarkOperationHelper()
+            .newReplayableOpWithCalldata(
             aliceWallet,
             recurringSwap,
             abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig),
-            ScriptType.ScriptAddress
+            ScriptType.ScriptAddress,
+            2
         );
         op.expiry = type(uint256).max;
         (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
@@ -361,6 +365,7 @@ contract RecurringSwapTest is Test {
         QuarkWallet.QuarkOperation memory cancelOp = new QuarkOperationHelper().newBasicOpWithCalldata(
             aliceWallet, recurringSwap, abi.encodeWithSelector(RecurringSwap.cancel.selector), ScriptType.ScriptAddress
         );
+        cancelOp.nonce = op.nonce;
         (uint8 v2, bytes32 r2, bytes32 s2) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, cancelOp);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 0 ether);
@@ -373,12 +378,23 @@ contract RecurringSwapTest is Test {
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToSwap);
 
         // 2. Cancel replayable transaction
-        aliceWallet.executeQuarkOperation(cancelOp, v2, r2, s2);
+        aliceWallet.executeQuarkOperationWithSubmissionToken(cancelOp, submissionTokens[1], v2, r2, s2);
 
         // 3. Replayable transaction can no longer be executed
         vm.warp(block.timestamp + swapInterval);
-        vm.expectRevert(QuarkStateManager.NonceAlreadySet.selector);
-        aliceWallet.executeQuarkOperation(op, v1, r1, s1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                QuarkNonceManager.NonReplayableNonce.selector, address(aliceWallet), op.nonce, submissionTokens[1]
+            )
+        );
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[1], v1, r1, s1);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                QuarkNonceManager.NonReplayableNonce.selector, address(aliceWallet), op.nonce, submissionTokens[2]
+            )
+        );
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[2], v1, r1, s1);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToSwap);
     }
@@ -433,6 +449,7 @@ contract RecurringSwapTest is Test {
         uint40 swapInterval = 86_400; // 1 day interval
         uint256 amountToSwap1 = 10 ether;
         uint256 amountToSwap2 = 5 ether;
+        bytes32[] memory submissionTokens;
         QuarkWallet.QuarkOperation memory op1;
         QuarkWallet.QuarkOperation memory op2;
         QuarkWallet.QuarkOperation memory cancelOp;
@@ -445,11 +462,12 @@ contract RecurringSwapTest is Test {
                 amount: amountToSwap1,
                 isExactOut: true
             });
-            op1 = new QuarkOperationHelper().newBasicOpWithCalldata(
+            (op1, submissionTokens) = new QuarkOperationHelper().newReplayableOpWithCalldata(
                 aliceWallet,
                 recurringSwap,
                 abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig1),
-                ScriptType.ScriptAddress
+                ScriptType.ScriptAddress,
+                5
             );
             op1.expiry = type(uint256).max;
             RecurringSwap.SwapConfig memory swapConfig2 = _createSwapConfig({
@@ -465,6 +483,8 @@ contract RecurringSwapTest is Test {
                 ScriptType.ScriptAddress
             );
             op2.expiry = type(uint256).max;
+            op2.nonce = op1.nonce;
+            op2.isReplayable = true;
             cancelOp = new QuarkOperationHelper().newBasicOpWithCalldata(
                 aliceWallet,
                 recurringSwap,
@@ -472,6 +492,7 @@ contract RecurringSwapTest is Test {
                 ScriptType.ScriptAddress
             );
             cancelOp.expiry = type(uint256).max;
+            cancelOp.nonce = op1.nonce;
         }
         (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op1);
         (uint8 v2, bytes32 r2, bytes32 s2) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op2);
@@ -487,7 +508,7 @@ contract RecurringSwapTest is Test {
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToSwap1);
 
         // 1b. Execute recurring swap order #2
-        aliceWallet.executeQuarkOperation(op2, v2, r2, s2);
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op2, submissionTokens[1], v2, r2, s2);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToSwap1 + amountToSwap2);
 
@@ -495,26 +516,34 @@ contract RecurringSwapTest is Test {
         vm.warp(block.timestamp + swapInterval);
 
         // 3a. Execute recurring swap order #1
-        aliceWallet.executeQuarkOperation(op1, v1, r1, s1);
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op1, submissionTokens[2], v1, r1, s1);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 2 * amountToSwap1 + amountToSwap2);
 
         // 3b. Execute recurring swap order #2
-        aliceWallet.executeQuarkOperation(op2, v2, r2, s2);
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op2, submissionTokens[3], v2, r2, s2);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 2 * amountToSwap1 + 2 * amountToSwap2);
 
         // 4. Cancel replayable transaction
-        aliceWallet.executeQuarkOperation(cancelOp, v3, r3, s3);
+        aliceWallet.executeQuarkOperationWithSubmissionToken(cancelOp, submissionTokens[4], v3, r3, s3);
 
         // 5. Warp until next swap period
         vm.warp(block.timestamp + swapInterval);
 
         // 6. Both recurring swap orders can no longer be executed
-        vm.expectRevert(QuarkStateManager.NonceAlreadySet.selector);
-        aliceWallet.executeQuarkOperation(op1, v1, r1, s1);
-        vm.expectRevert(QuarkStateManager.NonceAlreadySet.selector);
-        aliceWallet.executeQuarkOperation(op2, v2, r2, s2);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                QuarkNonceManager.NonReplayableNonce.selector, address(aliceWallet), op1.nonce, submissionTokens[4]
+            )
+        );
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op1, submissionTokens[4], v1, r1, s1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                QuarkNonceManager.NonReplayableNonce.selector, address(aliceWallet), op2.nonce, submissionTokens[5]
+            )
+        );
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op2, submissionTokens[5], v2, r2, s2);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 2 * amountToSwap1 + 2 * amountToSwap2);
     }
@@ -586,11 +615,13 @@ contract RecurringSwapTest is Test {
             amount: amountToSwap,
             isExactOut: true
         });
-        QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
+        (QuarkWallet.QuarkOperation memory op, bytes32[] memory submissionTokens) = new QuarkOperationHelper()
+            .newReplayableOpWithCalldata(
             aliceWallet,
             recurringSwap,
             abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig),
-            ScriptType.ScriptAddress
+            ScriptType.ScriptAddress,
+            1
         );
         (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
 
@@ -609,7 +640,7 @@ contract RecurringSwapTest is Test {
                 RecurringSwap.SwapWindowNotOpen.selector, block.timestamp + swapInterval, block.timestamp
             )
         );
-        aliceWallet.executeQuarkOperation(op, v1, r1, s1);
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[1], v1, r1, s1);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToSwap);
     }

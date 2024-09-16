@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-pragma solidity 0.8.23;
+pragma solidity 0.8.27;
 
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
@@ -41,7 +41,7 @@ contract RecurringSwap is QuarkScript {
     uint256 public constant PRECISION_FACTOR = 1e18;
 
     /**
-     * @dev Note: This script uses the following storage layout in the QuarkStateManager:
+     * @dev Note: This script uses the following storage layout in the QuarkNonceManager:
      *         mapping(bytes32 hashedSwapConfig => uint256 nextSwapTime)
      *             where hashedSwapConfig = keccak256(SwapConfig)
      */
@@ -82,7 +82,8 @@ contract RecurringSwap is QuarkScript {
 
     /// @notice Cancel the recurring swap for the current nonce
     function cancel() external {
-        // Not explicitly clearing the nonce just cancels the replayable txn
+        // A no-op that can be called with `QuarkOperation.isReplayable = false` to cancel the
+        // replayable operation
     }
 
     /**
@@ -90,8 +91,6 @@ contract RecurringSwap is QuarkScript {
      * @param config The configuration for a recurring swap order
      */
     function swap(SwapConfig calldata config) public {
-        allowReplay();
-
         if (config.slippageParams.priceFeeds.length == 0) {
             revert InvalidInput();
         }
