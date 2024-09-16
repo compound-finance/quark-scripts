@@ -5,15 +5,14 @@ test = "test"
 solc = "0.8.23"
 evm_version = "paris"
 
-libs = [ "./lib" ]
+libs = ["./lib"]
 
 [profile.ir]
 via_ir = true
 optimizer = true
 optimizer_runs = 100000000
+bytecode_hash = "none"
+cbor_metadata = false
 
 [fmt]
 ignore = ["src/vendor/**/*"]
-
-bytecode_hash = "none"
-cbor_metadata = false
