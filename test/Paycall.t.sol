@@ -450,8 +450,8 @@ contract PaycallTest is Test {
     }
 
     function testPaycallAddress() public {
-        // If this test fails, the paycall code has been updated which means the
-        // backend must be updated accordingly
+        // If this test fails, the paycall code has been updated, which means any
+        // validation done with the bytecode must be updated.
 
         vm.createSelectFork(
             vm.envString("MAINNET_RPC_URL"),
