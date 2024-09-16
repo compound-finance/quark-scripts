@@ -14,7 +14,7 @@ library UniswapRouter {
     function knownChains() internal pure returns (RouterChain[] memory) {
         RouterChain[] memory chains = new RouterChain[](4);
         // Mainnet
-        chains[0] = RouterChain({chainId: 1, router: 0xE592427A0AEce92De3Edee1F18E0157C05861564});
+        chains[0] = RouterChain({chainId: 1, router: 0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45});
         // Base
         chains[1] = RouterChain({chainId: 8453, router: 0x2626664c2603336E57B271c5C0b26F421741e481});
         // Sepolia
