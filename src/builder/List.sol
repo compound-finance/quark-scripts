@@ -137,4 +137,56 @@ library List {
     function contains(DynamicArray memory list, Actions.Action memory action) internal pure returns (bool) {
         return contains(list, abi.encode(action));
     }
+
+    // === uint256 ===
+
+    function addUint256(DynamicArray memory list, uint256 item) internal pure returns (DynamicArray memory) {
+        return addItem(list, abi.encode(item));
+    }
+
+    function getUint256(DynamicArray memory list, uint256 index) internal pure returns (uint256) {
+        return abi.decode(get(list, index), (uint256));
+    }
+
+    function toUint256Array(DynamicArray memory list) internal pure returns (uint256[] memory) {
+        uint256[] memory result = new uint256[](list.length);
+        for (uint256 i = 0; i < list.length; ++i) {
+            result[i] = abi.decode(list.bytesArray[i], (uint256));
+        }
+        return result;
+    }
+
+    function indexOf(DynamicArray memory list, uint256 item) internal pure returns (int256) {
+        return indexOf(list, abi.encode(item));
+    }
+
+    function contains(DynamicArray memory list, uint256 item) internal pure returns (bool) {
+        return contains(list, abi.encode(item));
+    }
+
+    // === String ===
+
+    function addString(DynamicArray memory list, string memory item) internal pure returns (DynamicArray memory) {
+        return addItem(list, abi.encode(item));
+    }
+
+    function getString(DynamicArray memory list, uint256 index) internal pure returns (string memory) {
+        return abi.decode(get(list, index), (string));
+    }
+
+    function toStringArray(DynamicArray memory list) internal pure returns (string[] memory) {
+        string[] memory result = new string[](list.length);
+        for (uint256 i = 0; i < list.length; ++i) {
+            result[i] = abi.decode(list.bytesArray[i], (string));
+        }
+        return result;
+    }
+
+    function indexOf(DynamicArray memory list, string memory item) internal pure returns (int256) {
+        return indexOf(list, abi.encode(item));
+    }
+
+    function contains(DynamicArray memory list, string memory item) internal pure returns (bool) {
+        return contains(list, abi.encode(item));
+    }
 }
