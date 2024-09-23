@@ -1469,7 +1469,6 @@ library Actions {
             paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, swap.chainId).token : address(0),
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, swap.chainId) : 0,
-            // TODO: MAKE THIS REPLAYABLE
             nonceSecret: accountSecret.nonceSecret,
             replayCount: RECURRING_SWAP_REPLAY_COUNT
         });
@@ -1530,8 +1529,13 @@ library Actions {
     }
 
     function generateNonceFromSecret(bytes32 secret, uint256 replayCount) internal pure returns (bytes32) {
-        for (uint256 i = 0; i < replayCount; ++i) {
-            secret = keccak256(abi.encodePacked(secret));
+        assembly ("memory-safe") {
+            let ptr := mload(0x40) // Get free memory pointer
+            mstore(ptr, secret) // Store initial secret at ptr
+
+            for { let i := 0 } lt(i, replayCount) { i := add(i, 1) } { mstore(ptr, keccak256(ptr, 32)) }
+
+            secret := mload(ptr) // Load final result
         }
         return secret;
     }
