@@ -55,6 +55,10 @@ contract QuarkBuilderTest {
     address constant ETH_USD_PRICE_FEED_1 = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address constant ETH_USD_PRICE_FEED_8453 = 0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70;
 
+    bytes32 constant ALICE_DEFAULT_SECRET = bytes32(uint256(12));
+    bytes32 constant BOB_DEFAULT_SECRET = bytes32(uint256(2));
+    bytes32 constant COB_DEFAULT_SECRET = bytes32(uint256(5));
+
     /**
      *
      * Fixture Functions
@@ -92,7 +96,7 @@ contract QuarkBuilderTest {
         Accounts.ChainAccounts[] memory chainAccountsList = new Accounts.ChainAccounts[](3);
         chainAccountsList[0] = Accounts.ChainAccounts({
             chainId: 1,
-            quarkStates: quarkStates_(address(0xa11ce), 12),
+            quarkSecrets: quarkSecrets_(address(0xa11ce), ALICE_DEFAULT_SECRET),
             assetPositionsList: assetPositionsList_(1, address(0xa11ce), uint256(amount / 2)),
             cometPositions: emptyCometPositions_(),
             morphoPositions: emptyMorphoPositions_(),
@@ -100,7 +104,7 @@ contract QuarkBuilderTest {
         });
         chainAccountsList[1] = Accounts.ChainAccounts({
             chainId: 8453,
-            quarkStates: quarkStates_(address(0xb0b), 2),
+            quarkSecrets: quarkSecrets_(address(0xb0b), BOB_DEFAULT_SECRET),
             assetPositionsList: assetPositionsList_(8453, address(0xb0b), uint256(amount / 2)),
             cometPositions: emptyCometPositions_(),
             morphoPositions: emptyMorphoPositions_(),
@@ -108,7 +112,7 @@ contract QuarkBuilderTest {
         });
         chainAccountsList[2] = Accounts.ChainAccounts({
             chainId: 7777,
-            quarkStates: quarkStates_(address(0xc0b), 5),
+            quarkSecrets: quarkSecrets_(address(0xc0b), COB_DEFAULT_SECRET),
             assetPositionsList: assetPositionsList_(7777, address(0xc0b), uint256(0)),
             cometPositions: emptyCometPositions_(),
             morphoPositions: emptyMorphoPositions_(),
@@ -132,10 +136,10 @@ contract QuarkBuilderTest {
         return emptyMorphoVaultPositions;
     }
 
-    function quarkStates_() internal pure returns (Accounts.QuarkState[] memory) {
-        Accounts.QuarkState[] memory quarkStates = new Accounts.QuarkState[](1);
-        quarkStates[0] = quarkState_();
-        return quarkStates;
+    function quarkSecrets_() internal pure returns (Accounts.QuarkSecret[] memory) {
+        Accounts.QuarkSecret[] memory quarkSecrets = new Accounts.QuarkSecret[](1);
+        quarkSecrets[0] = quarkSecret_();
+        return quarkSecrets;
     }
 
     function maxCosts_(uint256 chainId, uint256 amount) internal pure returns (PaymentInfo.PaymentMaxCost[] memory) {
@@ -285,24 +289,28 @@ contract QuarkBuilderTest {
         }
     }
 
-    function quarkStates_(address account, uint96 nextNonce) internal pure returns (Accounts.QuarkState[] memory) {
-        Accounts.QuarkState[] memory quarkStates = new Accounts.QuarkState[](1);
-        quarkStates[0] = quarkState_(account, nextNonce);
-        return quarkStates;
+    function quarkSecrets_(address account, bytes32 nonceSecret)
+        internal
+        pure
+        returns (Accounts.QuarkSecret[] memory)
+    {
+        Accounts.QuarkSecret[] memory quarkSecrets = new Accounts.QuarkSecret[](1);
+        quarkSecrets[0] = quarkSecret_(account, nonceSecret);
+        return quarkSecrets;
     }
 
-    function quarkState_() internal pure returns (Accounts.QuarkState memory) {
-        return quarkState_(address(0xa11ce), 3);
+    function quarkSecret_() internal pure returns (Accounts.QuarkSecret memory) {
+        return quarkSecret_(address(0xa11ce), bytes32(uint256(3)));
     }
 
-    function quarkState_(address account, uint96 nextNonce) internal pure returns (Accounts.QuarkState memory) {
-        return Accounts.QuarkState({account: account, quarkNextNonce: nextNonce});
+    function quarkSecret_(address account, bytes32 nonceSecret) internal pure returns (Accounts.QuarkSecret memory) {
+        return Accounts.QuarkSecret({account: account, nonceSecret: nonceSecret});
     }
 
     struct ChainPortfolio {
         uint256 chainId;
         address account;
-        uint96 nextNonce;
+        bytes32 nonceSecret;
         string[] assetSymbols;
         uint256[] assetBalances;
         CometPortfolio[] cometPortfolios;
@@ -356,7 +364,7 @@ contract QuarkBuilderTest {
         for (uint256 i = 0; i < chainPortfolios.length; ++i) {
             chainAccountsList[i] = Accounts.ChainAccounts({
                 chainId: chainPortfolios[i].chainId,
-                quarkStates: quarkStates_(chainPortfolios[i].account, chainPortfolios[i].nextNonce),
+                quarkSecrets: quarkSecrets_(chainPortfolios[i].account, chainPortfolios[i].nonceSecret),
                 assetPositionsList: assetPositionsForAssets(
                     chainPortfolios[i].chainId,
                     chainPortfolios[i].account,

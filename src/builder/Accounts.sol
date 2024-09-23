@@ -8,21 +8,20 @@ import {PaymentInfo} from "./PaymentInfo.sol";
 import {TokenWrapper} from "./TokenWrapper.sol";
 
 library Accounts {
+    error QuarkSecretNotFound(address account);
+
     struct ChainAccounts {
         uint256 chainId;
-        QuarkState[] quarkStates;
+        QuarkSecret[] quarkSecrets;
         AssetPositions[] assetPositionsList;
         CometPositions[] cometPositions;
         MorphoPositions[] morphoPositions;
         MorphoVaultPositions[] morphoVaultPositions;
     }
 
-    // We map this to the Portfolio data structure that the client will already have.
-    // This includes fields that builder may not necessarily need, however it makes
-    // the client encoding that much simpler.
-    struct QuarkState {
+    struct QuarkSecret {
         address account;
-        uint96 quarkNextNonce;
+        bytes32 nonceSecret;
     }
 
     // Similarly, this is designed to intentionally reduce the encoding burden for the client
@@ -182,16 +181,17 @@ library Accounts {
         return findAssetPositions(assetAddress, chainAccounts.assetPositionsList);
     }
 
-    function findQuarkState(address account, Accounts.QuarkState[] memory quarkStates)
+    function findQuarkSecret(address account, Accounts.QuarkSecret[] memory quarkSecrets)
         internal
         pure
-        returns (Accounts.QuarkState memory state)
+        returns (Accounts.QuarkSecret memory)
     {
-        for (uint256 i = 0; i < quarkStates.length; ++i) {
-            if (quarkStates[i].account == account) {
-                return state = quarkStates[i];
+        for (uint256 i = 0; i < quarkSecrets.length; ++i) {
+            if (quarkSecrets[i].account == account) {
+                return quarkSecrets[i];
             }
         }
+        revert QuarkSecretNotFound(account);
     }
 
     function findChainAccountsWithPaymentInfo(
