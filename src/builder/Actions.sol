@@ -232,6 +232,14 @@ library Actions {
         bool useQuotecall;
     }
 
+    // Note: To avoid stack too deep errors
+    struct RecurringSwapLocalVars {
+        Accounts.ChainAccounts accounts;
+        Accounts.AssetPositions sellTokenAssetPositions;
+        Accounts.AssetPositions buyTokenAssetPositions;
+        Accounts.QuarkSecret accountSecret;
+    }
+
     /* ===== Output Types ===== */
 
     // With Action, we try to define fields that are as 1:1 as possible with
@@ -1389,18 +1397,17 @@ library Actions {
         pure
         returns (IQuarkWallet.QuarkOperation memory, Action memory)
     {
-        bytes[] memory scriptSources = new bytes[](1);
-        scriptSources[0] = type(RecurringSwap).creationCode;
-
-        Accounts.ChainAccounts memory accounts = Accounts.findChainAccounts(swap.chainId, swap.chainAccountsList);
-
-        Accounts.AssetPositions memory sellTokenAssetPositions =
-            Accounts.findAssetPositions(swap.sellAssetSymbol, accounts.assetPositionsList);
-
-        Accounts.AssetPositions memory buyTokenAssetPositions =
-            Accounts.findAssetPositions(swap.buyAssetSymbol, accounts.assetPositionsList);
-
-        Accounts.QuarkSecret memory accountSecret = Accounts.findQuarkSecret(swap.sender, accounts.quarkSecrets);
+        RecurringSwapLocalVars memory localVars;
+        // Local scope to avoid stack too deep
+        {
+            Accounts.ChainAccounts memory accounts = Accounts.findChainAccounts(swap.chainId, swap.chainAccountsList);
+            localVars = RecurringSwapLocalVars({
+                accounts: accounts,
+                accountSecret: Accounts.findQuarkSecret(swap.sender, accounts.quarkSecrets),
+                sellTokenAssetPositions: Accounts.findAssetPositions(swap.sellAssetSymbol, accounts.assetPositionsList),
+                buyTokenAssetPositions: Accounts.findAssetPositions(swap.buyAssetSymbol, accounts.assetPositionsList)
+            });
+        }
 
         RecurringSwap.SwapConfig memory swapConfig;
         // Local scope to avoid stack too deep
@@ -1431,18 +1438,27 @@ library Actions {
                 slippageParams: slippageParams
             });
         }
-        // TODO: Handle wrapping ETH? Do we need to?
-        bytes memory scriptCalldata = abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig);
 
         // Construct QuarkOperation
-        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: generateNonceFromSecret(accountSecret.nonceSecret, RECURRING_SWAP_REPLAY_COUNT),
-            isReplayable: true,
-            scriptAddress: CodeJarHelper.getCodeAddress(type(RecurringSwap).creationCode),
-            scriptCalldata: scriptCalldata,
-            scriptSources: scriptSources,
-            expiry: type(uint256).max
-        });
+        IQuarkWallet.QuarkOperation memory quarkOperation;
+        // Local scope to avoid stack too deep
+        {
+            bytes[] memory scriptSources = new bytes[](1);
+            scriptSources[0] = type(RecurringSwap).creationCode;
+
+            // TODO: Handle wrapping ETH? Do we need to?
+            bytes memory scriptCalldata = abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig);
+
+            bytes32 nonce = generateNonceFromSecret(localVars.accountSecret.nonceSecret, RECURRING_SWAP_REPLAY_COUNT);
+            quarkOperation = IQuarkWallet.QuarkOperation({
+                nonce: nonce,
+                isReplayable: true,
+                scriptAddress: CodeJarHelper.getCodeAddress(type(RecurringSwap).creationCode),
+                scriptCalldata: scriptCalldata,
+                scriptSources: scriptSources,
+                expiry: type(uint256).max
+            });
+        }
 
         // Construct Action
         RecurringSwapActionContext memory recurringSwapActionContext = RecurringSwapActionContext({
@@ -1450,11 +1466,11 @@ library Actions {
             inputAmount: swap.sellAmount,
             inputAssetSymbol: swap.sellAssetSymbol,
             inputToken: swap.sellToken,
-            inputTokenPrice: sellTokenAssetPositions.usdPrice,
+            inputTokenPrice: localVars.sellTokenAssetPositions.usdPrice,
             outputAmount: swap.buyAmount,
             outputAssetSymbol: swap.buyAssetSymbol,
             outputToken: swap.buyToken,
-            outputTokenPrice: buyTokenAssetPositions.usdPrice,
+            outputTokenPrice: localVars.buyTokenAssetPositions.usdPrice,
             isExactOut: swap.isExactOut,
             interval: swap.interval
         });
@@ -1469,7 +1485,7 @@ library Actions {
             paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, swap.chainId).token : address(0),
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, swap.chainId) : 0,
-            nonceSecret: accountSecret.nonceSecret,
+            nonceSecret: localVars.accountSecret.nonceSecret,
             replayCount: RECURRING_SWAP_REPLAY_COUNT
         });
 
