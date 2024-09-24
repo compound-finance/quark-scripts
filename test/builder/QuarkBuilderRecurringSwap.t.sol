@@ -232,7 +232,7 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
         assertEq(result.quarkOperations[0].expiry, type(uint256).max, "expiry is type(uint256).max");
         assertEq(
             result.quarkOperations[0].nonce,
-            ReplayableHelper.generateNonceFromSecret(ALICE_DEFAULT_SECRET, Actions.RECURRING_SWAP_REPLAY_COUNT),
+            ReplayableHelper.generateNonceFromSecret(ALICE_DEFAULT_SECRET, Actions.RECURRING_SWAP_TOTAL_PLAYS),
             "unexpected nonce"
         );
         assertEq(result.quarkOperations[0].isReplayable, true, "isReplayable is false");
@@ -246,7 +246,7 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
         assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
         assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
-        assertEq(result.actions[0].replayCount, Actions.RECURRING_SWAP_REPLAY_COUNT, "replay count is 0");
+        assertEq(result.actions[0].totalPlays, Actions.RECURRING_SWAP_TOTAL_PLAYS, "total plays is correct");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
@@ -323,7 +323,7 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
         assertEq(result.quarkOperations[0].expiry, type(uint256).max, "expiry is type(uint256).max");
         assertEq(
             result.quarkOperations[0].nonce,
-            ReplayableHelper.generateNonceFromSecret(ALICE_DEFAULT_SECRET, Actions.RECURRING_SWAP_REPLAY_COUNT),
+            ReplayableHelper.generateNonceFromSecret(ALICE_DEFAULT_SECRET, Actions.RECURRING_SWAP_TOTAL_PLAYS),
             "unexpected nonce"
         );
         assertEq(result.quarkOperations[0].isReplayable, true, "isReplayable is false");
@@ -337,7 +337,7 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
         assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
         assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
-        assertEq(result.actions[0].replayCount, 500, "replay count is 0");
+        assertEq(result.actions[0].totalPlays, Actions.RECURRING_SWAP_TOTAL_PLAYS, "total plays is correct");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
@@ -411,7 +411,7 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
         assertEq(result.quarkOperations[0].expiry, type(uint256).max, "expiry is type(uint256).max");
         assertEq(
             result.quarkOperations[0].nonce,
-            ReplayableHelper.generateNonceFromSecret(ALICE_DEFAULT_SECRET, Actions.RECURRING_SWAP_REPLAY_COUNT),
+            ReplayableHelper.generateNonceFromSecret(ALICE_DEFAULT_SECRET, Actions.RECURRING_SWAP_TOTAL_PLAYS),
             "unexpected nonce"
         );
         assertEq(result.quarkOperations[0].isReplayable, true, "isReplayable is false");
@@ -425,7 +425,7 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
         assertEq(result.actions[0].paymentMaxCost, 5e6, "payment max is set to 5e6 in this test case");
         assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
-        assertEq(result.actions[0].replayCount, 500, "replay count is 0");
+        assertEq(result.actions[0].totalPlays, Actions.RECURRING_SWAP_TOTAL_PLAYS, "total plays is correct");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(

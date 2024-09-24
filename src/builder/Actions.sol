@@ -58,8 +58,8 @@ library Actions {
     uint256 constant SWAP_EXPIRY_BUFFER = 3 days;
     uint256 constant TRANSFER_EXPIRY_BUFFER = 7 days;
 
-    /* replay counts */
-    uint256 constant RECURRING_SWAP_REPLAY_COUNT = 500;
+    /* total plays */
+    uint256 constant RECURRING_SWAP_TOTAL_PLAYS = 500;
 
     uint256 constant AVERAGE_BLOCK_TIME = 12 seconds;
     uint256 constant RECURRING_SWAP_MAX_SLIPPAGE = 1e17; // 1%
@@ -259,8 +259,8 @@ library Actions {
         // The secret used to generate the hash chain for a replayable operation. For non-replayable
         // operations, the `nonce` will be the `nonceSecret` (the hash chain has a length of 1)
         bytes32 nonceSecret;
-        // The number of times an operation can be replayed. For non-replayable operations, this will be 0
-        uint256 replayCount;
+        // The number of times an operation can be played. For non-replayable operations, this will be 1
+        uint256 totalPlays;
     }
 
     struct BorrowActionContext {
@@ -644,7 +644,7 @@ library Actions {
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, bridge.srcChainId) : 0,
             nonceSecret: accountSecret.nonceSecret,
-            replayCount: 0
+            totalPlays: 1
         });
 
         return (quarkOperation, action);
@@ -722,7 +722,7 @@ library Actions {
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, borrowInput.chainId) : 0,
             nonceSecret: accountSecret.nonceSecret,
-            replayCount: 0
+            totalPlays: 1
         });
 
         return (quarkOperation, action);
@@ -799,7 +799,7 @@ library Actions {
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, repayInput.chainId) : 0,
             nonceSecret: accountSecret.nonceSecret,
-            replayCount: 0
+            totalPlays: 1
         });
 
         return (quarkOperation, action);
@@ -860,7 +860,7 @@ library Actions {
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, cometSupply.chainId) : 0,
             nonceSecret: accountSecret.nonceSecret,
-            replayCount: 0
+            totalPlays: 1
         });
 
         return (quarkOperation, action);
@@ -922,7 +922,7 @@ library Actions {
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, cometWithdraw.chainId) : 0,
             nonceSecret: accountSecret.nonceSecret,
-            replayCount: 0
+            totalPlays: 1
         });
 
         return (quarkOperation, action);
@@ -988,7 +988,7 @@ library Actions {
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, transfer.chainId) : 0,
             nonceSecret: accountSecret.nonceSecret,
-            replayCount: 0
+            totalPlays: 1
         });
 
         return (quarkOperation, action);
@@ -1059,7 +1059,7 @@ library Actions {
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, borrowInput.chainId) : 0,
             nonceSecret: accountSecret.nonceSecret,
-            replayCount: 0
+            totalPlays: 1
         });
 
         return (quarkOperation, action);
@@ -1130,7 +1130,7 @@ library Actions {
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, repayInput.chainId) : 0,
             nonceSecret: accountSecret.nonceSecret,
-            replayCount: 0
+            totalPlays: 1
         });
 
         return (quarkOperation, action);
@@ -1190,7 +1190,7 @@ library Actions {
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, vaultSupply.chainId) : 0,
             nonceSecret: accountSecret.nonceSecret,
-            replayCount: 0
+            totalPlays: 1
         });
 
         return (quarkOperation, action);
@@ -1252,7 +1252,7 @@ library Actions {
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, vaultWithdraw.chainId) : 0,
             nonceSecret: accountSecret.nonceSecret,
-            replayCount: 0
+            totalPlays: 1
         });
 
         return (quarkOperation, action);
@@ -1308,7 +1308,7 @@ library Actions {
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, wrapOrUnwrap.chainId) : 0,
             nonceSecret: accountSecret.nonceSecret,
-            replayCount: 0
+            totalPlays: 1
         });
 
         return (quarkOperation, action);
@@ -1386,7 +1386,7 @@ library Actions {
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, swap.chainId) : 0,
             nonceSecret: accountSecret.nonceSecret,
-            replayCount: 0
+            totalPlays: 1
         });
 
         return (quarkOperation, action);
@@ -1449,7 +1449,7 @@ library Actions {
             // TODO: Handle wrapping ETH? Do we need to?
             bytes memory scriptCalldata = abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig);
 
-            bytes32 nonce = generateNonceFromSecret(localVars.accountSecret.nonceSecret, RECURRING_SWAP_REPLAY_COUNT);
+            bytes32 nonce = generateNonceFromSecret(localVars.accountSecret.nonceSecret, RECURRING_SWAP_TOTAL_PLAYS);
             quarkOperation = IQuarkWallet.QuarkOperation({
                 nonce: nonce,
                 isReplayable: true,
@@ -1486,7 +1486,7 @@ library Actions {
             paymentTokenSymbol: payment.currency,
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, swap.chainId) : 0,
             nonceSecret: localVars.accountSecret.nonceSecret,
-            replayCount: RECURRING_SWAP_REPLAY_COUNT
+            totalPlays: RECURRING_SWAP_TOTAL_PLAYS
         });
 
         return (quarkOperation, action);
@@ -1544,7 +1544,8 @@ library Actions {
         return result;
     }
 
-    function generateNonceFromSecret(bytes32 secret, uint256 replayCount) internal pure returns (bytes32) {
+    function generateNonceFromSecret(bytes32 secret, uint256 totalPlays) internal pure returns (bytes32) {
+        uint256 replayCount = totalPlays - 1;
         assembly ("memory-safe") {
             let ptr := mload(0x40) // Get free memory pointer
             mstore(ptr, secret) // Store initial secret at ptr
