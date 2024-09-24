@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
 import {QuarkBuilderTest} from "test/builder/lib/QuarkBuilderTest.sol";
+import {ReplayableHelper} from "test/builder/lib/ReplayableHelper.sol";
 
 import {RecurringSwap} from "src/RecurringSwap.sol";
 import {CCTPBridgeActions} from "src/BridgeScripts.sol";
@@ -190,7 +191,7 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
             buyAmount: 1e18,
             isExactOut: false,
             interval: 86_400,
-            sender: address(0xfe11a),
+            sender: address(0xa11ce),
             blockTimestamp: BLOCK_TIMESTAMP
         });
         QuarkBuilder.BuilderResult memory result = builder.recurringSwap(
@@ -229,15 +230,23 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
             "calldata is RecurringSwap.swap(SwapConfig(...));"
         );
         assertEq(result.quarkOperations[0].expiry, type(uint256).max, "expiry is type(uint256).max");
+        assertEq(
+            result.quarkOperations[0].nonce,
+            ReplayableHelper.generateNonceFromSecret(ALICE_DEFAULT_SECRET, Actions.RECURRING_SWAP_TOTAL_PLAYS),
+            "unexpected nonce"
+        );
+        assertEq(result.quarkOperations[0].isReplayable, true, "isReplayable is false");
 
         // check the actions
         assertEq(result.actions.length, 1, "one action");
         assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
-        assertEq(result.actions[0].quarkAccount, address(0xfe11a), "0xfe11a does the swap");
+        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce does the swap");
         assertEq(result.actions[0].actionType, "RECURRING_SWAP", "action type is 'RECURRING_SWAP'");
         assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
         assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
         assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
+        assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[0].totalPlays, Actions.RECURRING_SWAP_TOTAL_PLAYS, "total plays is correct");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
@@ -273,7 +282,7 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
             buyAmount: 1e18,
             isExactOut: true,
             interval: 86_400,
-            sender: address(0xfe11a),
+            sender: address(0xa11ce),
             blockTimestamp: BLOCK_TIMESTAMP
         });
         QuarkBuilder.BuilderResult memory result = builder.recurringSwap(
@@ -312,15 +321,23 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
             "calldata is RecurringSwap.swap(SwapConfig(...));"
         );
         assertEq(result.quarkOperations[0].expiry, type(uint256).max, "expiry is type(uint256).max");
+        assertEq(
+            result.quarkOperations[0].nonce,
+            ReplayableHelper.generateNonceFromSecret(ALICE_DEFAULT_SECRET, Actions.RECURRING_SWAP_TOTAL_PLAYS),
+            "unexpected nonce"
+        );
+        assertEq(result.quarkOperations[0].isReplayable, true, "isReplayable is false");
 
         // check the actions
         assertEq(result.actions.length, 1, "one action");
         assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
-        assertEq(result.actions[0].quarkAccount, address(0xfe11a), "0xfe11a does the swap");
+        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce does the swap");
         assertEq(result.actions[0].actionType, "RECURRING_SWAP", "action type is 'RECURRING_SWAP'");
         assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
         assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
         assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
+        assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[0].totalPlays, Actions.RECURRING_SWAP_TOTAL_PLAYS, "total plays is correct");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
@@ -356,7 +373,7 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
             buyAmount: 1e18,
             isExactOut: false,
             interval: 86_400,
-            sender: address(0xfe11a),
+            sender: address(0xa11ce),
             blockTimestamp: BLOCK_TIMESTAMP
         });
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
@@ -392,15 +409,23 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
             "calldata is Paycall.run(RecurringSwap.swap(SwapConfig(...)), 5e6);"
         );
         assertEq(result.quarkOperations[0].expiry, type(uint256).max, "expiry is type(uint256).max");
+        assertEq(
+            result.quarkOperations[0].nonce,
+            ReplayableHelper.generateNonceFromSecret(ALICE_DEFAULT_SECRET, Actions.RECURRING_SWAP_TOTAL_PLAYS),
+            "unexpected nonce"
+        );
+        assertEq(result.quarkOperations[0].isReplayable, true, "isReplayable is false");
 
         // check the actions
         assertEq(result.actions.length, 1, "one action");
         assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
-        assertEq(result.actions[0].quarkAccount, address(0xfe11a), "0xfe11a does the swap");
+        assertEq(result.actions[0].quarkAccount, address(0xa11ce), "0xa11ce does the swap");
         assertEq(result.actions[0].actionType, "RECURRING_SWAP", "action type is 'RECURRING_SWAP'");
         assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
         assertEq(result.actions[0].paymentMaxCost, 5e6, "payment max is set to 5e6 in this test case");
+        assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[0].totalPlays, Actions.RECURRING_SWAP_TOTAL_PLAYS, "total plays is correct");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(

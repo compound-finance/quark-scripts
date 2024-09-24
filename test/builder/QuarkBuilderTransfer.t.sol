@@ -52,9 +52,27 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         address recipient,
         uint256 blockTimestamp
     ) internal pure returns (QuarkBuilder.TransferIntent memory) {
-        return QuarkBuilder.TransferIntent({
+        return transferToken_({
             chainId: chainId,
             sender: address(0xa11ce),
+            recipient: recipient,
+            amount: amount,
+            assetSymbol: assetSymbol,
+            blockTimestamp: blockTimestamp
+        });
+    }
+
+    function transferToken_(
+        string memory assetSymbol,
+        uint256 chainId,
+        uint256 amount,
+        address sender,
+        address recipient,
+        uint256 blockTimestamp
+    ) internal pure returns (QuarkBuilder.TransferIntent memory) {
+        return QuarkBuilder.TransferIntent({
+            chainId: chainId,
+            sender: sender,
             recipient: recipient,
             amount: amount,
             assetSymbol: assetSymbol,
@@ -147,6 +165,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[0].nonce, ALICE_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[0].isReplayable, false, "isReplayable is false");
 
         // check the actions
         assertEq(result.actions.length, 1, "one action");
@@ -156,6 +176,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
         assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
         assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
+        assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[0].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
@@ -212,6 +234,9 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[0].nonce, ALICE_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[0].isReplayable, false, "isReplayable is false");
+
         // check the actions
         assertEq(result.actions.length, 1, "one action");
         assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
@@ -220,6 +245,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
         assertEq(result.actions[0].paymentMaxCost, 1e5, "payment max is set to 1e5 in this test case");
+        assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[0].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
@@ -245,7 +272,14 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         QuarkBuilder builder = new QuarkBuilder();
         // Note: There are 3e6 USDC on each chain, so the Builder should attempt to bridge 2 USDC to chain 8453
         QuarkBuilder.BuilderResult memory result = builder.transfer(
-            transferUsdc_(8453, 5e6, address(0xceecee), BLOCK_TIMESTAMP), // transfer 5 USDC on chain 8453 to 0xceecee
+            transferToken_({
+                assetSymbol: "USDC",
+                chainId: 8453,
+                amount: 5e6,
+                sender: address(0xb0b),
+                recipient: address(0xceecee),
+                blockTimestamp: BLOCK_TIMESTAMP
+            }), // transfer 5 USDC on chain 8453 to 0xceecee
             chainAccountsList_(6e6), // holding 6 USDC in total across chains 1, 8453
             paymentUsd_()
         );
@@ -282,15 +316,18 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
                     address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155),
                     2e6,
                     6,
-                    bytes32(uint256(uint160(0xa11ce))),
+                    bytes32(uint256(uint160(0xb0b))),
                     usdc_(1)
                 )
             ),
-            "calldata is CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 2e6, 6, bytes32(uint256(uint160(0xa11ce))), usdc_(1)));"
+            "calldata is CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 2e6, 6, bytes32(uint256(uint160(0xb0b))), usdc_(1)));"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[0].nonce, ALICE_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[0].isReplayable, false, "isReplayable is false");
+
         assertEq(
             result.quarkOperations[1].scriptAddress,
             address(
@@ -319,6 +356,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[1].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[1].nonce, BOB_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[1].isReplayable, false, "isReplayable is false");
 
         // Check the actions
         assertEq(result.actions.length, 2, "two actions");
@@ -328,6 +367,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
         assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
         assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
+        assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[0].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
@@ -337,7 +378,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
                     token: USDC_1,
                     assetSymbol: "USDC",
                     chainId: 1,
-                    recipient: address(0xa11ce),
+                    recipient: address(0xb0b),
                     destinationChainId: 8453,
                     bridgeType: Actions.BRIDGE_TYPE_CCTP
                 })
@@ -345,11 +386,13 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             "action context encoded from BridgeActionContext"
         );
         assertEq(result.actions[1].chainId, 8453, "operation is on chainid 8453");
-        assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[1].quarkAccount, address(0xb0b), "0xb0b sends the funds");
         assertEq(result.actions[1].actionType, "TRANSFER", "action type is 'TRANSFER'");
         assertEq(result.actions[1].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
         assertEq(result.actions[1].paymentToken, address(0), "payment token is null");
         assertEq(result.actions[1].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
+        assertEq(result.actions[1].nonceSecret, BOB_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[1].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[1].actionContext,
             abi.encode(
@@ -379,7 +422,14 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
 
         // Note: There are 3e6 USDC on each chain, so the Builder should attempt to bridge 2 USDC to chain 8453
         QuarkBuilder.BuilderResult memory result = builder.transfer(
-            transferUsdc_(8453, 5e6, address(0xceecee), BLOCK_TIMESTAMP), // transfer 5 USDC on chain 8453 to 0xceecee
+            transferToken_({
+                assetSymbol: "USDC",
+                chainId: 8453,
+                amount: 5e6,
+                sender: address(0xb0b),
+                recipient: address(0xceecee),
+                blockTimestamp: BLOCK_TIMESTAMP
+            }), // transfer 5 USDC on chain 8453 to 0xceecee
             chainAccountsList_(6e6), // holding 6 USDC in total across chains 1, 8453
             paymentUsdc_(maxCosts)
         );
@@ -406,16 +456,19 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
                     address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155),
                     2.1e6,
                     6,
-                    bytes32(uint256(uint160(0xa11ce))),
+                    bytes32(uint256(uint160(0xb0b))),
                     usdc_(1)
                 ),
                 0.5e6
             ),
-            "calldata is Paycall.run(CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 2.1e6, 6, bytes32(uint256(uint160(0xa11ce))), usdc_(1))), 5e5);"
+            "calldata is Paycall.run(CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 2.1e6, 6, bytes32(uint256(uint160(0xb0b))), usdc_(1))), 5e5);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[0].nonce, ALICE_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[0].isReplayable, false, "isReplayable is false");
+
         assertEq(
             result.quarkOperations[1].scriptAddress,
             paycallAddressBase,
@@ -434,6 +487,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[1].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[1].nonce, BOB_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[1].isReplayable, false, "isReplayable is false");
 
         // Check the actions
         assertEq(result.actions.length, 2, "one action");
@@ -443,6 +498,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC on mainnet");
         assertEq(result.actions[0].paymentMaxCost, 0.5e6, "payment should have max cost of 5e5");
+        assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[0].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
@@ -452,7 +509,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
                     token: USDC_1,
                     assetSymbol: "USDC",
                     chainId: 1,
-                    recipient: address(0xa11ce),
+                    recipient: address(0xb0b),
                     destinationChainId: 8453,
                     bridgeType: Actions.BRIDGE_TYPE_CCTP
                 })
@@ -460,11 +517,13 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             "action context encoded from BridgeActionContext"
         );
         assertEq(result.actions[1].chainId, 8453, "operation is on chainid 8453");
-        assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[1].quarkAccount, address(0xb0b), "0xb0b sends the funds");
         assertEq(result.actions[1].actionType, "TRANSFER", "action type is 'TRANSFER'");
         assertEq(result.actions[1].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[1].paymentToken, USDC_8453, "payment token is USDC on Base");
         assertEq(result.actions[1].paymentMaxCost, 0.1e6, "payment should have max cost of 1e5");
+        assertEq(result.actions[1].nonceSecret, BOB_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[1].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[1].actionContext,
             abi.encode(
@@ -494,7 +553,14 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
 
         // Note: There are 3e6 USDC on each chain, so the Builder should attempt to bridge 1.5 USDC to chain 8453 to pay for the txn
         QuarkBuilder.BuilderResult memory result = builder.transfer(
-            transferToken_("USDT", 8453, 3e6, address(0xceecee), BLOCK_TIMESTAMP), // transfer 3 USDT on chain 8453 to 0xceecee
+            transferToken_({
+                assetSymbol: "USDT",
+                chainId: 8453,
+                amount: 3e6,
+                sender: address(0xb0b),
+                recipient: address(0xceecee),
+                blockTimestamp: BLOCK_TIMESTAMP
+            }), // transfer 3 USDT on chain 8453 to 0xceecee
             chainAccountsList_(6e6), // holding 6 USDC and USDT in total across chains 1, 8453
             paymentUsdc_(maxCosts)
         );
@@ -521,16 +587,19 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
                     address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155),
                     1.5e6,
                     6,
-                    bytes32(uint256(uint160(0xa11ce))),
+                    bytes32(uint256(uint160(0xb0b))),
                     usdc_(1)
                 ),
                 0.5e6
             ),
-            "calldata is Paycall.run(CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 1.5e6, 6, bytes32(uint256(uint160(0xa11ce))), usdc_(1))), 0.5e6);"
+            "calldata is Paycall.run(CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 1.5e6, 6, bytes32(uint256(uint160(0xb0b))), usdc_(1))), 0.5e6);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[0].nonce, ALICE_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[0].isReplayable, false, "isReplayable is false");
+
         assertEq(
             result.quarkOperations[1].scriptAddress,
             paycallAddressBase,
@@ -549,6 +618,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[1].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[1].nonce, BOB_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[1].isReplayable, false, "isReplayable is false");
 
         // Check the actions
         assertEq(result.actions.length, 2, "one action");
@@ -558,6 +629,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC on mainnet");
         assertEq(result.actions[0].paymentMaxCost, 0.5e6, "payment should have max cost of 0.5e6");
+        assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[0].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
@@ -567,7 +640,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
                     token: USDC_1,
                     assetSymbol: "USDC",
                     chainId: 1,
-                    recipient: address(0xa11ce),
+                    recipient: address(0xb0b),
                     destinationChainId: 8453,
                     bridgeType: Actions.BRIDGE_TYPE_CCTP
                 })
@@ -575,11 +648,13 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             "action context encoded from BridgeActionContext"
         );
         assertEq(result.actions[1].chainId, 8453, "operation is on chainid 8453");
-        assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[1].quarkAccount, address(0xb0b), "0xb0b sends the funds");
         assertEq(result.actions[1].actionType, "TRANSFER", "action type is 'TRANSFER'");
         assertEq(result.actions[1].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[1].paymentToken, USDC_8453, "payment token is USDC on Base");
         assertEq(result.actions[1].paymentMaxCost, 4.5e6, "payment should have max cost of 4.5e6");
+        assertEq(result.actions[1].nonceSecret, BOB_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[1].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[1].actionContext,
             abi.encode(
@@ -607,7 +682,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         Accounts.ChainAccounts[] memory chainAccountsList = new Accounts.ChainAccounts[](1);
         chainAccountsList[0] = Accounts.ChainAccounts({
             chainId: 1,
-            quarkStates: quarkStates_(address(0xa11ce), 12),
+            quarkSecrets: quarkSecrets_(address(0xa11ce), bytes32(uint256(12))),
             assetPositionsList: assetPositionsList_(1, address(0xa11ce), uint256(10e6)),
             cometPositions: emptyCometPositions_(),
             morphoPositions: emptyMorphoPositions_(),
@@ -648,6 +723,9 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[0].nonce, ALICE_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[0].isReplayable, false, "isReplayable is false");
+
         // check the actions
         assertEq(result.actions.length, 1, "one action");
         assertEq(result.actions[0].chainId, 1, "operation is on chainid 1");
@@ -656,6 +734,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMethod, "QUOTE_CALL", "payment method is 'QUOTE_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
         assertEq(result.actions[0].paymentMaxCost, 1e5, "payment max is set to 1e5 in this test case");
+        assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[0].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
@@ -685,7 +765,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         Accounts.ChainAccounts[] memory chainAccountsList = new Accounts.ChainAccounts[](2);
         chainAccountsList[0] = Accounts.ChainAccounts({
             chainId: 1,
-            quarkStates: quarkStates_(address(0xa11ce), 12),
+            quarkSecrets: quarkSecrets_(address(0xa11ce), bytes32(uint256(12))),
             assetPositionsList: assetPositionsList_(1, address(0xa11ce), 8e6),
             cometPositions: emptyCometPositions_(),
             morphoPositions: emptyMorphoPositions_(),
@@ -693,7 +773,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         });
         chainAccountsList[1] = Accounts.ChainAccounts({
             chainId: 8453,
-            quarkStates: quarkStates_(address(0xb0b), 2),
+            quarkSecrets: quarkSecrets_(address(0xb0b), bytes32(uint256(2))),
             assetPositionsList: assetPositionsList_(8453, address(0xb0b), 4e6),
             cometPositions: emptyCometPositions_(),
             morphoPositions: emptyMorphoPositions_(),
@@ -701,7 +781,14 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         });
 
         QuarkBuilder.BuilderResult memory result = builder.transfer(
-            transferUsdc_(8453, type(uint256).max, address(0xceecee), BLOCK_TIMESTAMP), // transfer max USDC on chain 8453 to 0xceecee
+            transferToken_({
+                assetSymbol: "USDC",
+                chainId: 8453,
+                amount: type(uint256).max,
+                sender: address(0xb0b),
+                recipient: address(0xceecee),
+                blockTimestamp: BLOCK_TIMESTAMP
+            }), // transfer max USDC on chain 8453 to 0xceecee
             chainAccountsList, // holding 8 USDC on chains 1, and 4 USDC on 8453
             paymentUsdc_(maxCosts)
         );
@@ -732,16 +819,19 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
                     address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155),
                     7.5e6, // 8e6 (holdings on mainnet) - 0.5e6 (max cost on mainnet)
                     6,
-                    bytes32(uint256(uint160(0xa11ce))),
+                    bytes32(uint256(uint160(0xb0b))),
                     usdc_(1)
                 ),
                 0.5e6
             ),
-            "calldata is Quote.run(CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 7.5e6, 6, bytes32(uint256(uint160(0xa11ce))), usdc_(1))), 0.5e6);"
+            "calldata is Quote.run(CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 7.5e6, 6, bytes32(uint256(uint160(0xb0b))), usdc_(1))), 0.5e6);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[0].nonce, ALICE_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[0].isReplayable, false, "isReplayable is false");
+
         assertEq(
             result.quarkOperations[1].scriptAddress,
             quotecallAddressBase,
@@ -763,6 +853,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[1].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[1].nonce, BOB_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[1].isReplayable, false, "isReplayable is false");
 
         // Check the actions
         assertEq(result.actions.length, 2, "one action");
@@ -772,6 +864,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMethod, "QUOTE_CALL", "payment method is 'QUOTE_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC on mainnet");
         assertEq(result.actions[0].paymentMaxCost, 0.5e6, "payment should have max cost of 5e5");
+        assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[0].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
@@ -781,7 +875,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
                     token: USDC_1,
                     assetSymbol: "USDC",
                     chainId: 1,
-                    recipient: address(0xa11ce),
+                    recipient: address(0xb0b),
                     destinationChainId: 8453,
                     bridgeType: Actions.BRIDGE_TYPE_CCTP
                 })
@@ -789,11 +883,13 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             "action context encoded from BridgeActionContext"
         );
         assertEq(result.actions[1].chainId, 8453, "operation is on chainid 8453");
-        assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[1].quarkAccount, address(0xb0b), "0xb0b sends the funds");
         assertEq(result.actions[1].actionType, "TRANSFER", "action type is 'TRANSFER'");
         assertEq(result.actions[1].paymentMethod, "QUOTE_CALL", "payment method is 'QUOTE_CALL'");
         assertEq(result.actions[1].paymentToken, USDC_8453, "payment token is USDC on Base");
         assertEq(result.actions[1].paymentMaxCost, 0.1e6, "payment should have max cost of 1e5");
+        assertEq(result.actions[1].nonceSecret, BOB_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[1].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[1].actionContext,
             abi.encode(
@@ -824,7 +920,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         Accounts.ChainAccounts[] memory chainAccountsList = new Accounts.ChainAccounts[](3);
         chainAccountsList[0] = Accounts.ChainAccounts({
             chainId: 1,
-            quarkStates: quarkStates_(address(0xa11ce), 12),
+            quarkSecrets: quarkSecrets_(address(0xa11ce), bytes32(uint256(12))),
             assetPositionsList: assetPositionsList_(1, address(0xa11ce), 8e6),
             cometPositions: emptyCometPositions_(),
             morphoPositions: emptyMorphoPositions_(),
@@ -832,7 +928,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         });
         chainAccountsList[1] = Accounts.ChainAccounts({
             chainId: 8453,
-            quarkStates: quarkStates_(address(0xb0b), 2),
+            quarkSecrets: quarkSecrets_(address(0xb0b), bytes32(uint256(2))),
             assetPositionsList: assetPositionsList_(8453, address(0xb0b), 4e6),
             cometPositions: emptyCometPositions_(),
             morphoPositions: emptyMorphoPositions_(),
@@ -840,7 +936,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         });
         chainAccountsList[2] = Accounts.ChainAccounts({
             chainId: 7777,
-            quarkStates: quarkStates_(address(0xfe11a), 2),
+            quarkSecrets: quarkSecrets_(address(0xfe11a), bytes32(uint256(2))),
             assetPositionsList: assetPositionsList_(7777, address(0xfe11a), 5e6),
             cometPositions: emptyCometPositions_(),
             morphoPositions: emptyMorphoPositions_(),
@@ -929,7 +1025,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
 
         chainAccountsList[0] = Accounts.ChainAccounts({
             chainId: 1,
-            quarkStates: quarkStates_(address(0xa11ce), 12),
+            quarkSecrets: quarkSecrets_(address(0xa11ce), bytes32(uint256(12))),
             assetPositionsList: assetPositionsList,
             cometPositions: emptyCometPositions_(),
             morphoPositions: emptyMorphoPositions_(),
@@ -971,6 +1067,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[0].nonce, ALICE_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[0].isReplayable, false, "isReplayable is false");
 
         // check the actions
         assertEq(result.actions.length, 1, "1 action");
@@ -979,6 +1077,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].actionType, "TRANSFER", "action type is 'TRANSFER'");
         assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
         assertEq(result.actions[0].paymentToken, address(0), "payment token is USD");
+        assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[0].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
@@ -1032,7 +1132,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
 
         chainAccountsList[0] = Accounts.ChainAccounts({
             chainId: 1,
-            quarkStates: quarkStates_(address(0xa11ce), 12),
+            quarkSecrets: quarkSecrets_(address(0xa11ce), bytes32(uint256(12))),
             assetPositionsList: assetPositionsList,
             cometPositions: emptyCometPositions_(),
             morphoPositions: emptyMorphoPositions_(),
@@ -1082,6 +1182,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[0].nonce, ALICE_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[0].isReplayable, false, "isReplayable is false");
 
         // check the actions
         assertEq(result.actions.length, 1, "1 action");
@@ -1090,6 +1192,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].actionType, "TRANSFER", "action type is 'TRANSFER'");
         assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
+        assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[0].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
@@ -1143,7 +1247,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
 
         chainAccountsList[0] = Accounts.ChainAccounts({
             chainId: 1,
-            quarkStates: quarkStates_(address(0xa11ce), 12),
+            quarkSecrets: quarkSecrets_(address(0xa11ce), bytes32(uint256(12))),
             assetPositionsList: assetPositionsList,
             cometPositions: emptyCometPositions_(),
             morphoPositions: emptyMorphoPositions_(),
@@ -1194,6 +1298,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[0].nonce, ALICE_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[0].isReplayable, false, "isReplayable is false");
 
         // check the actions
         assertEq(result.actions.length, 1, "1 action");
@@ -1202,6 +1308,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].actionType, "TRANSFER", "action type is 'TRANSFER'");
         assertEq(result.actions[0].paymentMethod, "QUOTE_CALL", "payment method is 'QUOTE_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
+        assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[0].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
@@ -1255,7 +1363,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
 
         chainAccountsList[0] = Accounts.ChainAccounts({
             chainId: 1,
-            quarkStates: quarkStates_(address(0xa11ce), 12),
+            quarkSecrets: quarkSecrets_(address(0xa11ce), bytes32(uint256(12))),
             assetPositionsList: assetPositionsList,
             cometPositions: emptyCometPositions_(),
             morphoPositions: emptyMorphoPositions_(),
@@ -1297,6 +1405,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[0].nonce, ALICE_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[0].isReplayable, false, "isReplayable is false");
 
         // check the actions
         assertEq(result.actions.length, 1, "1 action");
@@ -1305,6 +1415,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].actionType, "TRANSFER", "action type is 'TRANSFER'");
         assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
         assertEq(result.actions[0].paymentToken, address(0), "payment token is USD");
+        assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[0].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
