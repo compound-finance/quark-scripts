@@ -104,6 +104,8 @@ contract QuarkBuilderMorphoClaimRewardsTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[0].nonce, ALICE_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[0].isReplayable, false, "isReplayable is false");
 
         // check the actions
         assertEq(result.actions.length, 1, "one action");
@@ -113,6 +115,9 @@ contract QuarkBuilderMorphoClaimRewardsTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
         assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
         assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
+        assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[0].totalPlays, 1, "total plays is 1");
+
         string[] memory assetSymbols = new string[](2);
         assetSymbols[0] = "USDC";
         assetSymbols[1] = "WETH";
@@ -163,7 +168,6 @@ contract QuarkBuilderMorphoClaimRewardsTest is Test, QuarkBuilderTest {
             paycallUsdc_(1),
             "script address is correct given the code jar address on mainnet"
         );
-
         assertEq(
             result.quarkOperations[0].scriptCalldata,
             abi.encodeWithSelector(
@@ -177,7 +181,6 @@ contract QuarkBuilderMorphoClaimRewardsTest is Test, QuarkBuilderTest {
             ),
             "calldata is Paycall.run(MorphoRewardsActions.claimAll(fixtureDistributors, fixtureAccounts, fixtureRewards, fixtureClaimables, fixtureProofs));"
         );
-
         assertEq(
             result.quarkOperations[0].scriptSources[1],
             abi.encodePacked(type(Paycall).creationCode, abi.encode(ETH_USD_PRICE_FEED_1, USDC_1))
@@ -185,6 +188,8 @@ contract QuarkBuilderMorphoClaimRewardsTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[0].nonce, ALICE_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[0].isReplayable, false, "isReplayable is false");
 
         // check the actions
         assertEq(result.actions.length, 1, "one action");
@@ -194,6 +199,8 @@ contract QuarkBuilderMorphoClaimRewardsTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
         assertEq(result.actions[0].paymentMaxCost, 1e6, "payment max is set to .1e6 in this test case");
+        assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[0].totalPlays, 1, "total plays is 1");
 
         string[] memory assetSymbols = new string[](2);
         assetSymbols[0] = "USDC";

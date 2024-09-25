@@ -255,6 +255,12 @@ library Actions {
         Accounts.QuarkSecret accountSecret;
     }
 
+    // Note: To avoid stack too deep errors
+    struct MorphoClaimLocalVars {
+        Accounts.ChainAccounts accounts;
+        Accounts.QuarkSecret accountSecret;
+    }
+
     /* ===== Output Types ===== */
 
     // With Action, we try to define fields that are as 1:1 as possible with
@@ -1286,48 +1292,69 @@ library Actions {
         pure
         returns (IQuarkWallet.QuarkOperation memory, Action memory)
     {
-        bytes[] memory scriptSources = new bytes[](1);
-        scriptSources[0] = type(MorphoRewardsActions).creationCode;
-
         Accounts.ChainAccounts memory accounts =
             Accounts.findChainAccounts(claimRewards.chainId, claimRewards.chainAccountsList);
+        Accounts.QuarkSecret memory accountSecret =
+            Accounts.findQuarkSecret(claimRewards.claimer, accounts.quarkSecrets);
+        // Alternative approach with local vars struct
+        // MorphoClaimLocalVars memory localVars;
+        // // Local scope to avoid stack too deep
+        // {
+        //     Accounts.ChainAccounts memory accounts =
+        //         Accounts.findChainAccounts(claimRewards.chainId, claimRewards.chainAccountsList);
+        //     localVars = MorphoClaimLocalVars({
+        //         accounts: accounts,
+        //         accountSecret: Accounts.findQuarkSecret(claimRewards.claimer, accounts.quarkSecrets)
+        //     });
+        // }
 
-        Accounts.QuarkState memory accountState = Accounts.findQuarkState(claimRewards.claimer, accounts.quarkStates);
+        // If you just don't initialize the following arrays, it compiles without stack too deep
+        // Uncomment lines 1313-1314. Comment out lines 1315-1323.
+        // string[] memory rewardsAssetSymbols;
+        // uint256[] memory rewardsPrices;
+        string[] memory rewardsAssetSymbols = new string[](claimRewards.rewards.length);
+        uint256[] memory rewardsPrices = new uint256[](claimRewards.rewards.length);
 
-        List.DynamicArray memory rewardsPriceList = List.newList();
-        List.DynamicArray memory rewardsSymbolList = List.newList();
-        for (uint256 i = 0; i < claimRewards.rewards.length; i++) {
+        for (uint256 i = 0; i < claimRewards.rewards.length; ++i) {
             Accounts.AssetPositions memory rewardsAssetPosition =
                 Accounts.findAssetPositions(claimRewards.rewards[i], accounts.assetPositionsList);
-            List.addUint256(rewardsPriceList, rewardsAssetPosition.usdPrice);
-            List.addString(rewardsSymbolList, rewardsAssetPosition.symbol);
+            rewardsAssetSymbols[i] = rewardsAssetPosition.symbol;
+            rewardsPrices[i] = rewardsAssetPosition.usdPrice;
         }
-
-        bytes memory scriptCalldata = abi.encodeWithSelector(
-            MorphoRewardsActions.claimAll.selector,
-            claimRewards.distributors,
-            claimRewards.accounts,
-            claimRewards.rewards,
-            claimRewards.claimables,
-            claimRewards.proofs
-        );
-
-        // Construct QuarkOperation
-        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
-            scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoRewardsActions).creationCode),
-            scriptCalldata: scriptCalldata,
-            scriptSources: scriptSources,
-            expiry: claimRewards.blockTimestamp + STANDARD_EXPIRY_BUFFER
-        });
 
         MorphoClaimRewardsActionContext memory claimRewardsActionContext = MorphoClaimRewardsActionContext({
             amounts: claimRewards.claimables,
-            assetSymbols: List.toStringArray(rewardsSymbolList),
+            assetSymbols: rewardsAssetSymbols,
             chainId: claimRewards.chainId,
-            prices: List.toUint256Array(rewardsPriceList),
+            prices: rewardsPrices,
             tokens: claimRewards.rewards
         });
+
+        IQuarkWallet.QuarkOperation memory quarkOperation;
+        // Local scope to avoid stack too deep
+        {
+            bytes[] memory scriptSources = new bytes[](1);
+            scriptSources[0] = type(MorphoRewardsActions).creationCode;
+
+            bytes memory scriptCalldata = abi.encodeWithSelector(
+                MorphoRewardsActions.claimAll.selector,
+                claimRewards.distributors,
+                claimRewards.accounts,
+                claimRewards.rewards,
+                claimRewards.claimables,
+                claimRewards.proofs
+            );
+
+            // Construct QuarkOperation
+            quarkOperation = IQuarkWallet.QuarkOperation({
+                nonce: accountSecret.nonceSecret,
+                isReplayable: false,
+                scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoRewardsActions).creationCode),
+                scriptCalldata: scriptCalldata,
+                scriptSources: scriptSources,
+                expiry: claimRewards.blockTimestamp + STANDARD_EXPIRY_BUFFER
+            });
+        }
 
         Action memory action = Actions.Action({
             chainId: claimRewards.chainId,
@@ -1340,7 +1367,9 @@ library Actions {
                 ? PaymentInfo.knownToken(payment.currency, claimRewards.chainId).token
                 : address(0),
             paymentTokenSymbol: payment.currency,
-            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, claimRewards.chainId) : 0
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, claimRewards.chainId) : 0,
+            nonceSecret: accountSecret.nonceSecret,
+            totalPlays: 1
         });
 
         return (quarkOperation, action);
@@ -1527,7 +1556,6 @@ library Actions {
             });
         }
 
-        // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation;
         // Local scope to avoid stack too deep
         {
@@ -1538,6 +1566,7 @@ library Actions {
             bytes memory scriptCalldata = abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig);
 
             bytes32 nonce = generateNonceFromSecret(localVars.accountSecret.nonceSecret, RECURRING_SWAP_TOTAL_PLAYS);
+            // Construct QuarkOperation
             quarkOperation = IQuarkWallet.QuarkOperation({
                 nonce: nonce,
                 isReplayable: true,
