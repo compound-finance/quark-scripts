@@ -90,6 +90,7 @@ library EIP712Helper {
             abi.encode(
                 QUARK_OPERATION_TYPEHASH,
                 op.nonce,
+                op.isReplayable,
                 op.scriptAddress,
                 keccak256(encodedScriptSources),
                 keccak256(op.scriptCalldata),
