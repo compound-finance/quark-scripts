@@ -1112,15 +1112,6 @@ library Actions {
         );
 
         // Construct QuarkOperation
-        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountSecret.nonceSecret,
-            isReplayable: false,
-            scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoActions).creationCode),
-            scriptCalldata: scriptCalldata,
-            scriptSources: scriptSources,
-            expiry: repayInput.blockTimestamp + STANDARD_EXPIRY_BUFFER
-        });
-
         MorphoRepayActionContext memory morphoRepayActionContext = MorphoRepayActionContext({
             amount: repayInput.amount,
             assetSymbol: repayInput.assetSymbol,
@@ -1137,7 +1128,14 @@ library Actions {
                 )
         });
 
-        Action memory action = Actions.Action({
+        return (IQuarkWallet.QuarkOperation({
+            nonce: accountSecret.nonceSecret,
+            isReplayable: false,
+            scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoActions).creationCode),
+            scriptCalldata: scriptCalldata,
+            scriptSources: scriptSources,
+            expiry: repayInput.blockTimestamp + STANDARD_EXPIRY_BUFFER
+        }), Actions.Action({
             chainId: repayInput.chainId,
             quarkAccount: repayInput.repayer,
             actionType: ACTION_TYPE_MORPHO_REPAY,
@@ -1150,9 +1148,7 @@ library Actions {
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, repayInput.chainId) : 0,
             nonceSecret: accountSecret.nonceSecret,
             totalPlays: 1
-        });
-
-        return (quarkOperation, action);
+        }));
     }
 
     function morphoVaultSupply(
@@ -1528,26 +1524,8 @@ library Actions {
             });
         }
 
-        IQuarkWallet.QuarkOperation memory quarkOperation;
-        // Local scope to avoid stack too deep
-        {
-            bytes[] memory scriptSources = new bytes[](1);
-            scriptSources[0] = type(RecurringSwap).creationCode;
-
-            // TODO: Handle wrapping ETH? Do we need to?
-            bytes memory scriptCalldata = abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig);
-
-            bytes32 nonce = generateNonceFromSecret(localVars.accountSecret.nonceSecret, RECURRING_SWAP_TOTAL_PLAYS);
-            // Construct QuarkOperation
-            quarkOperation = IQuarkWallet.QuarkOperation({
-                nonce: nonce,
-                isReplayable: true,
-                scriptAddress: CodeJarHelper.getCodeAddress(type(RecurringSwap).creationCode),
-                scriptCalldata: scriptCalldata,
-                scriptSources: scriptSources,
-                expiry: type(uint256).max
-            });
-        }
+        bytes[] memory scriptSources = new bytes[](1);
+        scriptSources[0] = type(RecurringSwap).creationCode;
 
         // Construct Action
         RecurringSwapActionContext memory recurringSwapActionContext = RecurringSwapActionContext({
@@ -1564,7 +1542,14 @@ library Actions {
             interval: swap.interval
         });
 
-        Action memory action = Actions.Action({
+        return (IQuarkWallet.QuarkOperation({
+            nonce: generateNonceFromSecret(localVars.accountSecret.nonceSecret, RECURRING_SWAP_TOTAL_PLAYS),
+            isReplayable: true,
+            scriptAddress: CodeJarHelper.getCodeAddress(type(RecurringSwap).creationCode),
+            scriptCalldata: abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig),
+            scriptSources: scriptSources,
+            expiry: type(uint256).max
+        }), Actions.Action({
             chainId: swap.chainId,
             quarkAccount: swap.sender,
             actionType: ACTION_TYPE_RECURRING_SWAP,
@@ -1576,9 +1561,7 @@ library Actions {
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, swap.chainId) : 0,
             nonceSecret: localVars.accountSecret.nonceSecret,
             totalPlays: RECURRING_SWAP_TOTAL_PLAYS
-        });
-
-        return (quarkOperation, action);
+        }));
     }
 
     function findActionsOfType(Action[] memory actions, string memory actionType)
