@@ -1045,16 +1045,6 @@ library Actions {
             borrowInput.amount
         );
 
-        // Construct QuarkOperation
-        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountSecret.nonceSecret,
-            isReplayable: false,
-            scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoActions).creationCode),
-            scriptCalldata: scriptCalldata,
-            scriptSources: scriptSources,
-            expiry: borrowInput.blockTimestamp + STANDARD_EXPIRY_BUFFER
-        });
-
         MorphoBorrowActionContext memory borrowActionContext = MorphoBorrowActionContext({
             assetSymbol: borrowInput.assetSymbol,
             amount: borrowInput.amount,
@@ -1070,7 +1060,15 @@ library Actions {
                 MorphoInfo.getMarketParams(borrowInput.chainId, borrowInput.collateralAssetSymbol, borrowInput.assetSymbol)
                 )
         });
-        Action memory action = Actions.Action({
+
+        return (IQuarkWallet.QuarkOperation({
+            nonce: accountSecret.nonceSecret,
+            isReplayable: false,
+            scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoActions).creationCode),
+            scriptCalldata: scriptCalldata,
+            scriptSources: scriptSources,
+            expiry: borrowInput.blockTimestamp + STANDARD_EXPIRY_BUFFER
+        }), Actions.Action({
             chainId: borrowInput.chainId,
             quarkAccount: borrowInput.borrower,
             actionType: ACTION_TYPE_MORPHO_BORROW,
@@ -1083,9 +1081,7 @@ library Actions {
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, borrowInput.chainId) : 0,
             nonceSecret: accountSecret.nonceSecret,
             totalPlays: 1
-        });
-
-        return (quarkOperation, action);
+        }));
     }
 
     function morphoRepay(MorphoRepay memory repayInput, PaymentInfo.Payment memory payment)
@@ -1116,15 +1112,6 @@ library Actions {
         );
 
         // Construct QuarkOperation
-        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountSecret.nonceSecret,
-            isReplayable: false,
-            scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoActions).creationCode),
-            scriptCalldata: scriptCalldata,
-            scriptSources: scriptSources,
-            expiry: repayInput.blockTimestamp + STANDARD_EXPIRY_BUFFER
-        });
-
         MorphoRepayActionContext memory morphoRepayActionContext = MorphoRepayActionContext({
             amount: repayInput.amount,
             assetSymbol: repayInput.assetSymbol,
@@ -1141,7 +1128,14 @@ library Actions {
                 )
         });
 
-        Action memory action = Actions.Action({
+        return (IQuarkWallet.QuarkOperation({
+            nonce: accountSecret.nonceSecret,
+            isReplayable: false,
+            scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoActions).creationCode),
+            scriptCalldata: scriptCalldata,
+            scriptSources: scriptSources,
+            expiry: repayInput.blockTimestamp + STANDARD_EXPIRY_BUFFER
+        }), Actions.Action({
             chainId: repayInput.chainId,
             quarkAccount: repayInput.repayer,
             actionType: ACTION_TYPE_MORPHO_REPAY,
@@ -1154,9 +1148,7 @@ library Actions {
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, repayInput.chainId) : 0,
             nonceSecret: accountSecret.nonceSecret,
             totalPlays: 1
-        });
-
-        return (quarkOperation, action);
+        }));
     }
 
     function morphoVaultSupply(
@@ -1282,74 +1274,74 @@ library Actions {
     }
 
     // TODO: Commenting because it is currently unused and will result in stack too deep
-    // function morphoClaimRewards(MorphoClaimRewards memory claimRewards, PaymentInfo.Payment memory payment)
-    //     internal
-    //     pure
-    //     returns (IQuarkWallet.QuarkOperation memory, Action memory)
-    // {
-    //     bytes[] memory scriptSources = new bytes[](1);
-    //     scriptSources[0] = type(MorphoRewardsActions).creationCode;
+    function morphoClaimRewards(MorphoClaimRewards memory claimRewards, PaymentInfo.Payment memory payment)
+        internal
+        pure
+        returns (IQuarkWallet.QuarkOperation memory, Action memory)
+    {
+        bytes[] memory scriptSources = new bytes[](1);
+        scriptSources[0] = type(MorphoRewardsActions).creationCode;
 
-    //     Accounts.ChainAccounts memory accounts =
-    //         Accounts.findChainAccounts(claimRewards.chainId, claimRewards.chainAccountsList);
+        Accounts.ChainAccounts memory accounts =
+            Accounts.findChainAccounts(claimRewards.chainId, claimRewards.chainAccountsList);
 
-    //     Accounts.QuarkSecret memory accountSecret =
-    //         Accounts.findQuarkSecret(claimRewards.claimer, accounts.quarkSecrets);
+        Accounts.QuarkSecret memory accountSecret =
+            Accounts.findQuarkSecret(claimRewards.claimer, accounts.quarkSecrets);
 
-    //     string[] memory rewardsAssetSymbols = new string[](claimRewards.rewards.length);
-    //     uint256[] memory rewardsPrices = new uint256[](claimRewards.rewards.length);
-    //     for (uint256 i = 0; i < claimRewards.rewards.length; ++i) {
-    //         Accounts.AssetPositions memory rewardsAssetPosition =
-    //             Accounts.findAssetPositions(claimRewards.rewards[i], accounts.assetPositionsList);
-    //         rewardsAssetSymbols[i] = rewardsAssetPosition.symbol;
-    //         rewardsPrices[i] = rewardsAssetPosition.usdPrice;
-    //     }
+        string[] memory rewardsAssetSymbols = new string[](claimRewards.rewards.length);
+        uint256[] memory rewardsPrices = new uint256[](claimRewards.rewards.length);
+        for (uint256 i = 0; i < claimRewards.rewards.length; ++i) {
+            Accounts.AssetPositions memory rewardsAssetPosition =
+                Accounts.findAssetPositions(claimRewards.rewards[i], accounts.assetPositionsList);
+            rewardsAssetSymbols[i] = rewardsAssetPosition.symbol;
+            rewardsPrices[i] = rewardsAssetPosition.usdPrice;
+        }
 
-    //     bytes memory scriptCalldata = abi.encodeWithSelector(
-    //         MorphoRewardsActions.claimAll.selector,
-    //         claimRewards.distributors,
-    //         claimRewards.accounts,
-    //         claimRewards.rewards,
-    //         claimRewards.claimables,
-    //         claimRewards.proofs
-    //     );
+        bytes memory scriptCalldata = abi.encodeWithSelector(
+            MorphoRewardsActions.claimAll.selector,
+            claimRewards.distributors,
+            claimRewards.accounts,
+            claimRewards.rewards,
+            claimRewards.claimables,
+            claimRewards.proofs
+        );
 
-    //     // Construct QuarkOperation
-    //     IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-    //         nonce: accountSecret.nonceSecret,
-    //         isReplayable: false,
-    //         scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoRewardsActions).creationCode),
-    //         scriptCalldata: scriptCalldata,
-    //         scriptSources: scriptSources,
-    //         expiry: claimRewards.blockTimestamp + STANDARD_EXPIRY_BUFFER
-    //     });
+        // Construct QuarkOperation
+        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
+            nonce: accountSecret.nonceSecret,
+            isReplayable: false,
+            scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoRewardsActions).creationCode),
+            scriptCalldata: scriptCalldata,
+            scriptSources: scriptSources,
+            expiry: claimRewards.blockTimestamp + STANDARD_EXPIRY_BUFFER
+        });
 
-    //     MorphoClaimRewardsActionContext memory claimRewardsActionContext = MorphoClaimRewardsActionContext({
-    //         amounts: claimRewards.claimables,
-    //         assetSymbols: rewardsAssetSymbols,
-    //         chainId: claimRewards.chainId,
-    //         prices: rewardsPrices,
-    //         tokens: claimRewards.rewards
-    //     });
+        MorphoClaimRewardsActionContext memory claimRewardsActionContext = MorphoClaimRewardsActionContext({
+            amounts: claimRewards.claimables,
+            assetSymbols: rewardsAssetSymbols,
+            chainId: claimRewards.chainId,
+            prices: rewardsPrices,
+            tokens: claimRewards.rewards
+        });
 
-    //     Action memory action = Actions.Action({
-    //         chainId: claimRewards.chainId,
-    //         quarkAccount: claimRewards.claimer,
-    //         actionType: ACTION_TYPE_MORPHO_CLAIM_REWARDS,
-    //         actionContext: abi.encode(claimRewardsActionContext),
-    //         paymentMethod: PaymentInfo.paymentMethodForPayment(payment, false),
-    //         // Null address for OFFCHAIN payment.
-    //         paymentToken: payment.isToken
-    //             ? PaymentInfo.knownToken(payment.currency, claimRewards.chainId).token
-    //             : address(0),
-    //         paymentTokenSymbol: payment.currency,
-    //         paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, claimRewards.chainId) : 0,
-    //         nonceSecret: accountSecret.nonceSecret,
-    //         totalPlays: 1
-    //     });
+        Action memory action = Actions.Action({
+            chainId: claimRewards.chainId,
+            quarkAccount: claimRewards.claimer,
+            actionType: ACTION_TYPE_MORPHO_CLAIM_REWARDS,
+            actionContext: abi.encode(claimRewardsActionContext),
+            paymentMethod: PaymentInfo.paymentMethodForPayment(payment, false),
+            // Null address for OFFCHAIN payment.
+            paymentToken: payment.isToken
+                ? PaymentInfo.knownToken(payment.currency, claimRewards.chainId).token
+                : address(0),
+            paymentTokenSymbol: payment.currency,
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, claimRewards.chainId) : 0,
+            nonceSecret: accountSecret.nonceSecret,
+            totalPlays: 1
+        });
 
-    //     return (quarkOperation, action);
-    // }
+        return (quarkOperation, action);
+    }
 
     function wrapOrUnwrapAsset(
         WrapOrUnwrapAsset memory wrapOrUnwrap,
@@ -1532,26 +1524,8 @@ library Actions {
             });
         }
 
-        IQuarkWallet.QuarkOperation memory quarkOperation;
-        // Local scope to avoid stack too deep
-        {
-            bytes[] memory scriptSources = new bytes[](1);
-            scriptSources[0] = type(RecurringSwap).creationCode;
-
-            // TODO: Handle wrapping ETH? Do we need to?
-            bytes memory scriptCalldata = abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig);
-
-            bytes32 nonce = generateNonceFromSecret(localVars.accountSecret.nonceSecret, RECURRING_SWAP_TOTAL_PLAYS);
-            // Construct QuarkOperation
-            quarkOperation = IQuarkWallet.QuarkOperation({
-                nonce: nonce,
-                isReplayable: true,
-                scriptAddress: CodeJarHelper.getCodeAddress(type(RecurringSwap).creationCode),
-                scriptCalldata: scriptCalldata,
-                scriptSources: scriptSources,
-                expiry: type(uint256).max
-            });
-        }
+        bytes[] memory scriptSources = new bytes[](1);
+        scriptSources[0] = type(RecurringSwap).creationCode;
 
         // Construct Action
         RecurringSwapActionContext memory recurringSwapActionContext = RecurringSwapActionContext({
@@ -1568,7 +1542,14 @@ library Actions {
             interval: swap.interval
         });
 
-        Action memory action = Actions.Action({
+        return (IQuarkWallet.QuarkOperation({
+            nonce: generateNonceFromSecret(localVars.accountSecret.nonceSecret, RECURRING_SWAP_TOTAL_PLAYS),
+            isReplayable: true,
+            scriptAddress: CodeJarHelper.getCodeAddress(type(RecurringSwap).creationCode),
+            scriptCalldata: abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig),
+            scriptSources: scriptSources,
+            expiry: type(uint256).max
+        }), Actions.Action({
             chainId: swap.chainId,
             quarkAccount: swap.sender,
             actionType: ACTION_TYPE_RECURRING_SWAP,
@@ -1580,9 +1561,7 @@ library Actions {
             paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, swap.chainId) : 0,
             nonceSecret: localVars.accountSecret.nonceSecret,
             totalPlays: RECURRING_SWAP_TOTAL_PLAYS
-        });
-
-        return (quarkOperation, action);
+        }));
     }
 
     function findActionsOfType(Action[] memory actions, string memory actionType)
