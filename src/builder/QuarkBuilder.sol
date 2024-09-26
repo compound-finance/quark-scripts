@@ -1735,141 +1735,141 @@ contract QuarkBuilder {
     // inlines the internal call to `Actions.morphoClaimRewards`. Compiling using `via-ir` but
     // without the optimizer works.
 
-    // struct MorphoRewardsClaimIntent {
-    //     uint256 blockTimestamp;
-    //     address claimer;
-    //     uint256 chainId;
-    //     address[] accounts;
-    //     uint256[] claimables;
-    //     address[] distributors;
-    //     address[] rewards;
-    //     bytes32[][] proofs;
-    // }
+    struct MorphoRewardsClaimIntent {
+        uint256 blockTimestamp;
+        address claimer;
+        uint256 chainId;
+        address[] accounts;
+        uint256[] claimables;
+        address[] distributors;
+        address[] rewards;
+        bytes32[][] proofs;
+    }
 
-    // function morphoClaimRewards(
-    //     MorphoRewardsClaimIntent memory claimIntent,
-    //     Accounts.ChainAccounts[] memory chainAccountsList,
-    //     PaymentInfo.Payment memory payment
-    // ) external pure returns (BuilderResult memory) {
-    //     if (
-    //         claimIntent.accounts.length != claimIntent.claimables.length
-    //             || claimIntent.accounts.length != claimIntent.distributors.length
-    //             || claimIntent.accounts.length != claimIntent.rewards.length
-    //             || claimIntent.accounts.length != claimIntent.proofs.length
-    //     ) {
-    //         revert InvalidInput();
-    //     }
+    function morphoClaimRewards(
+        MorphoRewardsClaimIntent memory claimIntent,
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        PaymentInfo.Payment memory payment
+    ) external pure returns (BuilderResult memory) {
+        if (
+            claimIntent.accounts.length != claimIntent.claimables.length
+                || claimIntent.accounts.length != claimIntent.distributors.length
+                || claimIntent.accounts.length != claimIntent.rewards.length
+                || claimIntent.accounts.length != claimIntent.proofs.length
+        ) {
+            revert InvalidInput();
+        }
 
-    //     bool useQuotecall = false; // never use Quotecall
-    //     List.DynamicArray memory actions = List.newList();
-    //     List.DynamicArray memory quarkOperations = List.newList();
+        bool useQuotecall = false; // never use Quotecall
+        List.DynamicArray memory actions = List.newList();
+        List.DynamicArray memory quarkOperations = List.newList();
 
-    //     // when paying with tokens, you may need to bridge the payment token to cover the cost
-    //     if (payment.isToken) {
-    //         uint256 maxCostOnDstChain = PaymentInfo.findMaxCost(payment, claimIntent.chainId);
-    //         // if you're claiming rewards in payment token, you can use the withdrawn amount to cover the cost
-    //         for (uint256 i = 0; i < claimIntent.rewards.length; ++i) {
-    //             if (
-    //                 Strings.stringEqIgnoreCase(
-    //                     payment.currency,
-    //                     Accounts.findAssetPositions(claimIntent.rewards[i], claimIntent.chainId, chainAccountsList)
-    //                         .symbol
-    //                 )
-    //             ) {
-    //                 maxCostOnDstChain = Math.subtractFlooredAtZero(maxCostOnDstChain, claimIntent.claimables[i]);
-    //             }
-    //         }
+        // when paying with tokens, you may need to bridge the payment token to cover the cost
+        if (payment.isToken) {
+            uint256 maxCostOnDstChain = PaymentInfo.findMaxCost(payment, claimIntent.chainId);
+            // if you're claiming rewards in payment token, you can use the withdrawn amount to cover the cost
+            for (uint256 i = 0; i < claimIntent.rewards.length; ++i) {
+                if (
+                    Strings.stringEqIgnoreCase(
+                        payment.currency,
+                        Accounts.findAssetPositions(claimIntent.rewards[i], claimIntent.chainId, chainAccountsList)
+                            .symbol
+                    )
+                ) {
+                    maxCostOnDstChain = Math.subtractFlooredAtZero(maxCostOnDstChain, claimIntent.claimables[i]);
+                }
+            }
 
-    //         if (needsBridgedFunds(payment.currency, maxCostOnDstChain, claimIntent.chainId, chainAccountsList, payment))
-    //         {
-    //             (IQuarkWallet.QuarkOperation[] memory bridgeQuarkOperations, Actions.Action[] memory bridgeActions) =
-    //             Actions.constructBridgeOperations(
-    //                 Actions.BridgeOperationInfo({
-    //                     assetSymbol: payment.currency,
-    //                     amountNeededOnDst: maxCostOnDstChain,
-    //                     dstChainId: claimIntent.chainId,
-    //                     recipient: claimIntent.claimer,
-    //                     blockTimestamp: claimIntent.blockTimestamp,
-    //                     useQuotecall: useQuotecall
-    //                 }),
-    //                 chainAccountsList,
-    //                 payment
-    //             );
+            if (needsBridgedFunds(payment.currency, maxCostOnDstChain, claimIntent.chainId, chainAccountsList, payment))
+            {
+                (IQuarkWallet.QuarkOperation[] memory bridgeQuarkOperations, Actions.Action[] memory bridgeActions) =
+                Actions.constructBridgeOperations(
+                    Actions.BridgeOperationInfo({
+                        assetSymbol: payment.currency,
+                        amountNeededOnDst: maxCostOnDstChain,
+                        dstChainId: claimIntent.chainId,
+                        recipient: claimIntent.claimer,
+                        blockTimestamp: claimIntent.blockTimestamp,
+                        useQuotecall: useQuotecall
+                    }),
+                    chainAccountsList,
+                    payment
+                );
 
-    //             for (uint256 i = 0; i < bridgeQuarkOperations.length; ++i) {
-    //                 List.addQuarkOperation(quarkOperations, bridgeQuarkOperations[i]);
-    //                 List.addAction(actions, bridgeActions[i]);
-    //             }
-    //         }
-    //     }
+                for (uint256 i = 0; i < bridgeQuarkOperations.length; ++i) {
+                    List.addQuarkOperation(quarkOperations, bridgeQuarkOperations[i]);
+                    List.addAction(actions, bridgeActions[i]);
+                }
+            }
+        }
 
-    //     (IQuarkWallet.QuarkOperation memory cometWithdrawQuarkOperation, Actions.Action memory cometWithdrawAction) =
-    //     Actions.morphoClaimRewards(
-    //         Actions.MorphoClaimRewards({
-    //             chainAccountsList: chainAccountsList,
-    //             accounts: claimIntent.accounts,
-    //             blockTimestamp: claimIntent.blockTimestamp,
-    //             chainId: claimIntent.chainId,
-    //             claimables: claimIntent.claimables,
-    //             claimer: claimIntent.claimer,
-    //             distributors: claimIntent.distributors,
-    //             rewards: claimIntent.rewards,
-    //             proofs: claimIntent.proofs
-    //         }),
-    //         payment
-    //     );
-    //     List.addAction(actions, cometWithdrawAction);
-    //     List.addQuarkOperation(quarkOperations, cometWithdrawQuarkOperation);
+        (IQuarkWallet.QuarkOperation memory cometWithdrawQuarkOperation, Actions.Action memory cometWithdrawAction) =
+        Actions.morphoClaimRewards(
+            Actions.MorphoClaimRewards({
+                chainAccountsList: chainAccountsList,
+                accounts: claimIntent.accounts,
+                blockTimestamp: claimIntent.blockTimestamp,
+                chainId: claimIntent.chainId,
+                claimables: claimIntent.claimables,
+                claimer: claimIntent.claimer,
+                distributors: claimIntent.distributors,
+                rewards: claimIntent.rewards,
+                proofs: claimIntent.proofs
+            }),
+            payment
+        );
+        List.addAction(actions, cometWithdrawAction);
+        List.addQuarkOperation(quarkOperations, cometWithdrawQuarkOperation);
 
-    //     // Convert actions and quark operations to arrays
-    //     Actions.Action[] memory actionsArray = List.toActionArray(actions);
-    //     IQuarkWallet.QuarkOperation[] memory quarkOperationsArray = List.toQuarkOperationArray(quarkOperations);
+        // Convert actions and quark operations to arrays
+        Actions.Action[] memory actionsArray = List.toActionArray(actions);
+        IQuarkWallet.QuarkOperation[] memory quarkOperationsArray = List.toQuarkOperationArray(quarkOperations);
 
-    //     // Validate generated actions for affordability
-    //     if (payment.isToken) {
-    //         uint256 supplementalPaymentTokenBalance = 0;
-    //         for (uint256 i = 0; i < claimIntent.rewards.length; ++i) {
-    //             if (
-    //                 Strings.stringEqIgnoreCase(
-    //                     payment.currency,
-    //                     Accounts.findAssetPositions(claimIntent.rewards[i], claimIntent.chainId, chainAccountsList)
-    //                         .symbol
-    //                 )
-    //             ) {
-    //                 supplementalPaymentTokenBalance += claimIntent.claimables[i];
-    //             }
-    //         }
+        // Validate generated actions for affordability
+        if (payment.isToken) {
+            uint256 supplementalPaymentTokenBalance = 0;
+            for (uint256 i = 0; i < claimIntent.rewards.length; ++i) {
+                if (
+                    Strings.stringEqIgnoreCase(
+                        payment.currency,
+                        Accounts.findAssetPositions(claimIntent.rewards[i], claimIntent.chainId, chainAccountsList)
+                            .symbol
+                    )
+                ) {
+                    supplementalPaymentTokenBalance += claimIntent.claimables[i];
+                }
+            }
 
-    //         assertSufficientPaymentTokenBalances(
-    //             PaymentBalanceAssertionArgs({
-    //                 actions: actionsArray,
-    //                 chainAccountsList: chainAccountsList,
-    //                 targetChainId: claimIntent.chainId,
-    //                 account: claimIntent.claimer,
-    //                 supplementalPaymentTokenBalance: supplementalPaymentTokenBalance
-    //             })
-    //         );
-    //     }
+            assertSufficientPaymentTokenBalances(
+                PaymentBalanceAssertionArgs({
+                    actions: actionsArray,
+                    chainAccountsList: chainAccountsList,
+                    targetChainId: claimIntent.chainId,
+                    account: claimIntent.claimer,
+                    supplementalPaymentTokenBalance: supplementalPaymentTokenBalance
+                })
+            );
+        }
 
-    //     // Merge operations that are from the same chain into one Multicall operation
-    //     (quarkOperationsArray, actionsArray) =
-    //         QuarkOperationHelper.mergeSameChainOperations(quarkOperationsArray, actionsArray);
+        // Merge operations that are from the same chain into one Multicall operation
+        (quarkOperationsArray, actionsArray) =
+            QuarkOperationHelper.mergeSameChainOperations(quarkOperationsArray, actionsArray);
 
-    //     // Wrap operations around Paycall/Quotecall if payment is with token
-    //     if (payment.isToken) {
-    //         quarkOperationsArray = QuarkOperationHelper.wrapOperationsWithTokenPayment(
-    //             quarkOperationsArray, actionsArray, payment, useQuotecall
-    //         );
-    //     }
+        // Wrap operations around Paycall/Quotecall if payment is with token
+        if (payment.isToken) {
+            quarkOperationsArray = QuarkOperationHelper.wrapOperationsWithTokenPayment(
+                quarkOperationsArray, actionsArray, payment, useQuotecall
+            );
+        }
 
-    //     return BuilderResult({
-    //         version: VERSION,
-    //         actions: actionsArray,
-    //         quarkOperations: quarkOperationsArray,
-    //         paymentCurrency: payment.currency,
-    //         eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
-    //     });
-    // }
+        return BuilderResult({
+            version: VERSION,
+            actions: actionsArray,
+            quarkOperations: quarkOperationsArray,
+            paymentCurrency: payment.currency,
+            eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
+        });
+    }
 
     // For some reason, funds that may otherwise be bridgeable or held by the user cannot
     // be made available to fulfill the transaction.
