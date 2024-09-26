@@ -71,8 +71,10 @@ contract CometClaimRewardsTest is Test {
         );
         (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         assertEq(IERC20(COMP).balanceOf(address(wallet)), 0e6);
+
         vm.resumeGasMetering();
         wallet.executeQuarkOperation(op, v, r, s);
+
         assertGt(IERC20(COMP).balanceOf(address(wallet)), 0e6);
     }
 }
