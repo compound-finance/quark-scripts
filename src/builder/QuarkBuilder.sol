@@ -666,6 +666,83 @@ contract QuarkBuilder {
         });
     }
 
+    struct CometWithdrawAndBorrowIntent {
+        uint256 amount;
+        string assetSymbol;
+        uint256 blockTimestamp;
+        address borrower;
+        uint256 chainId;
+        uint256[] collateralAmounts;
+        string[] collateralAssetSymbols;
+        address comet;
+    }
+
+    // Withdraws all assets from the market and borrows the specified amount
+    function cometWithdrawAndBorrow(
+        CometWithdrawAndBorrowIntent memory withdrawAndBorrowIntent,
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        PaymentInfo.Payment memory payment
+    ) external view returns (BuilderResult memory) {
+        List.DynamicArray memory actions = List.newList();
+        List.DynamicArray memory quarkOperations = List.newList();
+
+        BuilderResult memory withdrawActions = this.cometWithdraw(
+            CometWithdrawIntent({
+                amount: type(uint256).max,
+                assetSymbol: withdrawAndBorrowIntent.assetSymbol,
+                blockTimestamp: withdrawAndBorrowIntent.blockTimestamp,
+                chainId: withdrawAndBorrowIntent.chainId,
+                comet: withdrawAndBorrowIntent.comet,
+                withdrawer: withdrawAndBorrowIntent.borrower
+            }),
+            chainAccountsList,
+            payment
+        );
+
+        for (uint256 i = 0; i < withdrawActions.quarkOperations.length; ++i) {
+            List.addQuarkOperation(quarkOperations, withdrawActions.quarkOperations[i]);
+        }
+        for (uint256 i = 0; i < withdrawActions.actions.length; ++i) {
+            List.addAction(actions, withdrawActions.actions[i]);
+        }
+
+        BuilderResult memory borrowActions = this.cometBorrow(
+            CometBorrowIntent({
+                amount: withdrawAndBorrowIntent.amount,
+                assetSymbol: withdrawAndBorrowIntent.assetSymbol,
+                blockTimestamp: withdrawAndBorrowIntent.blockTimestamp,
+                chainId: withdrawAndBorrowIntent.chainId,
+                collateralAmounts: withdrawAndBorrowIntent.collateralAmounts,
+                collateralAssetSymbols: withdrawAndBorrowIntent.collateralAssetSymbols,
+                comet: withdrawAndBorrowIntent.comet,
+                borrower: withdrawAndBorrowIntent.borrower
+            }),
+            chainAccountsList,
+            payment
+        );
+
+        for (uint256 i = 0; i < borrowActions.quarkOperations.length; ++i) {
+            List.addQuarkOperation(quarkOperations, borrowActions.quarkOperations[i]);
+        }
+        for (uint256 i = 0; i < borrowActions.actions.length; ++i) {
+            List.addAction(actions, borrowActions.actions[i]);
+        }
+
+        Actions.Action[] memory actionsArray = List.toActionArray(actions);
+        IQuarkWallet.QuarkOperation[] memory quarkOperationsArray = List.toQuarkOperationArray(quarkOperations);
+
+        (quarkOperationsArray, actionsArray) =
+            QuarkOperationHelper.mergeSameChainOperations(quarkOperationsArray, actionsArray);
+
+        return BuilderResult({
+            version: VERSION,
+            actions: actionsArray,
+            quarkOperations: quarkOperationsArray,
+            paymentCurrency: payment.currency,
+            eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
+        });
+    }
+
     struct TransferIntent {
         uint256 chainId;
         string assetSymbol;
