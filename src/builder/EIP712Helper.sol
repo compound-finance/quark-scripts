@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-pragma solidity 0.8.23;
+pragma solidity 0.8.27;
 
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
 import {QuarkWalletMetadata} from "quark-core/src/QuarkWallet.sol";
@@ -90,6 +90,7 @@ library EIP712Helper {
             abi.encode(
                 QUARK_OPERATION_TYPEHASH,
                 op.nonce,
+                op.isReplayable,
                 op.scriptAddress,
                 keccak256(encodedScriptSources),
                 keccak256(op.scriptCalldata),

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-pragma solidity ^0.8.23;
+pragma solidity ^0.8.27;
 
 import {Accounts} from "./Accounts.sol";
 import {BridgeRoutes, CCTP} from "./BridgeRoutes.sol";
@@ -60,6 +60,9 @@ library Actions {
     uint256 constant BRIDGE_EXPIRY_BUFFER = 7 days;
     uint256 constant SWAP_EXPIRY_BUFFER = 3 days;
     uint256 constant TRANSFER_EXPIRY_BUFFER = 7 days;
+
+    /* total plays */
+    uint256 constant RECURRING_SWAP_TOTAL_PLAYS = 500;
 
     uint256 constant AVERAGE_BLOCK_TIME = 12 seconds;
     uint256 constant RECURRING_SWAP_MAX_SLIPPAGE = 1e17; // 1%
@@ -244,6 +247,14 @@ library Actions {
         bool useQuotecall;
     }
 
+    // Note: To avoid stack too deep errors
+    struct RecurringSwapLocalVars {
+        Accounts.ChainAccounts accounts;
+        Accounts.AssetPositions sellTokenAssetPositions;
+        Accounts.AssetPositions buyTokenAssetPositions;
+        Accounts.QuarkSecret accountSecret;
+    }
+
     /* ===== Output Types ===== */
 
     // With Action, we try to define fields that are as 1:1 as possible with
@@ -260,6 +271,11 @@ library Actions {
         address paymentToken;
         string paymentTokenSymbol;
         uint256 paymentMaxCost;
+        // The secret used to generate the hash chain for a replayable operation. For non-replayable
+        // operations, the `nonce` will be the `nonceSecret` (the hash chain has a length of 1)
+        bytes32 nonceSecret;
+        // The number of times an operation can be played. For non-replayable operations, this will be 1
+        uint256 totalPlays;
     }
 
     struct BorrowActionContext {
@@ -609,14 +625,16 @@ library Actions {
         Accounts.AssetPositions memory srcUSDCPositions =
             Accounts.findAssetPositions("USDC", srcChainAccounts.assetPositionsList);
 
-        Accounts.QuarkState memory accountState = Accounts.findQuarkState(bridge.sender, srcChainAccounts.quarkStates);
+        Accounts.QuarkSecret memory accountSecret =
+            Accounts.findQuarkSecret(bridge.sender, srcChainAccounts.quarkSecrets);
 
         bytes[] memory scriptSources = new bytes[](1);
         scriptSources[0] = CCTP.bridgeScriptSource();
 
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
+            nonce: accountSecret.nonceSecret,
+            isReplayable: false,
             scriptAddress: CodeJarHelper.getCodeAddress(scriptSources[0]),
             scriptCalldata: CCTP.encodeBridgeUSDC(
                 bridge.srcChainId, bridge.destinationChainId, bridge.amount, bridge.recipient, srcUSDCPositions.asset
@@ -647,7 +665,9 @@ library Actions {
                 ? PaymentInfo.knownToken(payment.currency, bridge.srcChainId).token
                 : PaymentInfo.NON_TOKEN_PAYMENT,
             paymentTokenSymbol: payment.currency,
-            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, bridge.srcChainId) : 0
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, bridge.srcChainId) : 0,
+            nonceSecret: accountSecret.nonceSecret,
+            totalPlays: 1
         });
 
         return (quarkOperation, action);
@@ -664,7 +684,8 @@ library Actions {
         Accounts.ChainAccounts memory accounts =
             Accounts.findChainAccounts(borrowInput.chainId, borrowInput.chainAccountsList);
 
-        Accounts.QuarkState memory accountState = Accounts.findQuarkState(borrowInput.borrower, accounts.quarkStates);
+        Accounts.QuarkSecret memory accountSecret =
+            Accounts.findQuarkSecret(borrowInput.borrower, accounts.quarkSecrets);
 
         Accounts.AssetPositions memory borrowAssetPositions =
             Accounts.findAssetPositions(borrowInput.assetSymbol, accounts.assetPositionsList);
@@ -691,7 +712,8 @@ library Actions {
 
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
+            nonce: accountSecret.nonceSecret,
+            isReplayable: false,
             scriptAddress: CodeJarHelper.getCodeAddress(type(CometSupplyMultipleAssetsAndBorrow).creationCode),
             scriptCalldata: scriptCalldata,
             scriptSources: scriptSources,
@@ -721,7 +743,9 @@ library Actions {
                 ? PaymentInfo.knownToken(payment.currency, borrowInput.chainId).token
                 : PaymentInfo.NON_TOKEN_PAYMENT,
             paymentTokenSymbol: payment.currency,
-            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, borrowInput.chainId) : 0
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, borrowInput.chainId) : 0,
+            nonceSecret: accountSecret.nonceSecret,
+            totalPlays: 1
         });
 
         return (quarkOperation, action);
@@ -738,7 +762,7 @@ library Actions {
         Accounts.ChainAccounts memory accounts =
             Accounts.findChainAccounts(repayInput.chainId, repayInput.chainAccountsList);
 
-        Accounts.QuarkState memory accountState = Accounts.findQuarkState(repayInput.repayer, accounts.quarkStates);
+        Accounts.QuarkSecret memory accountSecret = Accounts.findQuarkSecret(repayInput.repayer, accounts.quarkSecrets);
 
         Accounts.AssetPositions memory repayAssetPositions =
             Accounts.findAssetPositions(repayInput.assetSymbol, accounts.assetPositionsList);
@@ -765,7 +789,8 @@ library Actions {
 
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
+            nonce: accountSecret.nonceSecret,
+            isReplayable: false,
             scriptAddress: CodeJarHelper.getCodeAddress(type(CometRepayAndWithdrawMultipleAssets).creationCode),
             scriptCalldata: scriptCalldata,
             scriptSources: scriptSources,
@@ -795,7 +820,9 @@ library Actions {
                 ? PaymentInfo.knownToken(payment.currency, repayInput.chainId).token
                 : PaymentInfo.NON_TOKEN_PAYMENT,
             paymentTokenSymbol: payment.currency,
-            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, repayInput.chainId) : 0
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, repayInput.chainId) : 0,
+            nonceSecret: accountSecret.nonceSecret,
+            totalPlays: 1
         });
 
         return (quarkOperation, action);
@@ -815,7 +842,7 @@ library Actions {
         Accounts.AssetPositions memory assetPositions =
             Accounts.findAssetPositions(cometSupply.assetSymbol, accounts.assetPositionsList);
 
-        Accounts.QuarkState memory accountState = Accounts.findQuarkState(cometSupply.sender, accounts.quarkStates);
+        Accounts.QuarkSecret memory accountSecret = Accounts.findQuarkSecret(cometSupply.sender, accounts.quarkSecrets);
 
         bytes memory scriptCalldata;
         if (Strings.stringEqIgnoreCase(cometSupply.assetSymbol, "ETH")) {
@@ -827,7 +854,8 @@ library Actions {
         }
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
+            nonce: accountSecret.nonceSecret,
+            isReplayable: false,
             scriptAddress: CodeJarHelper.getCodeAddress(type(CometSupplyActions).creationCode),
             scriptCalldata: scriptCalldata,
             scriptSources: scriptSources,
@@ -853,7 +881,9 @@ library Actions {
                 ? PaymentInfo.knownToken(payment.currency, cometSupply.chainId).token
                 : PaymentInfo.NON_TOKEN_PAYMENT,
             paymentTokenSymbol: payment.currency,
-            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, cometSupply.chainId) : 0
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, cometSupply.chainId) : 0,
+            nonceSecret: accountSecret.nonceSecret,
+            totalPlays: 1
         });
 
         return (quarkOperation, action);
@@ -873,8 +903,8 @@ library Actions {
         Accounts.AssetPositions memory assetPositions =
             Accounts.findAssetPositions(cometWithdraw.assetSymbol, accounts.assetPositionsList);
 
-        Accounts.QuarkState memory accountState =
-            Accounts.findQuarkState(cometWithdraw.withdrawer, accounts.quarkStates);
+        Accounts.QuarkSecret memory accountSecret =
+            Accounts.findQuarkSecret(cometWithdraw.withdrawer, accounts.quarkSecrets);
 
         bytes memory scriptCalldata;
         if (Strings.stringEqIgnoreCase(cometWithdraw.assetSymbol, "ETH")) {
@@ -886,7 +916,8 @@ library Actions {
         }
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
+            nonce: accountSecret.nonceSecret,
+            isReplayable: false,
             scriptAddress: CodeJarHelper.getCodeAddress(type(CometWithdrawActions).creationCode),
             scriptCalldata: scriptCalldata,
             scriptSources: scriptSources,
@@ -912,7 +943,9 @@ library Actions {
                 ? PaymentInfo.knownToken(payment.currency, cometWithdraw.chainId).token
                 : PaymentInfo.NON_TOKEN_PAYMENT,
             paymentTokenSymbol: payment.currency,
-            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, cometWithdraw.chainId) : 0
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, cometWithdraw.chainId) : 0,
+            nonceSecret: accountSecret.nonceSecret,
+            totalPlays: 1
         });
 
         return (quarkOperation, action);
@@ -932,7 +965,7 @@ library Actions {
         Accounts.AssetPositions memory assetPositions =
             Accounts.findAssetPositions(transfer.assetSymbol, accounts.assetPositionsList);
 
-        Accounts.QuarkState memory accountState = Accounts.findQuarkState(transfer.sender, accounts.quarkStates);
+        Accounts.QuarkSecret memory accountSecret = Accounts.findQuarkSecret(transfer.sender, accounts.quarkSecrets);
 
         bytes memory scriptCalldata;
         if (Strings.stringEqIgnoreCase(transfer.assetSymbol, "ETH")) {
@@ -948,7 +981,8 @@ library Actions {
         }
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
+            nonce: accountSecret.nonceSecret,
+            isReplayable: false,
             scriptAddress: CodeJarHelper.getCodeAddress(type(TransferActions).creationCode),
             scriptCalldata: scriptCalldata,
             scriptSources: scriptSources,
@@ -975,7 +1009,9 @@ library Actions {
                 ? PaymentInfo.knownToken(payment.currency, transfer.chainId).token
                 : PaymentInfo.NON_TOKEN_PAYMENT,
             paymentTokenSymbol: payment.currency,
-            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, transfer.chainId) : 0
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, transfer.chainId) : 0,
+            nonceSecret: accountSecret.nonceSecret,
+            totalPlays: 1
         });
 
         return (quarkOperation, action);
@@ -992,7 +1028,8 @@ library Actions {
         Accounts.ChainAccounts memory accounts =
             Accounts.findChainAccounts(borrowInput.chainId, borrowInput.chainAccountsList);
 
-        Accounts.QuarkState memory accountState = Accounts.findQuarkState(borrowInput.borrower, accounts.quarkStates);
+        Accounts.QuarkSecret memory accountSecret =
+            Accounts.findQuarkSecret(borrowInput.borrower, accounts.quarkSecrets);
 
         Accounts.AssetPositions memory borrowAssetPositions =
             Accounts.findAssetPositions(borrowInput.assetSymbol, accounts.assetPositionsList);
@@ -1010,7 +1047,8 @@ library Actions {
 
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
+            nonce: accountSecret.nonceSecret,
+            isReplayable: false,
             scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoActions).creationCode),
             scriptCalldata: scriptCalldata,
             scriptSources: scriptSources,
@@ -1042,7 +1080,9 @@ library Actions {
                 ? PaymentInfo.knownToken(payment.currency, borrowInput.chainId).token
                 : PaymentInfo.NON_TOKEN_PAYMENT,
             paymentTokenSymbol: payment.currency,
-            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, borrowInput.chainId) : 0
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, borrowInput.chainId) : 0,
+            nonceSecret: accountSecret.nonceSecret,
+            totalPlays: 1
         });
 
         return (quarkOperation, action);
@@ -1059,7 +1099,7 @@ library Actions {
         Accounts.ChainAccounts memory accounts =
             Accounts.findChainAccounts(repayInput.chainId, repayInput.chainAccountsList);
 
-        Accounts.QuarkState memory accountState = Accounts.findQuarkState(repayInput.repayer, accounts.quarkStates);
+        Accounts.QuarkSecret memory accountSecret = Accounts.findQuarkSecret(repayInput.repayer, accounts.quarkSecrets);
 
         Accounts.AssetPositions memory repayAssetPositions =
             Accounts.findAssetPositions(repayInput.assetSymbol, accounts.assetPositionsList);
@@ -1077,7 +1117,8 @@ library Actions {
 
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
+            nonce: accountSecret.nonceSecret,
+            isReplayable: false,
             scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoActions).creationCode),
             scriptCalldata: scriptCalldata,
             scriptSources: scriptSources,
@@ -1110,7 +1151,9 @@ library Actions {
                 ? PaymentInfo.knownToken(payment.currency, repayInput.chainId).token
                 : PaymentInfo.NON_TOKEN_PAYMENT,
             paymentTokenSymbol: payment.currency,
-            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, repayInput.chainId) : 0
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, repayInput.chainId) : 0,
+            nonceSecret: accountSecret.nonceSecret,
+            totalPlays: 1
         });
 
         return (quarkOperation, action);
@@ -1130,7 +1173,7 @@ library Actions {
         Accounts.AssetPositions memory assetPositions =
             Accounts.findAssetPositions(vaultSupply.assetSymbol, accounts.assetPositionsList);
 
-        Accounts.QuarkState memory accountState = Accounts.findQuarkState(vaultSupply.sender, accounts.quarkStates);
+        Accounts.QuarkSecret memory accountSecret = Accounts.findQuarkSecret(vaultSupply.sender, accounts.quarkSecrets);
 
         bytes memory scriptCalldata = abi.encodeWithSelector(
             MorphoVaultActions.deposit.selector,
@@ -1141,7 +1184,8 @@ library Actions {
 
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
+            nonce: accountSecret.nonceSecret,
+            isReplayable: false,
             scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoVaultActions).creationCode),
             scriptCalldata: scriptCalldata,
             scriptSources: scriptSources,
@@ -1167,7 +1211,9 @@ library Actions {
             // Null address for OFFCHAIN payment.
             paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, vaultSupply.chainId).token : address(0),
             paymentTokenSymbol: payment.currency,
-            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, vaultSupply.chainId) : 0
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, vaultSupply.chainId) : 0,
+            nonceSecret: accountSecret.nonceSecret,
+            totalPlays: 1
         });
 
         return (quarkOperation, action);
@@ -1187,8 +1233,8 @@ library Actions {
         Accounts.AssetPositions memory assetPositions =
             Accounts.findAssetPositions(vaultWithdraw.assetSymbol, accounts.assetPositionsList);
 
-        Accounts.QuarkState memory accountState =
-            Accounts.findQuarkState(vaultWithdraw.withdrawer, accounts.quarkStates);
+        Accounts.QuarkSecret memory accountSecret =
+            Accounts.findQuarkSecret(vaultWithdraw.withdrawer, accounts.quarkSecrets);
 
         bytes memory scriptCalldata = abi.encodeWithSelector(
             MorphoVaultActions.withdraw.selector,
@@ -1198,7 +1244,8 @@ library Actions {
 
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
+            nonce: accountSecret.nonceSecret,
+            isReplayable: false,
             scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoVaultActions).creationCode),
             scriptCalldata: scriptCalldata,
             scriptSources: scriptSources,
@@ -1226,76 +1273,83 @@ library Actions {
                 ? PaymentInfo.knownToken(payment.currency, vaultWithdraw.chainId).token
                 : address(0),
             paymentTokenSymbol: payment.currency,
-            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, vaultWithdraw.chainId) : 0
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, vaultWithdraw.chainId) : 0,
+            nonceSecret: accountSecret.nonceSecret,
+            totalPlays: 1
         });
 
         return (quarkOperation, action);
     }
 
-    function morphoClaimRewards(MorphoClaimRewards memory claimRewards, PaymentInfo.Payment memory payment)
-        internal
-        pure
-        returns (IQuarkWallet.QuarkOperation memory, Action memory)
-    {
-        bytes[] memory scriptSources = new bytes[](1);
-        scriptSources[0] = type(MorphoRewardsActions).creationCode;
+    // TODO: Commenting because it is currently unused and will result in stack too deep
+    // function morphoClaimRewards(MorphoClaimRewards memory claimRewards, PaymentInfo.Payment memory payment)
+    //     internal
+    //     pure
+    //     returns (IQuarkWallet.QuarkOperation memory, Action memory)
+    // {
+    //     bytes[] memory scriptSources = new bytes[](1);
+    //     scriptSources[0] = type(MorphoRewardsActions).creationCode;
 
-        Accounts.ChainAccounts memory accounts =
-            Accounts.findChainAccounts(claimRewards.chainId, claimRewards.chainAccountsList);
+    //     Accounts.ChainAccounts memory accounts =
+    //         Accounts.findChainAccounts(claimRewards.chainId, claimRewards.chainAccountsList);
 
-        Accounts.QuarkState memory accountState = Accounts.findQuarkState(claimRewards.claimer, accounts.quarkStates);
+    //     Accounts.QuarkSecret memory accountSecret =
+    //         Accounts.findQuarkSecret(claimRewards.claimer, accounts.quarkSecrets);
 
-        List.DynamicArray memory rewardsPriceList = List.newList();
-        List.DynamicArray memory rewardsSymbolList = List.newList();
-        for (uint256 i = 0; i < claimRewards.rewards.length; i++) {
-            Accounts.AssetPositions memory rewardsAssetPosition =
-                Accounts.findAssetPositions(claimRewards.rewards[i], accounts.assetPositionsList);
-            List.addUint256(rewardsPriceList, rewardsAssetPosition.usdPrice);
-            List.addString(rewardsSymbolList, rewardsAssetPosition.symbol);
-        }
+    //     string[] memory rewardsAssetSymbols = new string[](claimRewards.rewards.length);
+    //     uint256[] memory rewardsPrices = new uint256[](claimRewards.rewards.length);
+    //     for (uint256 i = 0; i < claimRewards.rewards.length; ++i) {
+    //         Accounts.AssetPositions memory rewardsAssetPosition =
+    //             Accounts.findAssetPositions(claimRewards.rewards[i], accounts.assetPositionsList);
+    //         rewardsAssetSymbols[i] = rewardsAssetPosition.symbol;
+    //         rewardsPrices[i] = rewardsAssetPosition.usdPrice;
+    //     }
 
-        bytes memory scriptCalldata = abi.encodeWithSelector(
-            MorphoRewardsActions.claimAll.selector,
-            claimRewards.distributors,
-            claimRewards.accounts,
-            claimRewards.rewards,
-            claimRewards.claimables,
-            claimRewards.proofs
-        );
+    //     bytes memory scriptCalldata = abi.encodeWithSelector(
+    //         MorphoRewardsActions.claimAll.selector,
+    //         claimRewards.distributors,
+    //         claimRewards.accounts,
+    //         claimRewards.rewards,
+    //         claimRewards.claimables,
+    //         claimRewards.proofs
+    //     );
 
-        // Construct QuarkOperation
-        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
-            scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoRewardsActions).creationCode),
-            scriptCalldata: scriptCalldata,
-            scriptSources: scriptSources,
-            expiry: claimRewards.blockTimestamp + STANDARD_EXPIRY_BUFFER
-        });
+    //     // Construct QuarkOperation
+    //     IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
+    //         nonce: accountSecret.nonceSecret,
+    //         isReplayable: false,
+    //         scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoRewardsActions).creationCode),
+    //         scriptCalldata: scriptCalldata,
+    //         scriptSources: scriptSources,
+    //         expiry: claimRewards.blockTimestamp + STANDARD_EXPIRY_BUFFER
+    //     });
 
-        MorphoClaimRewardsActionContext memory claimRewardsActionContext = MorphoClaimRewardsActionContext({
-            amounts: claimRewards.claimables,
-            assetSymbols: List.toStringArray(rewardsSymbolList),
-            chainId: claimRewards.chainId,
-            prices: List.toUint256Array(rewardsPriceList),
-            tokens: claimRewards.rewards
-        });
+    //     MorphoClaimRewardsActionContext memory claimRewardsActionContext = MorphoClaimRewardsActionContext({
+    //         amounts: claimRewards.claimables,
+    //         assetSymbols: rewardsAssetSymbols,
+    //         chainId: claimRewards.chainId,
+    //         prices: rewardsPrices,
+    //         tokens: claimRewards.rewards
+    //     });
 
-        Action memory action = Actions.Action({
-            chainId: claimRewards.chainId,
-            quarkAccount: claimRewards.claimer,
-            actionType: ACTION_TYPE_MORPHO_CLAIM_REWARDS,
-            actionContext: abi.encode(claimRewardsActionContext),
-            paymentMethod: PaymentInfo.paymentMethodForPayment(payment, false),
-            // Null address for OFFCHAIN payment.
-            paymentToken: payment.isToken
-                ? PaymentInfo.knownToken(payment.currency, claimRewards.chainId).token
-                : address(0),
-            paymentTokenSymbol: payment.currency,
-            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, claimRewards.chainId) : 0
-        });
+    //     Action memory action = Actions.Action({
+    //         chainId: claimRewards.chainId,
+    //         quarkAccount: claimRewards.claimer,
+    //         actionType: ACTION_TYPE_MORPHO_CLAIM_REWARDS,
+    //         actionContext: abi.encode(claimRewardsActionContext),
+    //         paymentMethod: PaymentInfo.paymentMethodForPayment(payment, false),
+    //         // Null address for OFFCHAIN payment.
+    //         paymentToken: payment.isToken
+    //             ? PaymentInfo.knownToken(payment.currency, claimRewards.chainId).token
+    //             : address(0),
+    //         paymentTokenSymbol: payment.currency,
+    //         paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, claimRewards.chainId) : 0,
+    //         nonceSecret: accountSecret.nonceSecret,
+    //         totalPlays: 1
+    //     });
 
-        return (quarkOperation, action);
-    }
+    //     return (quarkOperation, action);
+    // }
 
     function wrapOrUnwrapAsset(
         WrapOrUnwrapAsset memory wrapOrUnwrap,
@@ -1311,10 +1365,11 @@ library Actions {
         Accounts.AssetPositions memory assetPositions =
             Accounts.findAssetPositions(wrapOrUnwrap.assetSymbol, accounts.assetPositionsList);
 
-        Accounts.QuarkState memory accountState = Accounts.findQuarkState(wrapOrUnwrap.sender, accounts.quarkStates);
+        Accounts.QuarkSecret memory accountSecret = Accounts.findQuarkSecret(wrapOrUnwrap.sender, accounts.quarkSecrets);
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
+            nonce: accountSecret.nonceSecret,
+            isReplayable: false,
             scriptAddress: CodeJarHelper.getCodeAddress(type(WrapperActions).creationCode),
             scriptCalldata: TokenWrapper.encodeActionToWrapOrUnwrap(
                 wrapOrUnwrap.chainId, wrapOrUnwrap.assetSymbol, wrapOrUnwrap.amount
@@ -1344,7 +1399,9 @@ library Actions {
                 ? PaymentInfo.knownToken(payment.currency, wrapOrUnwrap.chainId).token
                 : PaymentInfo.NON_TOKEN_PAYMENT,
             paymentTokenSymbol: payment.currency,
-            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, wrapOrUnwrap.chainId) : 0
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, wrapOrUnwrap.chainId) : 0,
+            nonceSecret: accountSecret.nonceSecret,
+            totalPlays: 1
         });
 
         return (quarkOperation, action);
@@ -1369,7 +1426,7 @@ library Actions {
         Accounts.AssetPositions memory feeTokenAssetPositions =
             Accounts.findAssetPositions(swap.feeAssetSymbol, accounts.assetPositionsList);
 
-        Accounts.QuarkState memory accountState = Accounts.findQuarkState(swap.sender, accounts.quarkStates);
+        Accounts.QuarkSecret memory accountSecret = Accounts.findQuarkSecret(swap.sender, accounts.quarkSecrets);
 
         // TODO: Handle wrapping ETH? Do we need to?
         bytes memory scriptCalldata = abi.encodeWithSelector(
@@ -1384,7 +1441,8 @@ library Actions {
 
         // Construct QuarkOperation
         IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
+            nonce: accountSecret.nonceSecret,
+            isReplayable: false,
             scriptAddress: CodeJarHelper.getCodeAddress(type(ApproveAndSwap).creationCode),
             scriptCalldata: scriptCalldata,
             scriptSources: scriptSources,
@@ -1419,7 +1477,9 @@ library Actions {
                 ? PaymentInfo.knownToken(payment.currency, swap.chainId).token
                 : PaymentInfo.NON_TOKEN_PAYMENT,
             paymentTokenSymbol: payment.currency,
-            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, swap.chainId) : 0
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, swap.chainId) : 0,
+            nonceSecret: accountSecret.nonceSecret,
+            totalPlays: 1
         });
 
         return (quarkOperation, action);
@@ -1430,55 +1490,68 @@ library Actions {
         pure
         returns (IQuarkWallet.QuarkOperation memory, Action memory)
     {
-        bytes[] memory scriptSources = new bytes[](1);
-        scriptSources[0] = type(RecurringSwap).creationCode;
+        RecurringSwapLocalVars memory localVars;
+        // Local scope to avoid stack too deep
+        {
+            Accounts.ChainAccounts memory accounts = Accounts.findChainAccounts(swap.chainId, swap.chainAccountsList);
+            localVars = RecurringSwapLocalVars({
+                accounts: accounts,
+                accountSecret: Accounts.findQuarkSecret(swap.sender, accounts.quarkSecrets),
+                sellTokenAssetPositions: Accounts.findAssetPositions(swap.sellAssetSymbol, accounts.assetPositionsList),
+                buyTokenAssetPositions: Accounts.findAssetPositions(swap.buyAssetSymbol, accounts.assetPositionsList)
+            });
+        }
 
-        Accounts.ChainAccounts memory accounts = Accounts.findChainAccounts(swap.chainId, swap.chainAccountsList);
+        RecurringSwap.SwapConfig memory swapConfig;
+        // Local scope to avoid stack too deep
+        {
+            RecurringSwap.SwapParams memory swapParams = RecurringSwap.SwapParams({
+                uniswapRouter: UniswapRouter.knownRouter(swap.chainId),
+                recipient: swap.sender,
+                tokenIn: swap.sellToken,
+                tokenOut: swap.buyToken,
+                amount: swap.isExactOut ? swap.buyAmount : swap.sellAmount,
+                isExactOut: swap.isExactOut,
+                path: swap.path
+            });
+            (address[] memory priceFeeds, bool[] memory shouldInvert) = PriceFeeds.findPriceFeedPath({
+                inputAssetSymbol: PriceFeeds.convertToPriceFeedSymbol(swap.sellAssetSymbol),
+                outputAssetSymbol: PriceFeeds.convertToPriceFeedSymbol(swap.buyAssetSymbol),
+                chainId: swap.chainId
+            });
+            RecurringSwap.SlippageParams memory slippageParams = RecurringSwap.SlippageParams({
+                maxSlippage: RECURRING_SWAP_MAX_SLIPPAGE,
+                priceFeeds: priceFeeds,
+                shouldInvert: shouldInvert
+            });
+            swapConfig = RecurringSwap.SwapConfig({
+                startTime: swap.blockTimestamp - AVERAGE_BLOCK_TIME,
+                interval: swap.interval,
+                swapParams: swapParams,
+                slippageParams: slippageParams
+            });
+        }
 
-        Accounts.AssetPositions memory sellTokenAssetPositions =
-            Accounts.findAssetPositions(swap.sellAssetSymbol, accounts.assetPositionsList);
+        IQuarkWallet.QuarkOperation memory quarkOperation;
+        // Local scope to avoid stack too deep
+        {
+            bytes[] memory scriptSources = new bytes[](1);
+            scriptSources[0] = type(RecurringSwap).creationCode;
 
-        Accounts.AssetPositions memory buyTokenAssetPositions =
-            Accounts.findAssetPositions(swap.buyAssetSymbol, accounts.assetPositionsList);
+            // TODO: Handle wrapping ETH? Do we need to?
+            bytes memory scriptCalldata = abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig);
 
-        Accounts.QuarkState memory accountState = Accounts.findQuarkState(swap.sender, accounts.quarkStates);
-
-        RecurringSwap.SwapParams memory swapParams = RecurringSwap.SwapParams({
-            uniswapRouter: UniswapRouter.knownRouter(swap.chainId),
-            recipient: swap.sender,
-            tokenIn: swap.sellToken,
-            tokenOut: swap.buyToken,
-            amount: swap.isExactOut ? swap.buyAmount : swap.sellAmount,
-            isExactOut: swap.isExactOut,
-            path: swap.path
-        });
-        (address[] memory priceFeeds, bool[] memory shouldInvert) = PriceFeeds.findPriceFeedPath({
-            inputAssetSymbol: PriceFeeds.convertToPriceFeedSymbol(swap.sellAssetSymbol),
-            outputAssetSymbol: PriceFeeds.convertToPriceFeedSymbol(swap.buyAssetSymbol),
-            chainId: swap.chainId
-        });
-        RecurringSwap.SlippageParams memory slippageParams = RecurringSwap.SlippageParams({
-            maxSlippage: RECURRING_SWAP_MAX_SLIPPAGE,
-            priceFeeds: priceFeeds,
-            shouldInvert: shouldInvert
-        });
-        RecurringSwap.SwapConfig memory swapConfig = RecurringSwap.SwapConfig({
-            startTime: swap.blockTimestamp - AVERAGE_BLOCK_TIME,
-            interval: swap.interval,
-            swapParams: swapParams,
-            slippageParams: slippageParams
-        });
-        // TODO: Handle wrapping ETH? Do we need to?
-        bytes memory scriptCalldata = abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig);
-
-        // Construct QuarkOperation
-        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-            nonce: accountState.quarkNextNonce,
-            scriptAddress: CodeJarHelper.getCodeAddress(type(RecurringSwap).creationCode),
-            scriptCalldata: scriptCalldata,
-            scriptSources: scriptSources,
-            expiry: type(uint256).max
-        });
+            bytes32 nonce = generateNonceFromSecret(localVars.accountSecret.nonceSecret, RECURRING_SWAP_TOTAL_PLAYS);
+            // Construct QuarkOperation
+            quarkOperation = IQuarkWallet.QuarkOperation({
+                nonce: nonce,
+                isReplayable: true,
+                scriptAddress: CodeJarHelper.getCodeAddress(type(RecurringSwap).creationCode),
+                scriptCalldata: scriptCalldata,
+                scriptSources: scriptSources,
+                expiry: type(uint256).max
+            });
+        }
 
         // Construct Action
         RecurringSwapActionContext memory recurringSwapActionContext = RecurringSwapActionContext({
@@ -1486,11 +1559,11 @@ library Actions {
             inputAmount: swap.sellAmount,
             inputAssetSymbol: swap.sellAssetSymbol,
             inputToken: swap.sellToken,
-            inputTokenPrice: sellTokenAssetPositions.usdPrice,
+            inputTokenPrice: localVars.sellTokenAssetPositions.usdPrice,
             outputAmount: swap.buyAmount,
             outputAssetSymbol: swap.buyAssetSymbol,
             outputToken: swap.buyToken,
-            outputTokenPrice: buyTokenAssetPositions.usdPrice,
+            outputTokenPrice: localVars.buyTokenAssetPositions.usdPrice,
             isExactOut: swap.isExactOut,
             interval: swap.interval
         });
@@ -1504,7 +1577,9 @@ library Actions {
             // Null address for OFFCHAIN payment.
             paymentToken: payment.isToken ? PaymentInfo.knownToken(payment.currency, swap.chainId).token : address(0),
             paymentTokenSymbol: payment.currency,
-            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, swap.chainId) : 0
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, swap.chainId) : 0,
+            nonceSecret: localVars.accountSecret.nonceSecret,
+            totalPlays: RECURRING_SWAP_TOTAL_PLAYS
         });
 
         return (quarkOperation, action);
@@ -1560,6 +1635,19 @@ library Actions {
             result[i] = operations[i];
         }
         return result;
+    }
+
+    function generateNonceFromSecret(bytes32 secret, uint256 totalPlays) internal pure returns (bytes32) {
+        uint256 replayCount = totalPlays - 1;
+        assembly ("memory-safe") {
+            let ptr := mload(0x40) // Get free memory pointer
+            mstore(ptr, secret) // Store initial secret at ptr
+
+            for { let i := 0 } lt(i, replayCount) { i := add(i, 1) } { mstore(ptr, keccak256(ptr, 32)) }
+
+            secret := mload(ptr) // Load final result
+        }
+        return secret;
     }
 
     // These structs are mostly used internally and returned in serialized format as bytes: actionContext

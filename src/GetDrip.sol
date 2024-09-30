@@ -1,4 +1,4 @@
-pragma solidity 0.8.23;
+pragma solidity 0.8.27;
 
 // To handle loading up new accounts on stage and dev
 interface Fauceteer {

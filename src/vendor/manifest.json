@@ -16,7 +16,7 @@
                     "newLines": 6,
                     "lines": [
                         " // SPDX-License-Identifier: GPL-2.0-or-later",
-                        "-pragma solidity 0.8.23;",
+                        "-pragma solidity 0.8.27;",
                         "+pragma solidity >=0.5.0;",
                         " ",
                         " /// @title Provides functions for deriving a pool address from the factory, tokens, and the fee",
@@ -131,7 +131,7 @@
                     ]
                   }
             ]
-        }, 
+        },
         "uniswap-swap-router-contracts/IApproveAndCall.sol": {
             "source": {
                 "git": {
@@ -205,9 +205,9 @@
                     "commit": "0448402af51b8293ed36653de43cbee8d4d2bfda",
                     "path": "src/libraries/MathLib.sol"
                 }
-            }, 
+            },
             "patches": []
-        }, 
+        },
         "morpho_blue_periphery/SharesMathLib.sol":{
             "source": {
                 "git": {

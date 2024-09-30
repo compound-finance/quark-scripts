@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-pragma solidity ^0.8.23;
+pragma solidity ^0.8.27;
 
 import "forge-std/Test.sol";
 
@@ -20,12 +20,25 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
         pure
         returns (QuarkBuilder.MorphoVaultWithdrawIntent memory)
     {
+        return morphoWithdrawIntent_({
+            amount: amount,
+            assetSymbol: assetSymbol,
+            chainId: chainId,
+            withdrawer: address(0xa11ce)
+        });
+    }
+
+    function morphoWithdrawIntent_(uint256 chainId, uint256 amount, string memory assetSymbol, address withdrawer)
+        internal
+        pure
+        returns (QuarkBuilder.MorphoVaultWithdrawIntent memory)
+    {
         return QuarkBuilder.MorphoVaultWithdrawIntent({
             amount: amount,
             assetSymbol: assetSymbol,
             blockTimestamp: BLOCK_TIMESTAMP,
             chainId: chainId,
-            withdrawer: address(0xa11ce)
+            withdrawer: withdrawer
         });
     }
 
@@ -56,6 +69,8 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[0].nonce, ALICE_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[0].isReplayable, false, "isReplayable is false");
 
         // check the actions
         assertEq(result.actions.length, 1, "one action");
@@ -65,6 +80,8 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
         assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
         assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
+        assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[0].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
@@ -121,6 +138,8 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[0].nonce, ALICE_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[0].isReplayable, false, "isReplayable is false");
 
         // check the actions
         assertEq(result.actions.length, 1, "one action");
@@ -130,6 +149,8 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
         assertEq(result.actions[0].paymentMaxCost, 0.1e6, "payment max is set to .1e6 in this test case");
+        assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[0].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
@@ -186,6 +207,8 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[0].nonce, ALICE_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[0].isReplayable, false, "isReplayable is false");
 
         // check the actions
         assertEq(result.actions.length, 1, "one action");
@@ -195,6 +218,8 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
         assertEq(result.actions[0].paymentMaxCost, 0.5e6, "payment max is set to .5e6 in this test case");
+        assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[0].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
@@ -239,7 +264,7 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
         Accounts.ChainAccounts[] memory chainAccountsList = new Accounts.ChainAccounts[](2);
         chainAccountsList[0] = Accounts.ChainAccounts({
             chainId: 1,
-            quarkStates: quarkStates_(address(0xa11ce), 12),
+            quarkSecrets: quarkSecrets_(address(0xa11ce), ALICE_DEFAULT_SECRET),
             assetPositionsList: assetPositionsList_(1, address(0xa11ce), 3e6), // 3 USDC on mainnet
             cometPositions: emptyCometPositions_(),
             morphoPositions: emptyMorphoPositions_(),
@@ -247,7 +272,7 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
         });
         chainAccountsList[1] = Accounts.ChainAccounts({
             chainId: 8453,
-            quarkStates: quarkStates_(address(0xb0b), 2),
+            quarkSecrets: quarkSecrets_(address(0xb0b), BOB_DEFAULT_SECRET),
             assetPositionsList: assetPositionsList_(8453, address(0xb0b), 0), // 0 USDC on base
             cometPositions: emptyCometPositions_(),
             morphoPositions: emptyMorphoPositions_(),
@@ -255,7 +280,9 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
         });
 
         QuarkBuilder.BuilderResult memory result = builder.morphoVaultWithdraw(
-            morphoWithdrawIntent_(8453, 1e18, "WETH"), chainAccountsList, paymentUsdc_(maxCosts)
+            morphoWithdrawIntent_({chainId: 8453, amount: 1e18, assetSymbol: "WETH", withdrawer: address(0xb0b)}),
+            chainAccountsList,
+            paymentUsdc_(maxCosts)
         );
 
         address paycallAddress = paycallUsdc_(1);
@@ -282,16 +309,18 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
                     address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155),
                     1e6,
                     6,
-                    bytes32(uint256(uint160(0xa11ce))),
+                    bytes32(uint256(uint160(0xb0b))),
                     usdc_(1)
                 ),
                 0.1e6
             ),
-            "calldata is Paycall.run(CCTPBridgeActions.bridgeUSDC(0xBd3fa81B58Ba92a82136038B25aDec7066af3155, 1e6, 6, 0xa11ce, USDC_1)), 0.1e6);"
+            "calldata is Paycall.run(CCTPBridgeActions.bridgeUSDC(0xBd3fa81B58Ba92a82136038B25aDec7066af3155, 1e6, 6, 0xb0b, USDC_1)), 0.1e6);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[0].nonce, ALICE_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[0].isReplayable, false, "isReplayable is false");
 
         // second operation
         assertEq(
@@ -312,6 +341,8 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[1].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[1].nonce, BOB_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[1].isReplayable, false, "isReplayable is false");
 
         // Check the actions
         assertEq(result.actions.length, 2, "two actions");
@@ -322,6 +353,8 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC on mainnet");
         assertEq(result.actions[0].paymentMaxCost, 0.1e6, "payment should have max cost of 0.1e6");
+        assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[0].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
@@ -332,7 +365,7 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
                     chainId: 1,
                     destinationChainId: 8453,
                     price: USDC_PRICE,
-                    recipient: address(0xa11ce),
+                    recipient: address(0xb0b),
                     token: USDC_1
                 })
             ),
@@ -340,11 +373,13 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
         );
         // second action
         assertEq(result.actions[1].chainId, 8453, "operation is on chainid 8453");
-        assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[1].quarkAccount, address(0xb0b), "0xb0b sends the funds");
         assertEq(result.actions[1].actionType, "MORPHO_VAULT_WITHDRAW", "action type is 'MORPHO_VAULT_WITHDRAW'");
         assertEq(result.actions[1].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[1].paymentToken, USDC_8453, "payment token is USDC on Base");
         assertEq(result.actions[1].paymentMaxCost, 1e6, "payment should have max cost of 1e6");
+        assertEq(result.actions[1].nonceSecret, BOB_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[1].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[1].actionContext,
             abi.encode(
@@ -381,7 +416,7 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
         chainPortfolios[0] = ChainPortfolio({
             chainId: 1,
             account: address(0xa11ce),
-            nextNonce: 12,
+            nonceSecret: ALICE_DEFAULT_SECRET,
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 0, 0),
             cometPortfolios: emptyCometPortfolios_(),
@@ -423,6 +458,8 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[0].nonce, ALICE_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[0].isReplayable, false, "isReplayable is false");
 
         // check the actions
         assertEq(result.actions.length, 1, "one action");
@@ -432,6 +469,8 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
         assertEq(result.actions[0].paymentMaxCost, 0.1e6, "payment max is set to 0.1e6");
+        assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[0].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
@@ -468,7 +507,7 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
         chainPortfolios[0] = ChainPortfolio({
             chainId: 1,
             account: address(0xa11ce),
-            nextNonce: 12,
+            nonceSecret: ALICE_DEFAULT_SECRET,
             assetSymbols: Arrays.stringArray("USDC", "USDT", "LINK", "WETH"),
             assetBalances: Arrays.uintArray(0, 0, 0, 0),
             cometPortfolios: emptyCometPortfolios_(),

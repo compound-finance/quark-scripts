@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-pragma solidity ^0.8.23;
+pragma solidity ^0.8.27;
 
 import {CodeJarHelper} from "./CodeJarHelper.sol";
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
@@ -25,6 +25,7 @@ library PaycallWrapper {
 
         return IQuarkWallet.QuarkOperation({
             nonce: operation.nonce,
+            isReplayable: operation.isReplayable,
             scriptAddress: CodeJarHelper.getCodeAddress(paycallSource),
             scriptCalldata: abi.encodeWithSelector(
                 Paycall.run.selector, operation.scriptAddress, operation.scriptCalldata, maxPaymentCost

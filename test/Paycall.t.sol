@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-pragma solidity 0.8.23;
+pragma solidity 0.8.27;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
@@ -8,7 +8,7 @@ import "forge-std/StdUtils.sol";
 import {CodeJar} from "codejar/src/CodeJar.sol";
 
 import {QuarkWallet} from "quark-core/src/QuarkWallet.sol";
-import {QuarkStateManager} from "quark-core/src/QuarkStateManager.sol";
+import {QuarkNonceManager} from "quark-core/src/QuarkNonceManager.sol";
 
 import {QuarkWalletProxyFactory} from "quark-proxy/src/QuarkWalletProxyFactory.sol";
 
@@ -48,8 +48,6 @@ contract PaycallTest is Test {
     address constant ETH_USD_PRICE_FEED = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address constant ETH_BTC_PRICE_FEED = 0xAc559F25B1619171CbC396a50854A3240b6A4e99;
 
-    // Uniswap router info on mainnet
-    address constant uniswapRouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
     bytes multicall = new YulHelper().getCode("Multicall.sol/Multicall.json");
     bytes ethcall = new YulHelper().getCode("Ethcall.sol/Ethcall.json");
     bytes reverts = new YulHelper().getCode("Reverts.sol/Reverts.json");
@@ -59,11 +57,11 @@ contract PaycallTest is Test {
     bytes paycallUSDT;
     bytes paycallWBTC;
 
-    bytes legendCometSupplyScript = new YulHelper().getCode("DeFiScripts.sol/CometSupplyActions.json");
+    bytes cometSupplyScript = new YulHelper().getCode("DeFiScripts.sol/CometSupplyActions.json");
 
-    bytes legendCometWithdrawScript = new YulHelper().getCode("DeFiScripts.sol/CometWithdrawActions.json");
+    bytes cometWithdrawScript = new YulHelper().getCode("DeFiScripts.sol/CometWithdrawActions.json");
 
-    bytes legendUniswapSwapScript = new YulHelper().getCode("DeFiScripts.sol/UniswapSwapActions.json");
+    bytes uniswapSwapScript = new YulHelper().getCode("DeFiScripts.sol/UniswapSwapActions.json");
 
     address ethcallAddress;
     address multicallAddress;
@@ -71,16 +69,16 @@ contract PaycallTest is Test {
     address paycallAddress;
     address paycallUSDTAddress;
     address paycallWBTCAddress;
-    address legendCometSupplyScriptAddress;
-    address legendCometWithdrawScriptAddress;
-    address legendUniswapSwapScriptAddress;
+    address cometSupplyScriptAddress;
+    address cometWithdrawScriptAddress;
+    address uniswapSwapScriptAddress;
 
     function setUp() public {
         vm.createSelectFork(
             vm.envString("MAINNET_RPC_URL"),
             18429607 // 2023-10-25 13:24:00 PST
         );
-        factory = new QuarkWalletProxyFactory(address(new QuarkWallet(new CodeJar(), new QuarkStateManager())));
+        factory = new QuarkWalletProxyFactory(address(new QuarkWallet(new CodeJar(), new QuarkNonceManager())));
         counter = new Counter();
         counter.setNumber(0);
 
@@ -96,9 +94,9 @@ contract PaycallTest is Test {
         paycallUSDTAddress = codeJar.saveCode(paycallUSDT);
         paycallWBTCAddress = codeJar.saveCode(paycallWBTC);
 
-        legendCometSupplyScriptAddress = codeJar.saveCode(legendCometSupplyScript);
-        legendCometWithdrawScriptAddress = codeJar.saveCode(legendCometWithdrawScript);
-        legendUniswapSwapScriptAddress = codeJar.saveCode(legendUniswapSwapScript);
+        cometSupplyScriptAddress = codeJar.saveCode(cometSupplyScript);
+        cometWithdrawScriptAddress = codeJar.saveCode(cometWithdrawScript);
+        uniswapSwapScriptAddress = codeJar.saveCode(uniswapSwapScript);
     }
 
     /* ===== call context-based tests ===== */
@@ -418,7 +416,7 @@ contract PaycallTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         vm.resumeGasMetering();
-        vm.expectRevert(abi.encodeWithSelector(Paycall.TransactionTooExpensive.selector, 5000000, 10485677));
+        vm.expectRevert(abi.encodeWithSelector(Paycall.TransactionTooExpensive.selector, 5_000_000, 10_478_744));
         wallet.executeQuarkOperation(op, v, r, s);
 
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 1000e6);
@@ -459,6 +457,6 @@ contract PaycallTest is Test {
         );
 
         CodeJar mainnetCodejar = CodeJar(CodeJarHelper.CODE_JAR_ADDRESS);
-        assertEq(mainnetCodejar.getCodeAddress(paycall), 0x1aF2e314e3291c6a4cD52A210a1AF027c7799cce);
+        assertEq(mainnetCodejar.getCodeAddress(paycall), 0x77641fB52eadE523c4d548aB931514e0Ad559Bf0);
     }
 }

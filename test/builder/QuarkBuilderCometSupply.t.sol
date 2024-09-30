@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-pragma solidity ^0.8.23;
+pragma solidity ^0.8.27;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
@@ -39,13 +39,21 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         pure
         returns (QuarkBuilder.CometSupplyIntent memory)
     {
+        return cometSupply_(chainId, amount, address(0xa11ce));
+    }
+
+    function cometSupply_(uint256 chainId, uint256 amount, address sender)
+        internal
+        pure
+        returns (QuarkBuilder.CometSupplyIntent memory)
+    {
         return QuarkBuilder.CometSupplyIntent({
             amount: amount,
             assetSymbol: "USDC",
             blockTimestamp: BLOCK_TIMESTAMP,
             chainId: chainId,
             comet: COMET,
-            sender: address(0xa11ce)
+            sender: sender
         });
     }
 
@@ -121,6 +129,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[0].nonce, ALICE_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[0].isReplayable, false, "isReplayable is false");
 
         // check the actions
         assertEq(result.actions.length, 1, "one action");
@@ -130,6 +140,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
         assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
         assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
+        assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[0].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
@@ -145,7 +157,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
             "action context encoded from SupplyActionContext"
         );
 
-        // // TODO: Check the contents of the EIP712 data
+        // TODO: Check the contents of the EIP712 data
         assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
         assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
@@ -156,7 +168,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         Accounts.ChainAccounts[] memory chainAccountsList = new Accounts.ChainAccounts[](1);
         chainAccountsList[0] = Accounts.ChainAccounts({
             chainId: 1,
-            quarkStates: quarkStates_(address(0xa11ce), 12),
+            quarkSecrets: quarkSecrets_(address(0xa11ce), bytes32(uint256(12))),
             assetPositionsList: assetPositionsList_(1, address(0xa11ce), uint256(3e6)),
             cometPositions: emptyCometPositions_(),
             morphoPositions: emptyMorphoPositions_(),
@@ -201,6 +213,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[0].nonce, ALICE_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[0].isReplayable, false, "isReplayable is false");
 
         // check the actions
         assertEq(result.actions.length, 1, "one action");
@@ -210,6 +224,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
         assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
         assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
+        assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[0].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
@@ -225,7 +241,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
             "action context encoded from SupplyActionContext"
         );
 
-        // // TODO: Check the contents of the EIP712 data
+        // TODO: Check the contents of the EIP712 data
         assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
         assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
@@ -260,7 +276,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         });
         chainAccountsList[0] = Accounts.ChainAccounts({
             chainId: 1,
-            quarkStates: quarkStates_(address(0xa11ce), 12),
+            quarkSecrets: quarkSecrets_(address(0xa11ce), bytes32(uint256(12))),
             assetPositionsList: assetPositionsList,
             cometPositions: emptyCometPositions_(),
             morphoPositions: emptyMorphoPositions_(),
@@ -297,6 +313,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 3 days"
         );
+        assertEq(result.quarkOperations[0].nonce, ALICE_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[0].isReplayable, false, "isReplayable is false");
 
         // check the actions
         assertEq(result.actions.length, 1, "one action");
@@ -306,6 +324,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
         assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
         assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
+        assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[0].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
@@ -321,7 +341,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
             "action context encoded from SupplyActionContext"
         );
 
-        // // TODO: Check the contents of the EIP712 data
+        // TODO: Check the contents of the EIP712 data
         assertNotEq(result.eip712Data.digest, hex"", "non-empty digest");
         assertNotEq(result.eip712Data.domainSeparator, hex"", "non-empty domain separator");
         assertNotEq(result.eip712Data.hashStruct, hex"", "non-empty hashStruct");
@@ -362,6 +382,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[0].nonce, ALICE_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[0].isReplayable, false, "isReplayable is false");
 
         // check the actions
         assertEq(result.actions.length, 1, "one action");
@@ -371,6 +393,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC");
         assertEq(result.actions[0].paymentMaxCost, 0.1e6, "payment max is set to .1e6 in this test case");
+        assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[0].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
@@ -395,7 +419,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
     function testCometSupplyWithBridge() public {
         QuarkBuilder builder = new QuarkBuilder();
         QuarkBuilder.BuilderResult memory result = builder.cometSupply(
-            cometSupply_(8453, 5e6),
+            // We need to set Bob as the sender because only he has an account on chain 8453
+            cometSupply_(8453, 5e6, address(0xb0b)),
             chainAccountsList_(6e6), // holding 3 USDC in total across chains 1, 8453
             paymentUsd_()
         );
@@ -433,15 +458,17 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155),
                     2e6,
                     6,
-                    bytes32(uint256(uint160(0xa11ce))),
+                    bytes32(uint256(uint160(0xb0b))),
                     usdc_(1)
                 )
             ),
-            "calldata is CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 2e6, 6, bytes32(uint256(uint160(0xa11ce))), usdc_(1)));"
+            "calldata is CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 2e6, 6, bytes32(uint256(uint160(0xb0b))), usdc_(1)));"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[0].nonce, ALICE_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[0].isReplayable, false, "isReplayable is false");
 
         // second operation
         assertEq(
@@ -472,6 +499,9 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[1].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        // TODO: might need to adjust intent to supply with Bob
+        assertEq(result.quarkOperations[1].nonce, BOB_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[1].isReplayable, false, "isReplayable is false");
 
         // check the actions
         // first action
@@ -482,6 +512,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
         assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
         assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
+        assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[0].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
@@ -491,7 +523,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     token: USDC_1,
                     assetSymbol: "USDC",
                     chainId: 1,
-                    recipient: address(0xa11ce),
+                    recipient: address(0xb0b),
                     destinationChainId: 8453,
                     bridgeType: Actions.BRIDGE_TYPE_CCTP
                 })
@@ -501,11 +533,13 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
 
         // second action
         assertEq(result.actions[1].chainId, 8453, "second action is on chainid 8453");
-        assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[1].quarkAccount, address(0xb0b), "0xb0b sends the funds");
         assertEq(result.actions[1].actionType, "SUPPLY", "action type is 'SUPPLY'");
         assertEq(result.actions[1].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
         assertEq(result.actions[1].paymentToken, address(0), "payment token is null");
         assertEq(result.actions[1].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
+        assertEq(result.actions[1].nonceSecret, BOB_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[1].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[1].actionContext,
             abi.encode(
@@ -530,7 +564,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
     function testCometSupplyMaxWithBridge() public {
         QuarkBuilder builder = new QuarkBuilder();
         QuarkBuilder.BuilderResult memory result = builder.cometSupply(
-            cometSupply_(8453, type(uint256).max),
+            // We need to set Bob as the sender because only he has an account on chain 8453
+            cometSupply_(8453, type(uint256).max, address(0xb0b)),
             chainAccountsList_(6e6), // holding 3 USDC in total across chains 1, 8453
             paymentUsd_()
         );
@@ -568,15 +603,17 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155),
                     3e6,
                     6,
-                    bytes32(uint256(uint160(0xa11ce))),
+                    bytes32(uint256(uint160(0xb0b))),
                     usdc_(1)
                 )
             ),
-            "calldata is CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 3e6, 6, bytes32(uint256(uint160(0xa11ce))), usdc_(1)));"
+            "calldata is CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 3e6, 6, bytes32(uint256(uint160(0xb0b))), usdc_(1)));"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[0].nonce, ALICE_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[0].isReplayable, false, "isReplayable is false");
 
         // second operation
         assertEq(
@@ -607,6 +644,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[1].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[1].nonce, BOB_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[1].isReplayable, false, "isReplayable is false");
 
         // check the actions
         // first action
@@ -617,6 +656,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
         assertEq(result.actions[0].paymentToken, address(0), "payment token is null");
         assertEq(result.actions[0].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
+        assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[0].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
@@ -626,7 +667,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     token: USDC_1,
                     assetSymbol: "USDC",
                     chainId: 1,
-                    recipient: address(0xa11ce),
+                    recipient: address(0xb0b),
                     destinationChainId: 8453,
                     bridgeType: Actions.BRIDGE_TYPE_CCTP
                 })
@@ -636,11 +677,13 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
 
         // second action
         assertEq(result.actions[1].chainId, 8453, "second action is on chainid 8453");
-        assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[1].quarkAccount, address(0xb0b), "0xb0b sends the funds");
         assertEq(result.actions[1].actionType, "SUPPLY", "action type is 'SUPPLY'");
         assertEq(result.actions[1].paymentMethod, "OFFCHAIN", "payment method is 'OFFCHAIN'");
         assertEq(result.actions[1].paymentToken, address(0), "payment token is null");
         assertEq(result.actions[1].paymentMaxCost, 0, "payment has no max cost, since 'OFFCHAIN'");
+        assertEq(result.actions[1].nonceSecret, BOB_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[1].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[1].actionContext,
             abi.encode(
@@ -670,7 +713,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
 
         // Note: There are 3e6 USDC on each chain, so the Builder should attempt to bridge 2 USDC to chain 8453
         QuarkBuilder.BuilderResult memory result = builder.cometSupply(
-            cometSupply_(8453, type(uint256).max),
+            // We need to set Bob as the sender because only he has an account on chain 8453
+            cometSupply_(8453, type(uint256).max, address(0xb0b)),
             chainAccountsList_(6e6), // holding 3 USDC in total across chains 1, 8453
             paymentUsdc_(maxCosts)
         );
@@ -699,16 +743,18 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155),
                     2.5e6, // 3e6 - 0.5e6
                     6,
-                    bytes32(uint256(uint160(0xa11ce))),
+                    bytes32(uint256(uint160(0xb0b))),
                     usdc_(1)
                 ),
                 0.5e6
             ),
-            "calldata is Quotecall.run(CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 2.1e6, 6, bytes32(uint256(uint160(0xa11ce))), usdc_(1))), 0.5e6);"
+            "calldata is Quotecall.run(CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 2.1e6, 6, bytes32(uint256(uint160(0xb0b))), usdc_(1))), 0.5e6);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[0].nonce, ALICE_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[0].isReplayable, false, "isReplayable is false");
 
         // second operation
         assertEq(
@@ -729,6 +775,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[1].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[1].nonce, BOB_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[1].isReplayable, false, "isReplayable is false");
 
         // Check the actions
         assertEq(result.actions.length, 2, "two actions");
@@ -739,6 +787,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMethod, "QUOTE_CALL", "payment method is 'QUOTE_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC on mainnet");
         assertEq(result.actions[0].paymentMaxCost, 0.5e6, "payment should have max cost of 0.5e6");
+        assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[0].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
@@ -748,7 +798,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     token: USDC_1,
                     assetSymbol: "USDC",
                     chainId: 1,
-                    recipient: address(0xa11ce),
+                    recipient: address(0xb0b),
                     destinationChainId: 8453,
                     bridgeType: Actions.BRIDGE_TYPE_CCTP
                 })
@@ -757,11 +807,13 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         );
         // second action
         assertEq(result.actions[1].chainId, 8453, "operation is on chainid 8453");
-        assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[1].quarkAccount, address(0xb0b), "0xb0b sends the funds");
         assertEq(result.actions[1].actionType, "SUPPLY", "action type is 'SUPPLY'");
         assertEq(result.actions[1].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[1].paymentToken, USDC_8453, "payment token is USDC on Base");
         assertEq(result.actions[1].paymentMaxCost, 0.1e6, "payment should have max cost of 0.1e6");
+        assertEq(result.actions[1].nonceSecret, BOB_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[1].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[1].actionContext,
             abi.encode(
@@ -791,7 +843,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
 
         // Note: There are 3e6 USDC on each chain, so the Builder should attempt to bridge 2 USDC to chain 8453
         QuarkBuilder.BuilderResult memory result = builder.cometSupply(
-            cometSupply_(8453, 5e6),
+            // We need to set Bob as the sender because only he has an account on chain 8453
+            cometSupply_(8453, 5e6, address(0xb0b)),
             chainAccountsList_(6e6), // holding 3 USDC in total across chains 1, 8453
             paymentUsdc_(maxCosts)
         );
@@ -820,16 +873,18 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155),
                     2.1e6,
                     6,
-                    bytes32(uint256(uint160(0xa11ce))),
+                    bytes32(uint256(uint160(0xb0b))),
                     usdc_(1)
                 ),
                 0.5e6
             ),
-            "calldata is Paycall.run(CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 2.1e6, 6, bytes32(uint256(uint160(0xa11ce))), usdc_(1))), 0.5e6);"
+            "calldata is Paycall.run(CCTPBridgeActions.bridgeUSDC(address(0xBd3fa81B58Ba92a82136038B25aDec7066af3155), 2.1e6, 6, bytes32(uint256(uint160(0xb0b))), usdc_(1))), 0.5e6);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[0].nonce, ALICE_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[0].isReplayable, false, "isReplayable is false");
 
         // second operation
         assertEq(
@@ -850,6 +905,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[1].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
         );
+        assertEq(result.quarkOperations[1].nonce, BOB_DEFAULT_SECRET, "unexpected nonce");
+        assertEq(result.quarkOperations[1].isReplayable, false, "isReplayable is false");
 
         // Check the actions
         assertEq(result.actions.length, 2, "two actions");
@@ -860,6 +917,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         assertEq(result.actions[0].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[0].paymentToken, USDC_1, "payment token is USDC on mainnet");
         assertEq(result.actions[0].paymentMaxCost, 0.5e6, "payment should have max cost of 0.5e6");
+        assertEq(result.actions[0].nonceSecret, ALICE_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[0].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[0].actionContext,
             abi.encode(
@@ -869,7 +928,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
                     token: USDC_1,
                     assetSymbol: "USDC",
                     chainId: 1,
-                    recipient: address(0xa11ce),
+                    recipient: address(0xb0b),
                     destinationChainId: 8453,
                     bridgeType: Actions.BRIDGE_TYPE_CCTP
                 })
@@ -878,11 +937,13 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         );
         // second action
         assertEq(result.actions[1].chainId, 8453, "operation is on chainid 8453");
-        assertEq(result.actions[1].quarkAccount, address(0xa11ce), "0xa11ce sends the funds");
+        assertEq(result.actions[1].quarkAccount, address(0xb0b), "0xb0b sends the funds");
         assertEq(result.actions[1].actionType, "SUPPLY", "action type is 'SUPPLY'");
         assertEq(result.actions[1].paymentMethod, "PAY_CALL", "payment method is 'PAY_CALL'");
         assertEq(result.actions[1].paymentToken, USDC_8453, "payment token is USDC on Base");
         assertEq(result.actions[1].paymentMaxCost, 0.1e6, "payment should have max cost of 0.1e6");
+        assertEq(result.actions[1].nonceSecret, BOB_DEFAULT_SECRET, "unexpected nonce secret");
+        assertEq(result.actions[1].totalPlays, 1, "total plays is 1");
         assertEq(
             result.actions[1].actionContext,
             abi.encode(
