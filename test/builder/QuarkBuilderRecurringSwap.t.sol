@@ -80,6 +80,11 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
         pure
         returns (RecurringSwap.SwapConfig memory)
     {
+        RecurringSwap.SwapWindow memory swapWindow = RecurringSwap.SwapWindow({
+            startTime: swap.blockTimestamp - Actions.AVERAGE_BLOCK_TIME,
+            interval: swap.interval,
+            length: Actions.RECURRING_SWAP_WINDOW_LENGTH
+        });
         RecurringSwap.SwapParams memory swapParams = RecurringSwap.SwapParams({
             uniswapRouter: UniswapRouter.knownRouter(swap.chainId),
             recipient: swap.sender,
@@ -96,12 +101,8 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
             priceFeeds: priceFeeds,
             shouldInvert: shouldInvert
         });
-        return RecurringSwap.SwapConfig({
-            startTime: swap.blockTimestamp - Actions.AVERAGE_BLOCK_TIME,
-            interval: swap.interval,
-            swapParams: swapParams,
-            slippageParams: slippageParams
-        });
+        return
+            RecurringSwap.SwapConfig({swapWindow: swapWindow, swapParams: swapParams, slippageParams: slippageParams});
     }
 
     function testInsufficientFunds() public {
