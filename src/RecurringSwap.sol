@@ -41,9 +41,9 @@ contract RecurringSwap is QuarkScript {
     uint256 public constant PRECISION_FACTOR = 1e18;
 
     /**
-     * @dev Note: This script uses the following storage layout in the QuarkNonceManager:
+     * @dev Note: This script uses the following storage layout in the Quark wallet:
      *         mapping(bytes32 hashedSwapConfig => uint256 nextSwapTime)
-     *             where hashedSwapConfig = keccak256(SwapConfig)
+     *             where hashedSwapConfig = getNonceIsolatedKey(keccak256(SwapConfig))
      */
 
     /// @notice Parameters for a recurring swap order
