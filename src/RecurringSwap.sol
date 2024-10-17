@@ -105,8 +105,12 @@ contract RecurringSwap is QuarkScript {
             revert SwapWindowNotOpen(nextSwapTime, block.timestamp);
         }
 
-        // Update nextSwapTime
-        write(hashedConfig, bytes32(nextSwapTime + config.interval));
+        // Update the next swap time, ensuring that it is some time in the future
+        uint256 updatedNextSwapTime = nextSwapTime;
+        while (updatedNextSwapTime <= block.timestamp) {
+            updatedNextSwapTime += config.interval;
+        }
+        write(hashedConfig, bytes32(updatedNextSwapTime));
 
         (uint256 amountIn, uint256 amountOut) = _calculateSwapAmounts(config);
         (uint256 actualAmountIn, uint256 actualAmountOut) =

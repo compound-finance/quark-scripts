@@ -542,6 +542,58 @@ contract RecurringSwapTest is Test {
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 2 * amountToSwap1 + 2 * amountToSwap2);
     }
 
+    function testRecurringSwapCannotSwapMultipleTimesForMissedWindows() public {
+        // gas: disable gas metering except while executing operations
+        vm.pauseGasMetering();
+
+        deal(USDC, address(aliceWallet), 100_000e6);
+        uint40 swapInterval = 86_400; // 1 day interval
+        uint256 amountToSwap = 10 ether;
+        RecurringSwap.SwapConfig memory swapConfig = _createSwapConfig({
+            startTime: block.timestamp,
+            swapInterval: swapInterval,
+            amount: amountToSwap,
+            isExactOut: true
+        });
+        (QuarkWallet.QuarkOperation memory op, bytes32[] memory submissionTokens) = new QuarkOperationHelper()
+            .newReplayableOpWithCalldata(
+            aliceWallet,
+            recurringSwap,
+            abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig),
+            ScriptType.ScriptAddress,
+            2
+        );
+        op.expiry = type(uint256).max;
+        (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
+
+        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 0 ether);
+
+        // gas: meter execute
+        vm.resumeGasMetering();
+        // 1. Execute recurring swap for the first time
+        aliceWallet.executeQuarkOperation(op, v1, r1, s1);
+
+        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToSwap);
+
+        // 2. Skip a few swap intervals by warping past multiple swap intervals
+        vm.warp(block.timestamp + 10 * swapInterval);
+
+        // 3. Execute recurring swap a second time
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[1], v1, r1, s1);
+
+        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 2 * amountToSwap);
+
+        // 4. Cannot buy again at the current timestamp even though we skipped a few swap intervals
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                RecurringSwap.SwapWindowNotOpen.selector, block.timestamp + swapInterval, block.timestamp
+            )
+        );
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[2], v1, r1, s1);
+
+        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 2 * amountToSwap);
+    }
+
     function testRevertsForInvalidInput() public {
         // gas: disable gas metering except while executing operations
         vm.pauseGasMetering();
