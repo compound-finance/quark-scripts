@@ -21,7 +21,8 @@ contract RecurringSwap is QuarkScript {
 
     error BadPrice();
     error InvalidInput();
-    error SwapWindowNotOpen(uint256 nextSwapTime, uint256 currentTime);
+    error SwapWindowClosed(uint256 currentWindowStartTime, uint256 windowLength, uint256 currentTime);
+    error SwapWindowNotOpen(uint256 nextWindowStartTime, uint256 windowLength, uint256 currentTime);
 
     /// @notice Emitted when a swap is executed
     event SwapExecuted(
@@ -42,17 +43,25 @@ contract RecurringSwap is QuarkScript {
 
     /**
      * @dev Note: This script uses the following storage layout in the Quark wallet:
-     *         mapping(bytes32 hashedSwapConfig => uint256 nextSwapTime)
+     *         mapping(bytes32 hashedSwapConfig => uint256 nextWindowStart)
      *             where hashedSwapConfig = getNonceIsolatedKey(keccak256(SwapConfig))
      */
 
     /// @notice Parameters for a recurring swap order
     struct SwapConfig {
-        uint256 startTime;
-        /// @dev In seconds
-        uint256 interval;
+        SwapWindow swapWindow;
         SwapParams swapParams;
         SlippageParams slippageParams;
+    }
+
+    /// @notice Parameters for performing a swap
+    struct SwapWindow {
+        /// @dev Timestamp of the start of the first swap window
+        uint256 startTime;
+        /// @dev Measured in seconds; time between the start of each swap window
+        uint256 interval;
+        /// @dev Measured in seconds; defines how long the window for executing the swap remains open
+        uint256 length;
     }
 
     /// @notice Parameters for performing a swap
@@ -93,24 +102,29 @@ contract RecurringSwap is QuarkScript {
         }
 
         bytes32 hashedConfig = _hashConfig(config);
-        uint256 nextSwapTime;
+        uint256 nextWindowStart;
         if (read(hashedConfig) == 0) {
-            nextSwapTime = config.startTime;
+            nextWindowStart = config.swapWindow.startTime;
         } else {
-            nextSwapTime = uint256(read(hashedConfig));
+            nextWindowStart = uint256(read(hashedConfig));
         }
 
-        // Check conditions
-        if (block.timestamp < nextSwapTime) {
-            revert SwapWindowNotOpen(nextSwapTime, block.timestamp);
+        // Check that swap window is open
+        if (block.timestamp < nextWindowStart) {
+            revert SwapWindowNotOpen(nextWindowStart, config.swapWindow.length, block.timestamp);
         }
 
-        // Update the next swap time, ensuring that it is some time in the future
-        uint256 updatedNextSwapTime = nextSwapTime;
-        while (updatedNextSwapTime <= block.timestamp) {
-            updatedNextSwapTime += config.interval;
+        // Find the last window start time and the next window start time
+        uint256 completedIntervals = (block.timestamp - config.swapWindow.startTime) / config.swapWindow.interval;
+        uint256 lastWindowStart = config.swapWindow.startTime + (completedIntervals * config.swapWindow.interval);
+        uint256 updatedNextWindowStart = lastWindowStart + config.swapWindow.interval;
+
+        // Check that current swap window (lastWindowStart + swapWindow.length) is not closed
+        if (block.timestamp > lastWindowStart + config.swapWindow.length) {
+            revert SwapWindowClosed(lastWindowStart, config.swapWindow.length, block.timestamp);
         }
-        write(hashedConfig, bytes32(updatedNextSwapTime));
+
+        write(hashedConfig, bytes32(updatedNextWindowStart));
 
         (uint256 amountIn, uint256 amountOut) = _calculateSwapAmounts(config);
         (uint256 actualAmountIn, uint256 actualAmountOut) =
@@ -253,8 +267,9 @@ contract RecurringSwap is QuarkScript {
     function _hashConfig(SwapConfig calldata config) internal pure returns (bytes32) {
         return keccak256(
             abi.encodePacked(
-                config.startTime,
-                config.interval,
+                config.swapWindow.startTime,
+                config.swapWindow.interval,
+                config.swapWindow.length,
                 abi.encodePacked(
                     config.swapParams.uniswapRouter,
                     config.swapParams.recipient,

@@ -66,6 +66,7 @@ library Actions {
 
     uint256 constant AVERAGE_BLOCK_TIME = 12 seconds;
     uint256 constant RECURRING_SWAP_MAX_SLIPPAGE = 1e17; // 1%
+    uint256 constant RECURRING_SWAP_WINDOW_LENGTH = 1 days;
 
     /* ===== Custom Errors ===== */
 
@@ -1505,6 +1506,11 @@ library Actions {
         RecurringSwap.SwapConfig memory swapConfig;
         // Local scope to avoid stack too deep
         {
+            RecurringSwap.SwapWindow memory swapWindow = RecurringSwap.SwapWindow({
+                startTime: swap.blockTimestamp - AVERAGE_BLOCK_TIME,
+                interval: swap.interval,
+                length: RECURRING_SWAP_WINDOW_LENGTH
+            });
             RecurringSwap.SwapParams memory swapParams = RecurringSwap.SwapParams({
                 uniswapRouter: UniswapRouter.knownRouter(swap.chainId),
                 recipient: swap.sender,
@@ -1525,8 +1531,7 @@ library Actions {
                 shouldInvert: shouldInvert
             });
             swapConfig = RecurringSwap.SwapConfig({
-                startTime: swap.blockTimestamp - AVERAGE_BLOCK_TIME,
-                interval: swap.interval,
+                swapWindow: swapWindow,
                 swapParams: swapParams,
                 slippageParams: slippageParams
             });

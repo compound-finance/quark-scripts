@@ -50,6 +50,9 @@ contract RecurringSwapTest is Test {
     // Price feeds
     address constant ETH_USD_PRICE_FEED = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419; // Price is $1790.45
     address constant USDC_USD_PRICE_FEED = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
+    // Swap window params
+    uint256 constant SWAP_WINDOW_INTERVAL = 1 days;
+    uint256 constant SWAP_WINDOW_LENGTH = 1 days;
 
     constructor() {
         // Fork setup
@@ -81,13 +84,13 @@ contract RecurringSwapTest is Test {
 
         uint256 startingUSDC = 100_000e6;
         deal(USDC, address(aliceWallet), startingUSDC);
-        uint40 swapInterval = 86_400; // 1 day interval
         uint256 amountToSell = 3_000e6;
         // Price of ETH is $1,790.45 at the current block
         uint256 expectedAmountOutMinimum = 1.65 ether;
         RecurringSwap.SwapConfig memory swapConfig = _createSwapConfig({
             startTime: block.timestamp,
-            swapInterval: swapInterval,
+            swapInterval: SWAP_WINDOW_INTERVAL,
+            swapLength: SWAP_WINDOW_LENGTH,
             amount: amountToSell,
             isExactOut: false
         });
@@ -127,13 +130,13 @@ contract RecurringSwapTest is Test {
 
         uint256 startingUSDC = 100_000e6;
         deal(USDC, address(aliceWallet), startingUSDC);
-        uint40 swapInterval = 86_400; // 1 day interval
         uint256 amountToSwap = 10 ether;
         // Price of ETH is $1,790.45 at the current block
         uint256 expectedAmountInMaximum = 1_800e6 * 10;
         RecurringSwap.SwapConfig memory swapConfig = _createSwapConfig({
             startTime: block.timestamp,
-            swapInterval: swapInterval,
+            swapInterval: SWAP_WINDOW_INTERVAL,
+            swapLength: SWAP_WINDOW_LENGTH,
             amount: amountToSwap,
             isExactOut: true
         });
@@ -175,10 +178,14 @@ contract RecurringSwapTest is Test {
 
         uint256 startingWETH = 100 ether;
         deal(WETH, address(aliceWallet), startingWETH);
-        uint40 swapInterval = 86_400; // 1 day interval
         uint256 amountToSell = 10 ether;
         // Price of ETH is $1,790.45 at the current block
         uint256 expectedAmountOutMinimum = 17_800e6;
+        RecurringSwap.SwapWindow memory swapWindow = RecurringSwap.SwapWindow({
+            startTime: block.timestamp,
+            interval: SWAP_WINDOW_INTERVAL,
+            length: SWAP_WINDOW_LENGTH
+        });
         RecurringSwap.SwapParams memory swapParams = RecurringSwap.SwapParams({
             uniswapRouter: UNISWAP_ROUTER,
             recipient: address(aliceWallet),
@@ -193,12 +200,8 @@ contract RecurringSwapTest is Test {
             priceFeeds: _array1(ETH_USD_PRICE_FEED),
             shouldInvert: _array1(false)
         });
-        RecurringSwap.SwapConfig memory swapConfig = RecurringSwap.SwapConfig({
-            startTime: block.timestamp,
-            interval: swapInterval,
-            swapParams: swapParams,
-            slippageParams: slippageParams
-        });
+        RecurringSwap.SwapConfig memory swapConfig =
+            RecurringSwap.SwapConfig({swapWindow: swapWindow, swapParams: swapParams, slippageParams: slippageParams});
 
         QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
             aliceWallet,
@@ -236,10 +239,14 @@ contract RecurringSwapTest is Test {
 
         uint256 startingWETH = 100 ether;
         deal(WETH, address(aliceWallet), startingWETH);
-        uint40 swapInterval = 86_400; // 1 day interval
         uint256 amountToSwap = 1_800e6;
         // Price of ETH is $1,790.45 at the current block
         uint256 expectedAmountInMaximum = 1.1 ether;
+        RecurringSwap.SwapWindow memory swapWindow = RecurringSwap.SwapWindow({
+            startTime: block.timestamp,
+            interval: SWAP_WINDOW_INTERVAL,
+            length: SWAP_WINDOW_LENGTH
+        });
         RecurringSwap.SwapParams memory swapParams = RecurringSwap.SwapParams({
             uniswapRouter: UNISWAP_ROUTER,
             recipient: address(aliceWallet),
@@ -254,12 +261,8 @@ contract RecurringSwapTest is Test {
             priceFeeds: _array1(ETH_USD_PRICE_FEED),
             shouldInvert: _array1(false)
         });
-        RecurringSwap.SwapConfig memory swapConfig = RecurringSwap.SwapConfig({
-            startTime: block.timestamp,
-            interval: swapInterval,
-            swapParams: swapParams,
-            slippageParams: slippageParams
-        });
+        RecurringSwap.SwapConfig memory swapConfig =
+            RecurringSwap.SwapConfig({swapWindow: swapWindow, swapParams: swapParams, slippageParams: slippageParams});
 
         QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
             aliceWallet,
@@ -296,11 +299,11 @@ contract RecurringSwapTest is Test {
         vm.pauseGasMetering();
 
         deal(USDC, address(aliceWallet), 100_000e6);
-        uint40 swapInterval = 86_400; // 1 day interval
         uint256 amountToSwap = 10 ether;
         RecurringSwap.SwapConfig memory swapConfig = _createSwapConfig({
             startTime: block.timestamp,
-            swapInterval: swapInterval,
+            swapInterval: SWAP_WINDOW_INTERVAL,
+            swapLength: SWAP_WINDOW_LENGTH,
             amount: amountToSwap,
             isExactOut: true
         });
@@ -327,13 +330,16 @@ contract RecurringSwapTest is Test {
         // 2a. Cannot buy again unless time interval has passed
         vm.expectRevert(
             abi.encodeWithSelector(
-                RecurringSwap.SwapWindowNotOpen.selector, block.timestamp + swapInterval, block.timestamp
+                RecurringSwap.SwapWindowNotOpen.selector,
+                block.timestamp + SWAP_WINDOW_INTERVAL,
+                SWAP_WINDOW_LENGTH,
+                block.timestamp
             )
         );
         aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[1], v1, r1, s1);
 
         // 2b. Execute recurring swap a second time after warping 1 day
-        vm.warp(block.timestamp + swapInterval);
+        vm.warp(block.timestamp + SWAP_WINDOW_INTERVAL);
         aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[1], v1, r1, s1);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 2 * amountToSwap);
@@ -344,11 +350,11 @@ contract RecurringSwapTest is Test {
         vm.pauseGasMetering();
 
         deal(USDC, address(aliceWallet), 100_000e6);
-        uint40 swapInterval = 86_400; // 1 day interval
         uint256 amountToSwap = 10 ether;
         RecurringSwap.SwapConfig memory swapConfig = _createSwapConfig({
             startTime: block.timestamp,
-            swapInterval: swapInterval,
+            swapInterval: SWAP_WINDOW_INTERVAL,
+            swapLength: SWAP_WINDOW_LENGTH,
             amount: amountToSwap,
             isExactOut: true
         });
@@ -380,7 +386,7 @@ contract RecurringSwapTest is Test {
         aliceWallet.executeQuarkOperationWithSubmissionToken(cancelOp, submissionTokens[1], v2, r2, s2);
 
         // 3. Replayable transaction can no longer be executed
-        vm.warp(block.timestamp + swapInterval);
+        vm.warp(block.timestamp + SWAP_WINDOW_INTERVAL);
         vm.expectRevert(
             abi.encodeWithSelector(
                 QuarkNonceManager.NonReplayableNonce.selector, address(aliceWallet), op.nonce, submissionTokens[1]
@@ -404,7 +410,6 @@ contract RecurringSwapTest is Test {
 
         uint256 startingUSDC = 100_000e6;
         deal(USDC, address(aliceWallet), startingUSDC);
-        uint40 swapInterval = 86_400; // 1 day interval
         uint256 amountToSell = 3_000e6;
         uint256 expectedAmountOutMinimum = 1.65 ether;
         // We are swapping from USDC -> WETH, so the order of the price feeds should be:
@@ -416,7 +421,8 @@ contract RecurringSwapTest is Test {
         });
         RecurringSwap.SwapConfig memory swapConfig = _createSwapConfig({
             startTime: block.timestamp,
-            swapInterval: swapInterval,
+            swapInterval: SWAP_WINDOW_INTERVAL,
+            swapLength: SWAP_WINDOW_LENGTH,
             amount: amountToSell,
             isExactOut: false,
             slippageParams: slippageParams
@@ -445,7 +451,6 @@ contract RecurringSwapTest is Test {
         vm.pauseGasMetering();
 
         deal(USDC, address(aliceWallet), 100_000e6);
-        uint40 swapInterval = 86_400; // 1 day interval
         uint256 amountToSwap1 = 10 ether;
         uint256 amountToSwap2 = 5 ether;
         bytes32[] memory submissionTokens;
@@ -457,7 +462,8 @@ contract RecurringSwapTest is Test {
             // Two swap configs using the same nonce: one to swap 10 ETH and the other to swap 5 ETH
             RecurringSwap.SwapConfig memory swapConfig1 = _createSwapConfig({
                 startTime: block.timestamp,
-                swapInterval: swapInterval,
+                swapInterval: SWAP_WINDOW_INTERVAL,
+                swapLength: SWAP_WINDOW_LENGTH,
                 amount: amountToSwap1,
                 isExactOut: true
             });
@@ -471,7 +477,8 @@ contract RecurringSwapTest is Test {
             op1.expiry = type(uint256).max;
             RecurringSwap.SwapConfig memory swapConfig2 = _createSwapConfig({
                 startTime: block.timestamp,
-                swapInterval: swapInterval,
+                swapInterval: SWAP_WINDOW_INTERVAL,
+                swapLength: SWAP_WINDOW_LENGTH,
                 amount: amountToSwap2,
                 isExactOut: true
             });
@@ -507,7 +514,7 @@ contract RecurringSwapTest is Test {
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToSwap1 + amountToSwap2);
 
         // 2. Warp until next swap period
-        vm.warp(block.timestamp + swapInterval);
+        vm.warp(block.timestamp + SWAP_WINDOW_INTERVAL);
 
         // 3a. Execute recurring swap order #1
         aliceWallet.executeQuarkOperationWithSubmissionToken(op1, submissionTokens[2], v1, r1, s1);
@@ -523,7 +530,7 @@ contract RecurringSwapTest is Test {
         aliceWallet.executeQuarkOperationWithSubmissionToken(cancelOp, submissionTokens[4], v3, r3, s3);
 
         // 5. Warp until next swap period
-        vm.warp(block.timestamp + swapInterval);
+        vm.warp(block.timestamp + SWAP_WINDOW_INTERVAL);
 
         // 6. Both recurring swap orders can no longer be executed
         vm.expectRevert(
@@ -547,11 +554,11 @@ contract RecurringSwapTest is Test {
         vm.pauseGasMetering();
 
         deal(USDC, address(aliceWallet), 100_000e6);
-        uint40 swapInterval = 86_400; // 1 day interval
         uint256 amountToSwap = 10 ether;
         RecurringSwap.SwapConfig memory swapConfig = _createSwapConfig({
             startTime: block.timestamp,
-            swapInterval: swapInterval,
+            swapInterval: SWAP_WINDOW_INTERVAL,
+            swapLength: SWAP_WINDOW_LENGTH,
             amount: amountToSwap,
             isExactOut: true
         });
@@ -576,7 +583,7 @@ contract RecurringSwapTest is Test {
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToSwap);
 
         // 2. Skip a few swap intervals by warping past multiple swap intervals
-        vm.warp(block.timestamp + 10 * swapInterval);
+        vm.warp(block.timestamp + 10 * SWAP_WINDOW_INTERVAL);
 
         // 3. Execute recurring swap a second time
         aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[1], v1, r1, s1);
@@ -586,7 +593,10 @@ contract RecurringSwapTest is Test {
         // 4. Cannot buy again at the current timestamp even though we skipped a few swap intervals
         vm.expectRevert(
             abi.encodeWithSelector(
-                RecurringSwap.SwapWindowNotOpen.selector, block.timestamp + swapInterval, block.timestamp
+                RecurringSwap.SwapWindowNotOpen.selector,
+                block.timestamp + SWAP_WINDOW_INTERVAL,
+                SWAP_WINDOW_LENGTH,
+                block.timestamp
             )
         );
         aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[2], v1, r1, s1);
@@ -598,7 +608,6 @@ contract RecurringSwapTest is Test {
         // gas: disable gas metering except while executing operations
         vm.pauseGasMetering();
 
-        uint40 swapInterval = 86_400; // 1 day interval
         uint256 amountToSwap = 10 ether;
         RecurringSwap.SlippageParams memory invalidSlippageParams1 = RecurringSwap.SlippageParams({
             maxSlippage: 1e17, // 1%
@@ -612,14 +621,16 @@ contract RecurringSwapTest is Test {
         });
         RecurringSwap.SwapConfig memory invalidSwapConfig1 = _createSwapConfig({
             startTime: block.timestamp,
-            swapInterval: swapInterval,
+            swapInterval: SWAP_WINDOW_INTERVAL,
+            swapLength: SWAP_WINDOW_LENGTH,
             amount: amountToSwap,
             isExactOut: true,
             slippageParams: invalidSlippageParams1
         });
         RecurringSwap.SwapConfig memory invalidSwapConfig2 = _createSwapConfig({
             startTime: block.timestamp,
-            swapInterval: swapInterval,
+            swapInterval: SWAP_WINDOW_INTERVAL,
+            swapLength: SWAP_WINDOW_LENGTH,
             amount: amountToSwap,
             isExactOut: true,
             slippageParams: invalidSlippageParams2
@@ -653,11 +664,11 @@ contract RecurringSwapTest is Test {
         vm.pauseGasMetering();
 
         deal(USDC, address(aliceWallet), 100_000e6);
-        uint40 swapInterval = 86_400; // 1 day interval
         uint256 amountToSwap = 10 ether;
         RecurringSwap.SwapConfig memory swapConfig = _createSwapConfig({
             startTime: block.timestamp,
-            swapInterval: swapInterval,
+            swapInterval: SWAP_WINDOW_INTERVAL,
+            swapLength: SWAP_WINDOW_LENGTH,
             amount: amountToSwap,
             isExactOut: true
         });
@@ -683,7 +694,10 @@ contract RecurringSwapTest is Test {
         // 2. Cannot buy again unless time interval has passed
         vm.expectRevert(
             abi.encodeWithSelector(
-                RecurringSwap.SwapWindowNotOpen.selector, block.timestamp + swapInterval, block.timestamp
+                RecurringSwap.SwapWindowNotOpen.selector,
+                block.timestamp + SWAP_WINDOW_INTERVAL,
+                SWAP_WINDOW_LENGTH,
+                block.timestamp
             )
         );
         aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[1], v1, r1, s1);
@@ -691,16 +705,69 @@ contract RecurringSwapTest is Test {
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToSwap);
     }
 
+    function testRevertsForSwapWhenSwapWindowIsClosed() public {
+        // gas: disable gas metering except while executing operations
+        vm.pauseGasMetering();
+
+        deal(USDC, address(aliceWallet), 100_000e6);
+        uint256 amountToSwap = 10 ether;
+        uint256 windowLength = 30;
+        RecurringSwap.SwapConfig memory swapConfig = _createSwapConfig({
+            startTime: block.timestamp,
+            swapInterval: SWAP_WINDOW_INTERVAL,
+            swapLength: windowLength,
+            amount: amountToSwap,
+            isExactOut: true
+        });
+        (QuarkWallet.QuarkOperation memory op, bytes32[] memory submissionTokens) = new QuarkOperationHelper()
+            .newReplayableOpWithCalldata(
+            aliceWallet,
+            recurringSwap,
+            abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig),
+            ScriptType.ScriptAddress,
+            2
+        );
+        op.expiry = type(uint256).max;
+        (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
+
+        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 0 ether);
+
+        // gas: meter execute
+        vm.resumeGasMetering();
+        // 1. Execute recurring swap for the first time
+        aliceWallet.executeQuarkOperation(op, v1, r1, s1);
+
+        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToSwap);
+
+        // 2. Warp a window into the future and execute a second swap
+        vm.warp(block.timestamp + SWAP_WINDOW_INTERVAL);
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[1], v1, r1, s1);
+
+        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 2 * amountToSwap);
+
+        // 3. Warp more than a window into the future and fail to execute a third swap
+        vm.warp(block.timestamp + SWAP_WINDOW_INTERVAL + windowLength + 1);
+        uint256 lastWindowStart = block.timestamp - windowLength - 1;
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                RecurringSwap.SwapWindowClosed.selector, lastWindowStart, windowLength, block.timestamp
+            )
+        );
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[2], v1, r1, s1);
+
+        assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 2 * amountToSwap);
+    }
+
     function testRevertsForSwapBeforeStartTime() public {
         // gas: disable gas metering except while executing operations
         vm.pauseGasMetering();
 
         deal(USDC, address(aliceWallet), 100_000e6);
-        uint40 swapInterval = 86_400; // 1 day interval
         uint256 amountToSwap = 10 ether;
         RecurringSwap.SwapConfig memory swapConfig = _createSwapConfig({
             startTime: block.timestamp + 100,
-            swapInterval: swapInterval,
+            swapInterval: SWAP_WINDOW_INTERVAL,
+            swapLength: SWAP_WINDOW_LENGTH,
             amount: amountToSwap,
             isExactOut: true
         });
@@ -716,7 +783,9 @@ contract RecurringSwapTest is Test {
 
         // gas: meter execute
         vm.expectRevert(
-            abi.encodeWithSelector(RecurringSwap.SwapWindowNotOpen.selector, block.timestamp + 100, block.timestamp)
+            abi.encodeWithSelector(
+                RecurringSwap.SwapWindowNotOpen.selector, block.timestamp + 100, SWAP_WINDOW_LENGTH, block.timestamp
+            )
         );
         aliceWallet.executeQuarkOperation(op, v1, r1, s1);
     }
@@ -726,11 +795,11 @@ contract RecurringSwapTest is Test {
         vm.pauseGasMetering();
 
         deal(USDC, address(aliceWallet), 100_000e6);
-        uint40 swapInterval = 86_400; // 1 day interval
         uint256 amountToSwap = 10 ether;
         RecurringSwap.SwapConfig memory swapConfig = _createSwapConfig({
             startTime: block.timestamp,
-            swapInterval: swapInterval,
+            swapInterval: SWAP_WINDOW_INTERVAL,
+            swapLength: SWAP_WINDOW_LENGTH,
             amount: amountToSwap,
             isExactOut: true
         });
@@ -754,7 +823,6 @@ contract RecurringSwapTest is Test {
         vm.pauseGasMetering();
 
         deal(USDC, address(aliceWallet), 100_000e6);
-        uint40 swapInterval = 86_400; // 1 day interval
         uint256 amountToSell = 3_000e6;
         RecurringSwap.SlippageParams memory slippageParams = RecurringSwap.SlippageParams({
             maxSlippage: 0e18, // 0% accepted slippage
@@ -763,7 +831,8 @@ contract RecurringSwapTest is Test {
         });
         RecurringSwap.SwapConfig memory swapConfig = _createSwapConfig({
             startTime: block.timestamp,
-            swapInterval: swapInterval,
+            swapInterval: SWAP_WINDOW_INTERVAL,
+            swapLength: SWAP_WINDOW_LENGTH,
             amount: amountToSell,
             isExactOut: false,
             slippageParams: slippageParams
@@ -789,7 +858,6 @@ contract RecurringSwapTest is Test {
         vm.pauseGasMetering();
 
         deal(USDC, address(aliceWallet), 100_000e6);
-        uint40 swapInterval = 86_400; // 1 day interval
         uint256 amountToSell = 3_000e6;
         RecurringSwap.SlippageParams memory slippageParams = RecurringSwap.SlippageParams({
             maxSlippage: 5e17, // 5% accepted slippage
@@ -798,7 +866,8 @@ contract RecurringSwapTest is Test {
         });
         RecurringSwap.SwapConfig memory swapConfig = _createSwapConfig({
             startTime: block.timestamp,
-            swapInterval: swapInterval,
+            swapInterval: SWAP_WINDOW_INTERVAL,
+            swapLength: SWAP_WINDOW_LENGTH,
             amount: amountToSell,
             isExactOut: false,
             slippageParams: slippageParams
@@ -847,11 +916,13 @@ contract RecurringSwapTest is Test {
         return arr;
     }
 
-    function _createSwapConfig(uint256 startTime, uint256 swapInterval, uint256 amount, bool isExactOut)
-        internal
-        view
-        returns (RecurringSwap.SwapConfig memory)
-    {
+    function _createSwapConfig(
+        uint256 startTime,
+        uint256 swapInterval,
+        uint256 swapLength,
+        uint256 amount,
+        bool isExactOut
+    ) internal view returns (RecurringSwap.SwapConfig memory) {
         RecurringSwap.SlippageParams memory slippageParams = RecurringSwap.SlippageParams({
             maxSlippage: 1e17, // 1%
             priceFeeds: _array1(ETH_USD_PRICE_FEED),
@@ -860,6 +931,7 @@ contract RecurringSwapTest is Test {
         return _createSwapConfig({
             startTime: startTime,
             swapInterval: swapInterval,
+            swapLength: swapLength,
             amount: amount,
             isExactOut: isExactOut,
             slippageParams: slippageParams
@@ -869,10 +941,13 @@ contract RecurringSwapTest is Test {
     function _createSwapConfig(
         uint256 startTime,
         uint256 swapInterval,
+        uint256 swapLength,
         uint256 amount,
         bool isExactOut,
         RecurringSwap.SlippageParams memory slippageParams
     ) internal view returns (RecurringSwap.SwapConfig memory) {
+        RecurringSwap.SwapWindow memory swapWindow =
+            RecurringSwap.SwapWindow({startTime: startTime, interval: swapInterval, length: swapLength});
         bytes memory swapPath;
         if (isExactOut) {
             // Exact out swap
@@ -890,12 +965,8 @@ contract RecurringSwapTest is Test {
             isExactOut: isExactOut,
             path: swapPath
         });
-        RecurringSwap.SwapConfig memory swapConfig = RecurringSwap.SwapConfig({
-            startTime: startTime,
-            interval: swapInterval,
-            swapParams: swapParams,
-            slippageParams: slippageParams
-        });
+        RecurringSwap.SwapConfig memory swapConfig =
+            RecurringSwap.SwapConfig({swapWindow: swapWindow, swapParams: swapParams, slippageParams: slippageParams});
         return swapConfig;
     }
 }
