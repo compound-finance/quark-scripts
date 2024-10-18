@@ -172,13 +172,13 @@ contract QuotecallTest is Test {
             ),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         // gas: meter execute
         vm.resumeGasMetering();
         vm.expectEmit(true, true, true, true);
         emit PayForGas(address(wallet), tx.origin, USDC, 10e6);
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
 
         assertEq(counter.number(), 15);
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 990e6);
@@ -209,13 +209,13 @@ contract QuotecallTest is Test {
             ),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         // gas: meter execute
         vm.resumeGasMetering();
         vm.expectEmit(true, true, true, true);
         emit PayForGas(address(wallet), tx.origin, USDC, 10e6);
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
 
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 980e6);
         assertEq(IERC20(USDC).balanceOf(address(this)), 10e6);
@@ -244,11 +244,11 @@ contract QuotecallTest is Test {
             ScriptType.ScriptSource
         );
 
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         // gas: meter execute
         vm.resumeGasMetering();
-        bytes memory quarkReturn = wallet.executeQuarkOperation(op, v, r, s);
+        bytes memory quarkReturn = wallet.executeQuarkOperation(op, signature);
         bytes memory returnData = abi.decode(quarkReturn, (bytes));
         bytes memory returnData2 = abi.decode(returnData, (bytes));
 
@@ -282,12 +282,12 @@ contract QuotecallTest is Test {
             ),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         vm.resumeGasMetering();
         vm.expectEmit(true, true, true, true);
         emit PayForGas(address(wallet), tx.origin, USDT, 10e6);
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
 
         assertEq(IERC20(WETH).balanceOf(address(this)), 1 ether);
         // About $8 in USD fees
@@ -320,12 +320,12 @@ contract QuotecallTest is Test {
             ),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         vm.resumeGasMetering();
         vm.expectEmit(true, true, true, true);
         emit PayForGas(address(wallet), tx.origin, WBTC, 30e3);
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
 
         assertEq(IERC20(WETH).balanceOf(address(this)), 1 ether);
         assertEq(IERC20(WBTC).balanceOf(address(wallet)), 99_970_000);
@@ -357,11 +357,11 @@ contract QuotecallTest is Test {
             ),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         vm.resumeGasMetering();
         vm.expectRevert(abi.encodeWithSelector(Quotecall.QuoteToleranceExceeded.selector));
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
 
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 1000e6);
     }
@@ -392,11 +392,11 @@ contract QuotecallTest is Test {
             ),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         vm.resumeGasMetering();
         vm.expectRevert(abi.encodeWithSelector(Quotecall.QuoteToleranceExceeded.selector));
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
 
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 1000e6);
     }
@@ -416,12 +416,12 @@ contract QuotecallTest is Test {
             abi.encodeWithSelector(Quotecall.run.selector, revertsAddress, "", 8e6),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         // gas: meter execute
         vm.resumeGasMetering();
         vm.expectRevert(abi.encodeWithSelector(Reverts.Whoops.selector));
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
 
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 1000e6);
     }

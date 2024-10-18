@@ -55,12 +55,12 @@ contract WrapperScriptsTest is Test {
             abi.encodeWithSelector(WrapperActions.wrapETH.selector, WETH, 10 ether),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         assertEq(IERC20(WETH).balanceOf(address(wallet)), 0 ether);
         assertEq(address(wallet).balance, 10 ether);
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
         assertEq(IERC20(WETH).balanceOf(address(wallet)), 10 ether);
         assertEq(address(wallet).balance, 0 ether);
     }
@@ -77,12 +77,12 @@ contract WrapperScriptsTest is Test {
             abi.encodeWithSelector(WrapperActions.unwrapWETH.selector, WETH, 10 ether),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         assertEq(IERC20(WETH).balanceOf(address(wallet)), 10 ether);
         assertEq(address(wallet).balance, 0 ether);
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
         assertEq(IERC20(WETH).balanceOf(address(wallet)), 0 ether);
         assertEq(address(wallet).balance, 10 ether);
     }
@@ -104,12 +104,12 @@ contract WrapperScriptsTest is Test {
             abi.encodeWithSelector(WrapperActions.wrapLidoStETH.selector, wstETH, stETH, 10 ether),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 0 ether);
         assertApproxEqAbs(IERC20(stETH).balanceOf(address(wallet)), 10 ether, 0.01 ether);
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
         assertEq(IERC20(stETH).balanceOf(address(wallet)), 0 ether);
         assertApproxEqAbs(IERC20(wstETH).balanceOf(address(wallet)), 8.74 ether, 0.01 ether);
     }
@@ -126,12 +126,12 @@ contract WrapperScriptsTest is Test {
             abi.encodeWithSelector(WrapperActions.unwrapLidoWstETH.selector, wstETH, 10 ether),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         assertEq(IERC20(stETH).balanceOf(address(wallet)), 0 ether);
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 10 ether);
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
         assertApproxEqAbs(IERC20(stETH).balanceOf(address(wallet)), 11.44 ether, 0.01 ether);
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 0 ether);
     }

@@ -166,13 +166,13 @@ contract PaycallTest is Test {
             ),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         // gas: meter execute
         vm.resumeGasMetering();
         vm.expectEmit(true, true, true, false); // We ignore the amount because it will differ based on via-IR
         emit PayForGas(address(wallet), tx.origin, USDC, 10_658_763);
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
 
         assertEq(counter.number(), 15);
         assertApproxEqAbs(IERC20(USDC).balanceOf(address(wallet)), 989e6, 1e6);
@@ -203,13 +203,13 @@ contract PaycallTest is Test {
             ),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         // gas: meter execute
         vm.resumeGasMetering();
         vm.expectEmit(true, true, true, false); // We ignore the amount because it will differ based on via-IR
         emit PayForGas(address(wallet), tx.origin, USDC, 10_921_630);
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
 
         assertApproxEqAbs(IERC20(USDC).balanceOf(address(wallet)), 979e6, 1e6);
         assertEq(IERC20(USDC).balanceOf(address(this)), 10e6);
@@ -264,13 +264,13 @@ contract PaycallTest is Test {
             ),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         // gas: meter execute
         vm.resumeGasMetering();
         vm.expectEmit(true, true, true, false); // We ignore the amount because it will differ based on via-IR
         emit PayForGas(address(wallet), tx.origin, USDC, 21_450_507);
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
 
         assertApproxEqAbs(IERC20(USDC).balanceOf(address(wallet)), 978e6, 1e6);
         assertEq(IComet(cUSDCv3).collateralBalanceOf(address(wallet), WETH), 100 ether);
@@ -299,11 +299,11 @@ contract PaycallTest is Test {
             ScriptType.ScriptSource
         );
 
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         // gas: meter execute
         vm.resumeGasMetering();
-        bytes memory quarkReturn = wallet.executeQuarkOperation(op, v, r, s);
+        bytes memory quarkReturn = wallet.executeQuarkOperation(op, signature);
         bytes memory returnData = abi.decode(quarkReturn, (bytes));
         bytes memory returnData2 = abi.decode(returnData, (bytes));
 
@@ -337,12 +337,12 @@ contract PaycallTest is Test {
             ),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         vm.resumeGasMetering();
         vm.expectEmit(true, true, true, false); // We ignore the amount because it will differ based on via-IR
         emit PayForGas(address(wallet), tx.origin, USDT, 10_488_771);
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
 
         assertEq(IERC20(WETH).balanceOf(address(this)), 1 ether);
         // About $8 in USD fees
@@ -375,12 +375,12 @@ contract PaycallTest is Test {
             ),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         vm.resumeGasMetering();
         vm.expectEmit(true, true, true, false); // We ignore the amount because it will differ based on via-IR
         emit PayForGas(address(wallet), tx.origin, WBTC, 30_228);
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
 
         assertEq(IERC20(WETH).balanceOf(address(this)), 1 ether);
         // Fees in WBTC will be around ~ 0.00021 WBTC
@@ -413,11 +413,11 @@ contract PaycallTest is Test {
             ),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         vm.resumeGasMetering();
         vm.expectRevert(abi.encodeWithSelector(Paycall.TransactionTooExpensive.selector, 5_000_000, 10_478_744));
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
 
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 1000e6);
     }
@@ -437,12 +437,12 @@ contract PaycallTest is Test {
             abi.encodeWithSelector(Paycall.run.selector, revertsAddress, "", 20e6),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         // gas: meter execute
         vm.resumeGasMetering();
         vm.expectRevert(abi.encodeWithSelector(Reverts.Whoops.selector));
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
 
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 1000e6);
     }

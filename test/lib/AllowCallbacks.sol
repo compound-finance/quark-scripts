@@ -13,6 +13,6 @@ contract AllowCallbacks is QuarkScript {
     }
 
     function clear() public {
-        clearCallback();
+        disallowCallback();
     }
 }

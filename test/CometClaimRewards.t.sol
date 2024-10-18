@@ -69,11 +69,11 @@ contract CometClaimRewardsTest is Test {
             abi.encodeCall(CometClaimRewards.claim, (cometRewards, comets, address(wallet))),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         assertEq(IERC20(COMP).balanceOf(address(wallet)), 0e6);
 
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
 
         assertGt(IERC20(COMP).balanceOf(address(wallet)), 0e6);
     }
