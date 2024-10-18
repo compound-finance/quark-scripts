@@ -63,9 +63,9 @@ contract WithdrawActionsTest is Test {
             abi.encodeWithSelector(CometWithdrawActions.withdraw.selector, comet, WETH, 10 ether),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
 
         assertEq(IComet(comet).collateralBalanceOf(address(wallet), WETH), 0 ether);
         assertEq(IERC20(WETH).balanceOf(address(wallet)), 10 ether);
@@ -91,9 +91,9 @@ contract WithdrawActionsTest is Test {
             abi.encodeWithSelector(CometWithdrawActions.withdrawTo.selector, comet, address(wallet2), WETH, 10 ether),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
 
         assertEq(IComet(comet).collateralBalanceOf(address(wallet), WETH), 0 ether);
         assertEq(IERC20(WETH).balanceOf(address(wallet2)), 10 ether);
@@ -122,9 +122,9 @@ contract WithdrawActionsTest is Test {
             ),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
 
         assertEq(IComet(comet).collateralBalanceOf(address(wallet2), WETH), 0 ether);
         assertEq(IERC20(WETH).balanceOf(address(wallet)), 10 ether);
@@ -147,7 +147,7 @@ contract WithdrawActionsTest is Test {
             abi.encodeWithSelector(CometWithdrawActions.withdraw.selector, comet, USDC, 100e6),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 0e6);
         assertEq(IERC20(WETH).balanceOf(address(wallet)), 0 ether);
@@ -155,7 +155,7 @@ contract WithdrawActionsTest is Test {
 
         // gas: meter execute
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
 
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 100e6);
         assertEq(IERC20(WETH).balanceOf(address(wallet)), 0 ether);
@@ -197,7 +197,7 @@ contract WithdrawActionsTest is Test {
             abi.encodeWithSelector(CometWithdrawActions.withdrawMultipleAssets.selector, comet, assets, amounts),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         assertEq(IComet(comet).collateralBalanceOf(address(wallet), WETH), 10 ether);
         assertEq(IComet(comet).collateralBalanceOf(address(wallet), LINK), 1000e18);
@@ -206,7 +206,7 @@ contract WithdrawActionsTest is Test {
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 0e6);
 
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
         assertEq(IComet(comet).collateralBalanceOf(address(wallet), WETH), 0 ether);
         assertEq(IComet(comet).collateralBalanceOf(address(wallet), LINK), 0e18);
         assertEq(IERC20(WETH).balanceOf(address(wallet)), 10 ether);
@@ -231,10 +231,10 @@ contract WithdrawActionsTest is Test {
             abi.encodeWithSelector(CometWithdrawActions.withdrawMultipleAssets.selector, comet, assets, amounts),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         vm.expectRevert(abi.encodeWithSelector(DeFiScriptErrors.InvalidInput.selector));
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
     }
 }

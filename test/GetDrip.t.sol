@@ -42,12 +42,12 @@ contract GetDripTest is Test {
         QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
             wallet, getDripScript, abi.encodeCall(GetDrip.drip, (fauceteer, USDC)), ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         vm.resumeGasMetering();
 
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 0);
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
 
         // The drip always gives this amount
         assertNotEq(IERC20(USDC).balanceOf(address(wallet)), 0);

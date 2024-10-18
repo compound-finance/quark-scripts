@@ -101,7 +101,7 @@ contract RecurringSwapTest is Test {
             abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig),
             ScriptType.ScriptAddress
         );
-        (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
+        bytes memory signature1 = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 0 ether);
         assertEq(IERC20(USDC).balanceOf(address(aliceWallet)), startingUSDC);
@@ -118,7 +118,7 @@ contract RecurringSwapTest is Test {
             1_674_115_383_192_806_353, // 1.674 WETH
             abi.encodePacked(USDC, uint24(500), WETH)
         );
-        aliceWallet.executeQuarkOperation(op, v1, r1, s1);
+        aliceWallet.executeQuarkOperation(op, signature1);
 
         assertGt(IERC20(WETH).balanceOf(address(aliceWallet)), expectedAmountOutMinimum);
         assertEq(IERC20(USDC).balanceOf(address(aliceWallet)), startingUSDC - amountToSell);
@@ -147,7 +147,7 @@ contract RecurringSwapTest is Test {
             abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig),
             ScriptType.ScriptAddress
         );
-        (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
+        bytes memory signature1 = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 0 ether);
         assertEq(IERC20(USDC).balanceOf(address(aliceWallet)), startingUSDC);
@@ -164,7 +164,7 @@ contract RecurringSwapTest is Test {
             10 ether,
             abi.encodePacked(WETH, uint24(500), USDC)
         );
-        aliceWallet.executeQuarkOperation(op, v1, r1, s1);
+        aliceWallet.executeQuarkOperation(op, signature1);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToSwap);
         assertLt(IERC20(USDC).balanceOf(address(aliceWallet)), startingUSDC);
@@ -209,7 +209,7 @@ contract RecurringSwapTest is Test {
             abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig),
             ScriptType.ScriptAddress
         );
-        (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
+        bytes memory signature1 = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), startingWETH);
         assertEq(IERC20(USDC).balanceOf(address(aliceWallet)), 0e6);
@@ -226,7 +226,7 @@ contract RecurringSwapTest is Test {
             17_901_866_835, // 17,901.86 USDC
             abi.encodePacked(WETH, uint24(500), USDC)
         );
-        aliceWallet.executeQuarkOperation(op, v1, r1, s1);
+        aliceWallet.executeQuarkOperation(op, signature1);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), startingWETH - amountToSell);
         assertGt(IERC20(USDC).balanceOf(address(aliceWallet)), expectedAmountOutMinimum);
@@ -270,7 +270,7 @@ contract RecurringSwapTest is Test {
             abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig),
             ScriptType.ScriptAddress
         );
-        (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
+        bytes memory signature1 = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), startingWETH);
         assertEq(IERC20(USDC).balanceOf(address(aliceWallet)), 0e6);
@@ -287,7 +287,7 @@ contract RecurringSwapTest is Test {
             amountToSwap,
             abi.encodePacked(USDC, uint24(500), WETH)
         );
-        aliceWallet.executeQuarkOperation(op, v1, r1, s1);
+        aliceWallet.executeQuarkOperation(op, signature1);
 
         assertLt(IERC20(WETH).balanceOf(address(aliceWallet)), startingWETH);
         assertGt(IERC20(WETH).balanceOf(address(aliceWallet)), startingWETH - expectedAmountInMaximum);
@@ -316,14 +316,14 @@ contract RecurringSwapTest is Test {
             1
         );
         op.expiry = type(uint256).max;
-        (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
+        bytes memory signature1 = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 0 ether);
 
         // gas: meter execute
         vm.resumeGasMetering();
         // 1. Execute recurring swap for the first time
-        aliceWallet.executeQuarkOperation(op, v1, r1, s1);
+        aliceWallet.executeQuarkOperation(op, signature1);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToSwap);
 
@@ -336,11 +336,11 @@ contract RecurringSwapTest is Test {
                 block.timestamp
             )
         );
-        aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[1], v1, r1, s1);
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[1], signature1);
 
         // 2b. Execute recurring swap a second time after warping 1 day
         vm.warp(block.timestamp + SWAP_WINDOW_INTERVAL);
-        aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[1], v1, r1, s1);
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[1], signature1);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 2 * amountToSwap);
     }
@@ -367,23 +367,23 @@ contract RecurringSwapTest is Test {
             2
         );
         op.expiry = type(uint256).max;
-        (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
+        bytes memory signature1 = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
 
         QuarkWallet.QuarkOperation memory cancelOp = new QuarkOperationHelper().cancelReplayableByNop(aliceWallet, op);
         cancelOp.nonce = op.nonce;
-        (uint8 v2, bytes32 r2, bytes32 s2) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, cancelOp);
+        bytes memory signature2 = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, cancelOp);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 0 ether);
 
         // gas: meter execute
         vm.resumeGasMetering();
         // 1. Execute recurring swap for the first time
-        aliceWallet.executeQuarkOperation(op, v1, r1, s1);
+        aliceWallet.executeQuarkOperation(op, signature1);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToSwap);
 
         // 2. Cancel replayable transaction
-        aliceWallet.executeQuarkOperationWithSubmissionToken(cancelOp, submissionTokens[1], v2, r2, s2);
+        aliceWallet.executeQuarkOperationWithSubmissionToken(cancelOp, submissionTokens[1], signature2);
 
         // 3. Replayable transaction can no longer be executed
         vm.warp(block.timestamp + SWAP_WINDOW_INTERVAL);
@@ -392,14 +392,14 @@ contract RecurringSwapTest is Test {
                 QuarkNonceManager.NonReplayableNonce.selector, address(aliceWallet), op.nonce, submissionTokens[1]
             )
         );
-        aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[1], v1, r1, s1);
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[1], signature1);
 
         vm.expectRevert(
             abi.encodeWithSelector(
                 QuarkNonceManager.NonReplayableNonce.selector, address(aliceWallet), op.nonce, submissionTokens[2]
             )
         );
-        aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[2], v1, r1, s1);
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[2], signature1);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToSwap);
     }
@@ -433,14 +433,14 @@ contract RecurringSwapTest is Test {
             abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig),
             ScriptType.ScriptAddress
         );
-        (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
+        bytes memory signature1 = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 0 ether);
         assertEq(IERC20(USDC).balanceOf(address(aliceWallet)), startingUSDC);
 
         // gas: meter execute
         vm.resumeGasMetering();
-        aliceWallet.executeQuarkOperation(op, v1, r1, s1);
+        aliceWallet.executeQuarkOperation(op, signature1);
 
         assertGt(IERC20(WETH).balanceOf(address(aliceWallet)), expectedAmountOutMinimum);
         assertEq(IERC20(USDC).balanceOf(address(aliceWallet)), startingUSDC - amountToSell);
@@ -495,21 +495,21 @@ contract RecurringSwapTest is Test {
             cancelOp.expiry = type(uint256).max;
             cancelOp.nonce = op1.nonce;
         }
-        (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op1);
-        (uint8 v2, bytes32 r2, bytes32 s2) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op2);
-        (uint8 v3, bytes32 r3, bytes32 s3) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, cancelOp);
+        bytes memory signature1 = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op1);
+        bytes memory signature2 = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op2);
+        bytes memory signature3 = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, cancelOp);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 0 ether);
 
         // gas: meter execute
         vm.resumeGasMetering();
         // 1a. Execute recurring swap order #1
-        aliceWallet.executeQuarkOperation(op1, v1, r1, s1);
+        aliceWallet.executeQuarkOperation(op1, signature1);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToSwap1);
 
         // 1b. Execute recurring swap order #2
-        aliceWallet.executeQuarkOperationWithSubmissionToken(op2, submissionTokens[1], v2, r2, s2);
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op2, submissionTokens[1], signature2);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToSwap1 + amountToSwap2);
 
@@ -517,17 +517,17 @@ contract RecurringSwapTest is Test {
         vm.warp(block.timestamp + SWAP_WINDOW_INTERVAL);
 
         // 3a. Execute recurring swap order #1
-        aliceWallet.executeQuarkOperationWithSubmissionToken(op1, submissionTokens[2], v1, r1, s1);
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op1, submissionTokens[2], signature1);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 2 * amountToSwap1 + amountToSwap2);
 
         // 3b. Execute recurring swap order #2
-        aliceWallet.executeQuarkOperationWithSubmissionToken(op2, submissionTokens[3], v2, r2, s2);
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op2, submissionTokens[3], signature2);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 2 * amountToSwap1 + 2 * amountToSwap2);
 
         // 4. Cancel replayable transaction
-        aliceWallet.executeQuarkOperationWithSubmissionToken(cancelOp, submissionTokens[4], v3, r3, s3);
+        aliceWallet.executeQuarkOperationWithSubmissionToken(cancelOp, submissionTokens[4], signature3);
 
         // 5. Warp until next swap period
         vm.warp(block.timestamp + SWAP_WINDOW_INTERVAL);
@@ -538,13 +538,13 @@ contract RecurringSwapTest is Test {
                 QuarkNonceManager.NonReplayableNonce.selector, address(aliceWallet), op1.nonce, submissionTokens[4]
             )
         );
-        aliceWallet.executeQuarkOperationWithSubmissionToken(op1, submissionTokens[4], v1, r1, s1);
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op1, submissionTokens[4], signature1);
         vm.expectRevert(
             abi.encodeWithSelector(
                 QuarkNonceManager.NonReplayableNonce.selector, address(aliceWallet), op2.nonce, submissionTokens[5]
             )
         );
-        aliceWallet.executeQuarkOperationWithSubmissionToken(op2, submissionTokens[5], v2, r2, s2);
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op2, submissionTokens[5], signature2);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 2 * amountToSwap1 + 2 * amountToSwap2);
     }
@@ -571,14 +571,14 @@ contract RecurringSwapTest is Test {
             2
         );
         op.expiry = type(uint256).max;
-        (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
+        bytes memory signature1 = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 0 ether);
 
         // gas: meter execute
         vm.resumeGasMetering();
         // 1. Execute recurring swap for the first time
-        aliceWallet.executeQuarkOperation(op, v1, r1, s1);
+        aliceWallet.executeQuarkOperation(op, signature1);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToSwap);
 
@@ -586,7 +586,7 @@ contract RecurringSwapTest is Test {
         vm.warp(block.timestamp + 10 * SWAP_WINDOW_INTERVAL);
 
         // 3. Execute recurring swap a second time
-        aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[1], v1, r1, s1);
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[1], signature1);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 2 * amountToSwap);
 
@@ -599,7 +599,7 @@ contract RecurringSwapTest is Test {
                 block.timestamp
             )
         );
-        aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[2], v1, r1, s1);
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[2], signature1);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 2 * amountToSwap);
     }
@@ -647,16 +647,16 @@ contract RecurringSwapTest is Test {
             abi.encodeWithSelector(RecurringSwap.swap.selector, invalidSwapConfig2),
             ScriptType.ScriptAddress
         );
-        (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op1);
-        (uint8 v2, bytes32 r2, bytes32 s2) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op2);
+        bytes memory signature1 = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op1);
+        bytes memory signature2 = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op2);
 
         // gas: meter execute
         vm.resumeGasMetering();
         vm.expectRevert(RecurringSwap.InvalidInput.selector);
-        aliceWallet.executeQuarkOperation(op1, v1, r1, s1);
+        aliceWallet.executeQuarkOperation(op1, signature1);
 
         vm.expectRevert(RecurringSwap.InvalidInput.selector);
-        aliceWallet.executeQuarkOperation(op2, v2, r2, s2);
+        aliceWallet.executeQuarkOperation(op2, signature2);
     }
 
     function testRevertsForSwapBeforeNextSwapWindow() public {
@@ -680,14 +680,14 @@ contract RecurringSwapTest is Test {
             ScriptType.ScriptAddress,
             1
         );
-        (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
+        bytes memory signature1 = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 0 ether);
 
         // gas: meter execute
         vm.resumeGasMetering();
         // 1. Execute recurring swap for the first time
-        aliceWallet.executeQuarkOperation(op, v1, r1, s1);
+        aliceWallet.executeQuarkOperation(op, signature1);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToSwap);
 
@@ -700,7 +700,7 @@ contract RecurringSwapTest is Test {
                 block.timestamp
             )
         );
-        aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[1], v1, r1, s1);
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[1], signature1);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToSwap);
     }
@@ -728,20 +728,20 @@ contract RecurringSwapTest is Test {
             2
         );
         op.expiry = type(uint256).max;
-        (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
+        bytes memory signature1 = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 0 ether);
 
         // gas: meter execute
         vm.resumeGasMetering();
         // 1. Execute recurring swap for the first time
-        aliceWallet.executeQuarkOperation(op, v1, r1, s1);
+        aliceWallet.executeQuarkOperation(op, signature1);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToSwap);
 
         // 2. Warp a window into the future and execute a second swap
         vm.warp(block.timestamp + SWAP_WINDOW_INTERVAL);
-        aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[1], v1, r1, s1);
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[1], signature1);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 2 * amountToSwap);
 
@@ -753,7 +753,7 @@ contract RecurringSwapTest is Test {
                 RecurringSwap.SwapWindowClosed.selector, lastWindowStart, windowLength, block.timestamp
             )
         );
-        aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[2], v1, r1, s1);
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[2], signature1);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 2 * amountToSwap);
     }
@@ -777,7 +777,7 @@ contract RecurringSwapTest is Test {
             abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig),
             ScriptType.ScriptAddress
         );
-        (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
+        bytes memory signature1 = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 0 ether);
 
@@ -787,7 +787,7 @@ contract RecurringSwapTest is Test {
                 RecurringSwap.SwapWindowNotOpen.selector, block.timestamp + 100, SWAP_WINDOW_LENGTH, block.timestamp
             )
         );
-        aliceWallet.executeQuarkOperation(op, v1, r1, s1);
+        aliceWallet.executeQuarkOperation(op, signature1);
     }
 
     function testRevertsForExpiredQuarkOperation() public {
@@ -810,12 +810,12 @@ contract RecurringSwapTest is Test {
             ScriptType.ScriptAddress
         );
         op.expiry = block.timestamp - 1; // Set Quark operation expiry to always expire
-        (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
+        bytes memory signature1 = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
 
         // gas: meter execute
         vm.resumeGasMetering();
         vm.expectRevert(QuarkWallet.SignatureExpired.selector);
-        aliceWallet.executeQuarkOperation(op, v1, r1, s1);
+        aliceWallet.executeQuarkOperation(op, signature1);
     }
 
     function testRevertsWhenSlippageTooHigh() public {
@@ -843,14 +843,14 @@ contract RecurringSwapTest is Test {
             abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig),
             ScriptType.ScriptAddress
         );
-        (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
+        bytes memory signature1 = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 0 ether);
 
         // gas: meter execute
         vm.resumeGasMetering();
         vm.expectRevert(bytes("Too little received"));
-        aliceWallet.executeQuarkOperation(op, v1, r1, s1);
+        aliceWallet.executeQuarkOperation(op, signature1);
     }
 
     function testRevertsWhenSlippageParamsConfiguredWrong() public {
@@ -878,14 +878,14 @@ contract RecurringSwapTest is Test {
             abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig),
             ScriptType.ScriptAddress
         );
-        (uint8 v1, bytes32 r1, bytes32 s1) = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
+        bytes memory signature1 = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
 
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), 0 ether);
 
         // gas: meter execute
         vm.resumeGasMetering();
         vm.expectRevert(bytes("Too little received"));
-        aliceWallet.executeQuarkOperation(op, v1, r1, s1);
+        aliceWallet.executeQuarkOperation(op, signature1);
     }
 
     /* ===== helper functions ===== */

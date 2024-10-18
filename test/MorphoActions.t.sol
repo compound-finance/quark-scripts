@@ -65,7 +65,7 @@ contract MorphoActionsTest is Test {
             abi.encodeWithSelector(MorphoActions.repayAndWithdrawCollateral.selector, morpho, marketParams, 800e6, 5e18),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 1000e6);
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 0);
         (,, uint128 totalBorrowAssets, uint128 totalBorrowShares,,) = IMorpho(morpho).market(marketId(marketParams));
@@ -75,7 +75,7 @@ contract MorphoActionsTest is Test {
         );
 
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
 
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 200e6);
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 5e18);
@@ -102,12 +102,12 @@ contract MorphoActionsTest is Test {
             ),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 10e18);
         assertEq(IMorpho(morpho).position(marketId(marketParams), address(wallet)).collateral, 0);
 
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
 
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 0);
         assertEq(IMorpho(morpho).position(marketId(marketParams), address(wallet)).collateral, 10e18);
@@ -136,7 +136,7 @@ contract MorphoActionsTest is Test {
             ),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 1100e6);
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 0);
         (,, uint128 totalBorrowAssets, uint128 totalBorrowShares,,) = IMorpho(morpho).market(marketId(marketParams));
@@ -146,7 +146,7 @@ contract MorphoActionsTest is Test {
         );
 
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
 
         assertApproxEqAbs(IERC20(USDC).balanceOf(address(wallet)), 100e6, 0.01e6);
         assertEq(IMorpho(morpho).position(marketId(marketParams), address(wallet)).borrowShares, 0);

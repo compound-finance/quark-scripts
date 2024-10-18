@@ -73,10 +73,10 @@ contract UniswapSwapActionsTest is Test {
             ),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         // gas: meter execute
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
 
         uint256 wethBalance = IERC20(WETH).balanceOf(address(wallet));
         uint256 usdcBalance = IERC20(USDC).balanceOf(address(wallet));
@@ -102,9 +102,9 @@ contract UniswapSwapActionsTest is Test {
             ScriptType.ScriptSource
         );
 
-        (uint8 v2, bytes32 r2, bytes32 s2) = new SignatureHelper().signOp(alicePrivateKey, wallet, op2);
+        bytes memory signature2 = new SignatureHelper().signOp(alicePrivateKey, wallet, op2);
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op2, v2, r2, s2);
+        wallet.executeQuarkOperation(op2, signature2);
         assertEq(IERC20(WETH).balanceOf(address(wallet)), wethBalance + 1 ether);
         assertGe(IERC20(USDC).balanceOf(address(wallet)), usdcBalance - 2000e6);
     }
@@ -133,9 +133,9 @@ contract UniswapSwapActionsTest is Test {
             ),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
         uint256 compBalance = IERC20(COMP).balanceOf(address(wallet));
         uint256 usdcBalance = IERC20(USDC).balanceOf(address(wallet));
         assertGe(compBalance, 40e18);
@@ -159,9 +159,9 @@ contract UniswapSwapActionsTest is Test {
             ),
             ScriptType.ScriptSource
         );
-        (uint8 v2, bytes32 r2, bytes32 s2) = new SignatureHelper().signOp(alicePrivateKey, wallet, op2);
+        bytes memory signature2 = new SignatureHelper().signOp(alicePrivateKey, wallet, op2);
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op2, v2, r2, s2);
+        wallet.executeQuarkOperation(op2, signature2);
         assertEq(IERC20(COMP).balanceOf(address(wallet)), compBalance + 40e18);
         assertGe(IERC20(USDC).balanceOf(address(wallet)), usdcBalance - 2000e6);
     }
@@ -190,9 +190,9 @@ contract UniswapSwapActionsTest is Test {
             ),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
         uint256 wethBalance = IERC20(WETH).balanceOf(address(wallet));
         uint256 usdcBalance = IERC20(USDC).balanceOf(address(wallet));
         assertEq(wethBalance, 1 ether);
@@ -215,9 +215,9 @@ contract UniswapSwapActionsTest is Test {
             ),
             ScriptType.ScriptSource
         );
-        (uint8 v2, bytes32 r2, bytes32 s2) = new SignatureHelper().signOp(alicePrivateKey, wallet, op2);
+        bytes memory signature2 = new SignatureHelper().signOp(alicePrivateKey, wallet, op2);
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op2, v2, r2, s2);
+        wallet.executeQuarkOperation(op2, signature2);
         assertGe(IERC20(WETH).balanceOf(address(wallet)), 0);
         assertEq(IERC20(USDC).balanceOf(address(wallet)), usdcBalance + 1600e6);
     }
@@ -246,9 +246,9 @@ contract UniswapSwapActionsTest is Test {
             ),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
         uint256 compBalance = IERC20(COMP).balanceOf(address(wallet));
         uint256 usdcBalance = IERC20(USDC).balanceOf(address(wallet));
         assertEq(compBalance, 50e18);
@@ -271,9 +271,9 @@ contract UniswapSwapActionsTest is Test {
             ),
             ScriptType.ScriptSource
         );
-        (uint8 v2, bytes32 r2, bytes32 s2) = new SignatureHelper().signOp(alicePrivateKey, wallet, op2);
+        bytes memory signature2 = new SignatureHelper().signOp(alicePrivateKey, wallet, op2);
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op2, v2, r2, s2);
+        wallet.executeQuarkOperation(op2, signature2);
         assertGe(IERC20(COMP).balanceOf(address(wallet)), 0);
         assertEq(IERC20(USDC).balanceOf(address(wallet)), usdcBalance + 1500e6);
     }
@@ -305,9 +305,9 @@ contract UniswapSwapActionsTest is Test {
             ScriptType.ScriptSource
         );
 
-        (uint8 v2, bytes32 r2, bytes32 s2) = new SignatureHelper().signOp(alicePrivateKey, wallet, op2);
+        bytes memory signature2 = new SignatureHelper().signOp(alicePrivateKey, wallet, op2);
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op2, v2, r2, s2);
+        wallet.executeQuarkOperation(op2, signature2);
         assertEq(IERC20(WETH).balanceOf(address(wallet)), wethBalance + 1 ether);
         assertGe(IERC20(USDC).balanceOf(address(wallet)), usdcBalance - 2000e6);
         assertEq(IERC20(USDC).allowance(address(wallet), uniswapRouter), 0);
