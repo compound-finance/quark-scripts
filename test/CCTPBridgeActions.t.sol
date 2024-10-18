@@ -59,11 +59,11 @@ contract CCTPBridge is Test {
             ),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 1_000_000e6);
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 500_000e6);
     }
 }

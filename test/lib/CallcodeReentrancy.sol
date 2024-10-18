@@ -23,11 +23,10 @@ contract ExploitableScript is QuarkScript, CallbackReceiver {
         return result;
     }
 
-    // protected by `onlyWallet`, but still susceptible to recursive re-entrancy due to using `delegatecall`
     function callMeBackDelegateCall(address target, bytes calldata call, uint256 fee)
         external
         payable
-        onlyWallet
+        nonReentrant
         returns (bytes memory)
     {
         allowCallback();
@@ -56,7 +55,7 @@ contract ProtectedScript is QuarkScript, CallbackReceiver {
     function callMeBack(address target, bytes calldata call, uint256 fee)
         external
         payable
-        onlyWallet
+        nonReentrant
         returns (bytes memory)
     {
         allowCallback();

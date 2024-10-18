@@ -132,7 +132,7 @@ contract RecurringSwap is QuarkScript {
 
         // Emit the swap event
         emit SwapExecuted(
-            msg.sender,
+            address(this),
             config.swapParams.recipient,
             config.swapParams.tokenIn,
             config.swapParams.tokenOut,

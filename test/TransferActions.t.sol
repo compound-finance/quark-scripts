@@ -72,9 +72,9 @@ contract TransferActionsTest is Test {
             ScriptType.ScriptSource
         );
 
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
         assertEq(IERC20(WETH).balanceOf(address(wallet)), 0 ether);
         assertEq(IERC20(WETH).balanceOf(bob), 10 ether);
     }
@@ -93,9 +93,9 @@ contract TransferActionsTest is Test {
             abi.encodeWithSelector(TransferActions.transferERC20Token.selector, WETH, address(walletBob), 10 ether),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
         assertEq(IERC20(WETH).balanceOf(address(wallet)), 0 ether);
         assertEq(IERC20(WETH).balanceOf(address(walletBob)), 10 ether);
     }
@@ -114,9 +114,9 @@ contract TransferActionsTest is Test {
             abi.encodeWithSelector(TransferActions.transferNativeToken.selector, bob, 10 ether),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
         // assert on native ETH balance
         assertEq(address(wallet).balance, 0 ether);
         assertEq(bob.balance, 10 ether);
@@ -133,11 +133,11 @@ contract TransferActionsTest is Test {
             abi.encodeWithSelector(TransferActions.transferNativeToken.selector, address(walletBob), 10 ether),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         assertEq(address(wallet).balance, 10 ether);
         assertEq(address(walletBob).balance, 0 ether);
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
         // assert on native ETH balance
         assertEq(address(wallet).balance, 0 ether);
         assertEq(address(walletBob).balance, 10 ether);
@@ -169,12 +169,12 @@ contract TransferActionsTest is Test {
             abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         assertEq(address(wallet).balance, 10 ether);
         assertEq(address(evilReceiver).balance, 0 ether);
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
         assertEq(address(wallet).balance, 7 ether);
         assertEq(address(evilReceiver).balance, 3 ether);
     }
@@ -209,12 +209,12 @@ contract TransferActionsTest is Test {
             abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         assertEq(IERC20(victimERC777).balanceOf(address(wallet)), 10 ether);
         assertEq(IERC20(victimERC777).balanceOf(address(evilReceiver)), 0 ether);
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
         // Attacker successfully transfers 3 eth by exploiting reentrancy in 1eth transfers
         assertEq(IERC20(victimERC777).balanceOf(address(wallet)), 7 ether);
         assertEq(IERC20(victimERC777).balanceOf(address(evilReceiver)), 3 ether);
@@ -246,12 +246,12 @@ contract TransferActionsTest is Test {
             abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         assertEq(address(wallet).balance, 10 ether);
         assertEq(address(evilReceiver).balance, 0 ether);
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
         assertEq(address(wallet).balance, 9 ether);
         assertEq(address(evilReceiver).balance, 1 ether);
     }
@@ -286,12 +286,12 @@ contract TransferActionsTest is Test {
             abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         assertEq(IERC20(victimERC777).balanceOf(address(wallet)), 10 ether);
         assertEq(IERC20(victimERC777).balanceOf(address(evilReceiver)), 0 ether);
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
         assertEq(IERC20(victimERC777).balanceOf(address(wallet)), 9 ether);
         assertEq(IERC20(victimERC777).balanceOf(address(evilReceiver)), 1 ether);
     }
@@ -321,7 +321,7 @@ contract TransferActionsTest is Test {
             abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         assertEq(address(wallet).balance, 10 ether);
         assertEq(address(evilReceiver).balance, 0 ether);
@@ -336,7 +336,7 @@ contract TransferActionsTest is Test {
                 )
             )
         );
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
         assertEq(address(wallet).balance, 10 ether);
         assertEq(address(evilReceiver).balance, 0 ether);
     }
@@ -370,7 +370,7 @@ contract TransferActionsTest is Test {
             abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         assertEq(IERC20(victimERC777).balanceOf(address(wallet)), 10 ether);
         assertEq(IERC20(victimERC777).balanceOf(address(evilReceiver)), 0 ether);
@@ -383,7 +383,7 @@ contract TransferActionsTest is Test {
                 abi.encodeWithSelector(QuarkScript.ReentrantCall.selector)
             )
         );
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
         assertEq(IERC20(victimERC777).balanceOf(address(wallet)), 10 ether);
         assertEq(IERC20(victimERC777).balanceOf(address(evilReceiver)), 0 ether);
     }
@@ -402,7 +402,7 @@ contract TransferActionsTest is Test {
             abi.encodeWithSelector(TransferActions.transferNativeToken.selector, address(evilReceiver), 1 ether),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         assertEq(address(wallet).balance, 10 ether);
         assertEq(address(evilReceiver).balance, 0 ether);
@@ -413,7 +413,7 @@ contract TransferActionsTest is Test {
             )
         );
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
         assertEq(address(wallet).balance, 10 ether);
         assertEq(address(evilReceiver).balance, 0 ether);
     }
@@ -432,8 +432,8 @@ contract TransferActionsTest is Test {
             abi.encodeWithSelector(TransferActions.transferNativeToken.selector, address(evilReceiver), 1 ether),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
-        evilReceiver.stealSignature(EvilReceiver.StolenSignature(op, v, r, s));
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        evilReceiver.stealSignature(EvilReceiver.StolenSignature(op, signature));
 
         assertEq(address(wallet).balance, 10 ether);
         assertEq(address(evilReceiver).balance, 0 ether);
@@ -447,7 +447,7 @@ contract TransferActionsTest is Test {
                 )
             )
         );
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
         // assert on native ETH balance
         assertEq(address(wallet).balance, 10 ether);
         assertEq(address(evilReceiver).balance, 0 ether);

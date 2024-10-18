@@ -57,11 +57,11 @@ contract SupplyActionsTest is Test {
             abi.encodeWithSelector(CometSupplyActions.supply.selector, comet, WETH, 10 ether),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         assertEq(IERC20(WETH).balanceOf(address(wallet)), 10 ether);
         assertEq(IComet(comet).collateralBalanceOf(address(wallet), WETH), 0 ether);
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
         assertEq(IERC20(WETH).balanceOf(address(wallet)), 0 ether);
         assertEq(IComet(comet).collateralBalanceOf(address(wallet), WETH), 10 ether);
     }
@@ -79,11 +79,11 @@ contract SupplyActionsTest is Test {
             abi.encodeWithSelector(CometSupplyActions.supplyTo.selector, comet, address(wallet2), WETH, 10 ether),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         assertEq(IERC20(WETH).balanceOf(address(wallet)), 10 ether);
         assertEq(IComet(comet).collateralBalanceOf(address(wallet2), WETH), 0 ether);
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
         assertEq(IERC20(WETH).balanceOf(address(wallet)), 0 ether);
         assertEq(IComet(comet).collateralBalanceOf(address(wallet2), WETH), 10 ether);
     }
@@ -107,11 +107,11 @@ contract SupplyActionsTest is Test {
             ),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         assertEq(IERC20(WETH).balanceOf(address(wallet2)), 10 ether);
         assertEq(IComet(comet).collateralBalanceOf(address(wallet), WETH), 0 ether);
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
         assertEq(IERC20(WETH).balanceOf(address(wallet2)), 0 ether);
         assertEq(IComet(comet).collateralBalanceOf(address(wallet), WETH), 10 ether);
     }
@@ -134,11 +134,11 @@ contract SupplyActionsTest is Test {
             abi.encodeWithSelector(CometSupplyActions.supply.selector, comet, USDC, 1000e6),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         assertEq(IComet(comet).borrowBalanceOf(address(wallet)), 1000e6);
         assertEq(IComet(comet).collateralBalanceOf(address(wallet), WETH), 10 ether);
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
         assertEq(IComet(comet).borrowBalanceOf(address(wallet)), 0e6);
         assertEq(IComet(comet).collateralBalanceOf(address(wallet), WETH), 10 ether);
     }
@@ -166,11 +166,11 @@ contract SupplyActionsTest is Test {
             abi.encodeWithSelector(CometSupplyActions.supplyMultipleAssets.selector, comet, assets, amounts),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         assertEq(IERC20(WETH).balanceOf(address(wallet)), 10 ether);
         assertEq(IERC20(LINK).balanceOf(address(wallet)), 10e18);
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
         assertEq(IComet(comet).collateralBalanceOf(address(wallet), WETH), 10 ether);
         assertEq(IComet(comet).collateralBalanceOf(address(wallet), LINK), 10e18);
         assertApproxEqAbs(IComet(comet).balanceOf(address(wallet)), 1000e6, 1);
@@ -194,10 +194,10 @@ contract SupplyActionsTest is Test {
             abi.encodeWithSelector(CometSupplyActions.supplyMultipleAssets.selector, comet, assets, amounts),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         vm.expectRevert(abi.encodeWithSelector(DeFiScriptErrors.InvalidInput.selector));
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
     }
 }
