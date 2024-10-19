@@ -19,6 +19,7 @@ import {Multicall} from "src/Multicall.sol";
 import {WrapperActions} from "src/WrapperScripts.sol";
 import {PaycallWrapper} from "src/builder/PaycallWrapper.sol";
 import {PaymentInfo} from "src/builder/PaymentInfo.sol";
+import {QuarkBuilderBase} from "src/builder/QuarkBuilderBase.sol";
 
 contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
     address constant ZERO_EX_ENTRY_POINT = 0xDef1C0ded9bec7F1a1670819833240f027b25EfF;
@@ -97,7 +98,7 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
 
     function testInsufficientFunds() public {
         QuarkBuilder builder = new QuarkBuilder();
-        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "USDC", 3000e6, 0e6));
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "USDC", 3000e6, 0e6));
         builder.swap(
             buyWeth_(1, usdc_(1), 3000e6, 1e18, address(0xfe11a), BLOCK_TIMESTAMP), // swap 3000 USDC on chain 1 to 1 WETH
             chainAccountsList_(0e6), // but we are holding 0 USDC in total across 1, 8453
@@ -109,7 +110,7 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
     function testMaxCostTooHigh() public {
         QuarkBuilder builder = new QuarkBuilder();
         // Max cost is too high, so total available funds is 0
-        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "USDC", 30e6, 0e6));
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "USDC", 30e6, 0e6));
         builder.swap(
             buyWeth_(1, usdc_(1), 30e6, 0.01e18, address(0xfe11a), BLOCK_TIMESTAMP), // swap 30 USDC on chain 1 to 0.01 WETH
             chainAccountsList_(60e6), // holding 60 USDC in total across chains 1, 8453
@@ -120,7 +121,7 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
     function testFundsOnUnbridgeableChains() public {
         QuarkBuilder builder = new QuarkBuilder();
         // FundsUnavailable("USDC", 2e6, 0e6): Requested 2e6, Available 0e6
-        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "USDC", 30e6, 0e6));
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "USDC", 30e6, 0e6));
         builder.swap(
             // there is no bridge to chain 7777, so we cannot get to our funds
             buyWeth_(7777, usdc_(7777), 30e6, 0.01e18, address(0xfe11a), BLOCK_TIMESTAMP), // swap 30 USDC on chain 1 to 0.01 WETH
@@ -132,7 +133,7 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
     function testFundsUnavailableErrorGivesSuggestionForAvailableFunds() public {
         QuarkBuilder builder = new QuarkBuilder();
         // The 32e6 is the suggested amount (total available funds) to swap
-        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "USDC", 30e6, 27e6));
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "USDC", 30e6, 27e6));
         builder.swap(
             buyWeth_(1, usdc_(1), 30e6, 0.01e18, address(0xfe11a), BLOCK_TIMESTAMP), // swap 30 USDC on chain 1 to 0.01 WETH
             chainAccountsList_(60e6), // holding 60 USDC in total across 1, 8453
@@ -1115,7 +1116,7 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
 
         // The `FundsAvailable` error tells us that 3000 USDC was asked to be swap, but only 1999 USDC was available.
         // (1999 USDC instead of 2000 USDC because 1 USDC is reserved for the payment max cost)
-        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "USDC", 3000e6, 1999e6));
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "USDC", 3000e6, 1999e6));
         builder.swap(
             buyWeth_(8453, usdc_(8453), 3000e6, 1e18, address(0xfe11a), BLOCK_TIMESTAMP), // swap 3000 USDC on chain 8453 to 1 WETH
             chainAccountsList_(4000e6), // holding 4000 USDC in total across chains 1, 8453

@@ -54,7 +54,6 @@ contract QuarkBuilderBase {
         PaymentInfo.Payment memory payment,
         IQuarkWallet.QuarkOperation memory quarkOperation,
         Actions.Action memory action,
-        uint256 supplementalPaymentToken,
         bool useQuotecall
     )
         internal
@@ -107,9 +106,9 @@ contract QuarkBuilderBase {
                     Actions.BridgeOperationInfo({
                         assetSymbol: actionIntent.assetSymbolOuts[i],
                         amountNeededOnDst: amountNeededOnDst,
-                        dstChainId: borrowIntent.chainId,
-                        recipient: borrowIntent.actor,
-                        blockTimestamp: borrowIntent.blockTimestamp,
+                        dstChainId: actionIntent.chainId,
+                        recipient: actionIntent.actor,
+                        blockTimestamp: actionIntent.blockTimestamp,
                         useQuotecall: useQuotecall
                     }),
                     chainAccountsList,
@@ -141,7 +140,7 @@ contract QuarkBuilderBase {
                         assetSymbol: payment.currency,
                         amountNeededOnDst: maxCostOnDstChain,
                         dstChainId: actionIntent.chainId,
-                        recipient: actionIntent.borrower,
+                        recipient: actionIntent.actor,
                         blockTimestamp: actionIntent.blockTimestamp,
                         useQuotecall: useQuotecall
                     }),
@@ -157,18 +156,18 @@ contract QuarkBuilderBase {
         }
 
         for (uint256 i = 0; i < actionIntent.assetSymbolOuts.length; ++i) {
-            checkAndInsertWrapOrUnwrapAction(
-                actions,
-                quarkOperations,
-                chainAccountsList,
-                payment,
-                actionIntent.assetSymbolOuts[i],
-                actionIntent.amountOuts[i],
-                chainId,
-                account,
-                blockTimestamp,
-                useQuotecall
-            );
+            checkAndInsertWrapOrUnwrapAction({
+                actions: actions,
+                quarkOperations: quarkOperations,
+                chainAccountsList: chainAccountsList,
+                payment: payment,
+                assetSymbol: actionIntent.assetSymbolIns[i],
+                amount: actionIntent.amountIns[i],
+                chainId: actionIntent.chainId,
+                account: actionIntent.actor,
+                blockTimestamp: actionIntent.blockTimestamp,
+                useQuotecall: useQuotecall
+            });
         }
 
         // Insert action and operation that will be wrapped with this
@@ -176,8 +175,8 @@ contract QuarkBuilderBase {
         List.addQuarkOperation(quarkOperations, quarkOperation);
 
         // Convert to array
-        quarkOperationsArray = List.toArray(quarkOperations);
-        actionsArray = List.toArray(actions);
+        quarkOperationsArray = List.toQuarkOperationArray(quarkOperations);
+        actionsArray = List.toActionArray(actions);
 
         // Merge operations that are from the same chain into one Multicall operation
         (quarkOperationsArray, actionsArray) =
