@@ -18,6 +18,22 @@ import {QuarkOperationHelper} from "./QuarkOperationHelper.sol";
 import {List} from "./List.sol";
 
 contract QuarkBuilderBase {
+    /* ===== Output Types ===== */
+
+    struct BuilderResult {
+        // Version of the builder interface. (Same as VERSION, but attached to the output.)
+        string version;
+        // Array of quark operations to execute to fulfill the client intent
+        IQuarkWallet.QuarkOperation[] quarkOperations;
+        // Array of action context and other metadata corresponding 1:1 with quarkOperations
+        Actions.Action[] actions;
+        // Struct containing containing EIP-712 data for a QuarkOperation or MultiQuarkOperation
+        EIP712Helper.EIP712Data eip712Data;
+        // Client-provided paymentCurrency string that was used to derive token addresses.
+        // Client may re-use this string to construct a request that simulates the transaction.
+        string paymentCurrency;
+    }
+
     /* ===== Constants ===== */
 
     string constant VERSION = "0.1.1";
@@ -73,7 +89,7 @@ contract QuarkBuilderBase {
 
         // Flag to check if the assetSymbolOut(used/supplied/transferred out) is the same as the payment token
         bool paymentTokenInAssetSymbolOut = false;
-
+        {
         for (uint256 i = 0; actionIntent.assetSymbolOuts.length > i; ++i) {
             assertFundsAvailable(
                 actionIntent.chainId,
@@ -121,7 +137,9 @@ contract QuarkBuilderBase {
                 }
             }
         }
+        }
 
+        {
         if (payment.isToken && !paymentTokenInAssetSymbolOut) {
             uint256 maxCostOnDstChain = PaymentInfo.findMaxCost(payment, actionIntent.chainId);
 
@@ -153,6 +171,7 @@ contract QuarkBuilderBase {
                     List.addAction(actions, bridgeActions[i]);
                 }
             }
+        }
         }
 
         for (uint256 i = 0; i < actionIntent.assetSymbolOuts.length; ++i) {
@@ -254,6 +273,7 @@ contract QuarkBuilderBase {
                 chainAccountsList[i].chainId == chainId
                     && TokenWrapper.hasWrapperContract(chainAccountsList[i].chainId, assetSymbol)
             ) {
+                {
                 uint256 counterpartBalance =
                     getWrapperCounterpartBalance(assetSymbol, chainAccountsList[i].chainId, chainAccountsList);
                 string memory counterpartSymbol =
@@ -266,6 +286,7 @@ contract QuarkBuilderBase {
                     );
                 }
                 aggregateAssetBalance += counterpartBalance;
+                }
             }
         }
 
