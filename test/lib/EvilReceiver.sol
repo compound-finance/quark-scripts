@@ -21,9 +21,7 @@ contract EvilReceiver {
 
     struct StolenSignature {
         QuarkWallet.QuarkOperation op;
-        uint8 v;
-        bytes32 r;
-        bytes32 s;
+        bytes signature;
     }
 
     uint256 public loop = 1;
@@ -57,9 +55,7 @@ contract EvilReceiver {
             }
 
             if (attack.attackType == AttackType.STOLEN_SIGNATURE) {
-                QuarkWallet(payable(msg.sender)).executeQuarkOperation(
-                    stolenSignature.op, stolenSignature.v, stolenSignature.r, stolenSignature.s
-                );
+                QuarkWallet(payable(msg.sender)).executeQuarkOperation(stolenSignature.op, stolenSignature.signature);
             }
         }
     }

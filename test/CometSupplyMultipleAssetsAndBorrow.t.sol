@@ -65,13 +65,13 @@ contract CometSupplyMultipleAssetsAndBorrowTest is Test {
             abi.encodeWithSelector(CometSupplyMultipleAssetsAndBorrow.run.selector, comet, assets, amounts, USDC, 100e6),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
         assertEq(IERC20(WETH).balanceOf(address(wallet)), 10 ether);
         assertEq(IERC20(LINK).balanceOf(address(wallet)), 10e18);
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 0e6);
 
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
         assertEq(IComet(comet).collateralBalanceOf(address(wallet), WETH), 10 ether);
         assertEq(IComet(comet).collateralBalanceOf(address(wallet), LINK), 10e18);
         assertEq(IERC20(USDC).balanceOf(address(wallet)), 100e6);
@@ -95,10 +95,10 @@ contract CometSupplyMultipleAssetsAndBorrowTest is Test {
             abi.encodeWithSelector(CometSupplyMultipleAssetsAndBorrow.run.selector, comet, assets, amounts, USDC, 100e6),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         vm.expectRevert(abi.encodeWithSelector(DeFiScriptErrors.InvalidInput.selector));
         vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
     }
 }

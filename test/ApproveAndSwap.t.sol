@@ -58,11 +58,11 @@ contract ApproveAndSwapTest is Test {
             abi.encodeCall(ApproveAndSwap.run, (ZEROX_PROXY, USDC, sellAmount, WETH, buyAmount, data)),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         vm.resumeGasMetering();
 
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
 
         // The swap will always yield the same amount of WETH since we test at a specific block
         assertEq(IERC20(WETH).balanceOf(address(wallet)), 420691117291334340);
@@ -91,12 +91,12 @@ contract ApproveAndSwapTest is Test {
             abi.encodeCall(ApproveAndSwap.run, (ZEROX_PROXY, USDC, sellAmount, WETH, buyAmount, data)),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         vm.resumeGasMetering();
 
         vm.expectRevert();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
 
         // The swap will always yield the same amount of WETH since we test at a specific block
         assertEq(IERC20(WETH).balanceOf(address(wallet)), 0);
@@ -125,12 +125,12 @@ contract ApproveAndSwapTest is Test {
             abi.encodeCall(ApproveAndSwap.run, (ZEROX_PROXY, USDC, sellAmount, WETH, buyAmount, data)),
             ScriptType.ScriptSource
         );
-        (uint8 v, bytes32 r, bytes32 s) = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
 
         vm.resumeGasMetering();
 
         vm.expectRevert();
-        wallet.executeQuarkOperation(op, v, r, s);
+        wallet.executeQuarkOperation(op, signature);
 
         // The swap will always yield the same amount of WETH since we test at a specific block
         assertEq(IERC20(WETH).balanceOf(address(wallet)), 0);
