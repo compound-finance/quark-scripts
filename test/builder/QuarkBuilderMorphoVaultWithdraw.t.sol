@@ -13,6 +13,7 @@ import {MorphoInfo} from "src/builder/MorphoInfo.sol";
 import {MorphoVaultActions} from "src/MorphoScripts.sol";
 import {Paycall} from "src/Paycall.sol";
 import {QuarkBuilder} from "src/builder/QuarkBuilder.sol";
+import {QuarkBuilderBase} from "src/builder/QuarkBuilderBase.sol";
 
 contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
     function morphoWithdrawIntent_(uint256 chainId, uint256 amount, string memory assetSymbol)
@@ -517,7 +518,7 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
 
         QuarkBuilder builder = new QuarkBuilder();
 
-        vm.expectRevert(QuarkBuilder.MaxCostTooHigh.selector);
+        vm.expectRevert(QuarkBuilderBase.MaxCostTooHigh.selector);
 
         builder.morphoVaultWithdraw(
             morphoWithdrawIntent_(1, type(uint256).max, "USDC"),

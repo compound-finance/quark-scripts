@@ -249,7 +249,7 @@
 
 //     function testMorphoClaimRewardsInvalid() public {
 //         QuarkBuilder builder = new QuarkBuilder();
-//         vm.expectRevert(QuarkBuilder.InvalidInput.selector);
+//         vm.expectRevert(QuarkBuilderBase.InvalidInput.selector);
 //         builder.morphoClaimRewards(
 //             morphoClaimRewardsIntent_(
 //                 1, fixtureAccounts, fixtureClaimables, fixtureDistributors, fixtureInvalidRewards, fixtureProofs

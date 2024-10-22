@@ -16,6 +16,7 @@ import {Multicall} from "src/Multicall.sol";
 import {WrapperActions} from "src/WrapperScripts.sol";
 import {MorphoInfo} from "src/builder/MorphoInfo.sol";
 import {QuarkBuilder} from "src/builder/QuarkBuilder.sol";
+import {QuarkBuilderBase} from "src/builder/QuarkBuilderBase.sol";
 import {TokenWrapper} from "src/builder/TokenWrapper.sol";
 
 contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
@@ -58,7 +59,7 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
     function testMorphoRepayFundsUnavailable() public {
         QuarkBuilder builder = new QuarkBuilder();
 
-        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "USDC", 1e6, 0));
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "USDC", 1e6, 0));
 
         builder.morphoRepay(
             repayIntent_(1, "USDC", 1e6, "WBTC", 1e8),

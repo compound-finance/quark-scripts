@@ -16,6 +16,7 @@ import {MorphoVaultActions} from "src/MorphoScripts.sol";
 import {Multicall} from "src/Multicall.sol";
 import {Quotecall} from "src/Quotecall.sol";
 import {QuarkBuilder} from "src/builder/QuarkBuilder.sol";
+import {QuarkBuilderBase} from "src/builder/QuarkBuilderBase.sol";
 import {WrapperActions} from "src/WrapperScripts.sol";
 
 contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
@@ -44,7 +45,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
 
     function testInsufficientFunds() public {
         QuarkBuilder builder = new QuarkBuilder();
-        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "USDC", 2e6, 0e6));
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "USDC", 2e6, 0e6));
         builder.morphoVaultSupply(
             QuarkBuilder.MorphoVaultSupplyIntent({
                 amount: 2e6,
@@ -61,7 +62,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
     function testMaxCostTooHigh() public {
         QuarkBuilder builder = new QuarkBuilder();
         // Max cost is too high, so total available funds is 0
-        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "USDC", 1e6, 0e6));
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "USDC", 1e6, 0e6));
         builder.morphoVaultSupply(
             QuarkBuilder.MorphoVaultSupplyIntent({
                 amount: 1e6,
@@ -103,7 +104,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
             morphoVaultPositions: emptyMorphoVaultPositions_()
         });
 
-        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "USDC", 2e6, 0));
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "USDC", 2e6, 0));
         builder.morphoVaultSupply(
             // there is no bridge to brige from 7777, so we cannot get to our funds
             QuarkBuilder.MorphoVaultSupplyIntent({

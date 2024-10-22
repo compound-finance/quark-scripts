@@ -6,6 +6,7 @@ import "forge-std/console.sol";
 
 import {Arrays} from "test/builder/lib/Arrays.sol";
 import {QuarkBuilderTest, Accounts, PaymentInfo, QuarkBuilder} from "test/builder/lib/QuarkBuilderTest.sol";
+import {QuarkBuilderBase} from "src/builder/QuarkBuilderBase.sol";
 
 import {Actions} from "src/builder/Actions.sol";
 import {CCTPBridgeActions} from "src/BridgeScripts.sol";
@@ -46,7 +47,7 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
 
         QuarkBuilder builder = new QuarkBuilder();
 
-        vm.expectRevert(QuarkBuilder.InvalidInput.selector);
+        vm.expectRevert(QuarkBuilderBase.InvalidInput.selector);
 
         builder.cometBorrow(
             borrowIntent_(1e6, "USDC", 1, collateralAmounts, collateralAssetSymbols),
@@ -64,7 +65,7 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
 
         QuarkBuilder builder = new QuarkBuilder();
 
-        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "LINK", 1e18, 0));
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "LINK", 1e18, 0));
 
         builder.cometBorrow(
             borrowIntent_(1e6, "USDC", 1, collateralAmounts, collateralAssetSymbols),

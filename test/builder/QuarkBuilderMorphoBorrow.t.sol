@@ -6,6 +6,7 @@ import "forge-std/console.sol";
 
 import {Arrays} from "test/builder/lib/Arrays.sol";
 import {QuarkBuilderTest, Accounts, PaymentInfo, QuarkBuilder} from "test/builder/lib/QuarkBuilderTest.sol";
+import {QuarkBuilderBase} from "src/builder/QuarkBuilderBase.sol";
 
 import {Actions} from "src/builder/Actions.sol";
 import {CCTPBridgeActions} from "src/BridgeScripts.sol";
@@ -90,7 +91,7 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
 
     function testBorrowFundsUnavailable() public {
         QuarkBuilder builder = new QuarkBuilder();
-        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "WBTC", 1e8, 0));
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "WBTC", 1e8, 0));
         builder.morphoBorrow(
             borrowIntent_(1, "USDC", 1e6, "WBTC", 1e8),
             chainAccountsList_(3e6), // holding 3 USDC in total across chains 1, 8453

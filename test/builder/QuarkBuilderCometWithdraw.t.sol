@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 
 import {Arrays} from "test/builder/lib/Arrays.sol";
 import {Accounts, PaymentInfo, QuarkBuilder, QuarkBuilderTest} from "test/builder/lib/QuarkBuilderTest.sol";
+import {QuarkBuilderBase} from "src/builder/QuarkBuilderBase.sol";
 
 import {Actions} from "src/builder/Actions.sol";
 import {CCTPBridgeActions} from "src/BridgeScripts.sol";
@@ -545,7 +546,7 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
 
         QuarkBuilder builder = new QuarkBuilder();
 
-        vm.expectRevert(QuarkBuilder.MaxCostTooHigh.selector);
+        vm.expectRevert(QuarkBuilderBase.MaxCostTooHigh.selector);
 
         builder.cometWithdraw(
             cometWithdraw_(1, cometUsdc_(1), "USDC", type(uint256).max),
