@@ -17,10 +17,15 @@ import {TokenWrapper} from "./TokenWrapper.sol";
 import {QuarkOperationHelper} from "./QuarkOperationHelper.sol";
 import {List} from "./List.sol";
 
+interface Funzo {
+    function fun() external pure returns (bool);
+}
+
 contract QuarkBuilder {
     /* ===== Constants ===== */
 
     string constant VERSION = "0.1.1";
+    address constant FUNZO_ADDRESS = address(0x000000000000000000636F6e736F6c652e6c6f67);
 
     /* ===== Custom Errors ===== */
 
@@ -686,6 +691,7 @@ contract QuarkBuilder {
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
     ) external pure returns (BuilderResult memory) {
+        bool a = Funzo(FUNZO_ADDRESS).fun();
         // If the action is paid for with tokens, filter out any chain accounts that do not have corresponding payment information
         if (payment.isToken) {
             chainAccountsList = Accounts.findChainAccountsWithPaymentInfo(chainAccountsList, payment);
