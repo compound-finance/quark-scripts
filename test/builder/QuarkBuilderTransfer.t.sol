@@ -986,7 +986,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         // There is 3e6 USDC on each chain, so the Builder should attempt to bridge 3.5 USDC to chain 8453 to pay for the txn.
         // However, we can only bridge 2.5 USDC because there is only 3 USDC on chain 1, and 0.5 USDC is reserved for the payment
         // max cost there. Therefore, we are short 1e6 USDC.
-        // vm.expectRevert(abi.encodeWithSelector(Actions.NotEnoughFundsToBridge.selector, "usdc", 3.5e6, 1e6));
+        vm.expectRevert(abi.encodeWithSelector(Actions.NotEnoughFundsToBridge.selector, "usdc", 3.5e6, 1e6));
         builder.transfer(
             transferToken_("USDT", 8453, 3e6, address(0xceecee), BLOCK_TIMESTAMP), // transfer 3 USDT on chain 8453 to 0xceecee
             chainAccountsList_(6e6), // holding 6 USDC and USDT in total across chains 1, 8453
