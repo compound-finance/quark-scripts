@@ -8,7 +8,7 @@ import {EIP712Helper} from "src/builder/EIP712Helper.sol";
 import {PaymentInfo} from "src/builder/PaymentInfo.sol";
 import {QuarkBuilderBase} from "src/builder/QuarkBuilderBase.sol";
 
-contract Transfer is QuarkBuilderBase {
+contract TransferActions is QuarkBuilderBase {
     struct TransferIntent {
         uint256 chainId;
         string assetSymbol;
@@ -53,7 +53,8 @@ contract Transfer is QuarkBuilderBase {
             useQuotecall
         );
 
-        ActionIntent memory actionIntent;
+        IQuarkWallet.QuarkOperation[] memory quarkOperationsArray;
+        Actions.Action[] memory actionsArray;
         {
             uint256[] memory amountOuts = new uint256[](1);
             amountOuts[0] = transferIntent.amount;
@@ -61,26 +62,24 @@ contract Transfer is QuarkBuilderBase {
             assetSymbolOuts[0] = transferIntent.assetSymbol;
             uint256[] memory amountIns = new uint256[](0);
             string[] memory assetSymbolIns = new string[](0);
-            actionIntent = ActionIntent({
-                actor: transferIntent.sender,
-                amountIns: amountIns,
-                assetSymbolIns: assetSymbolIns,
-                amountOuts: amountOuts,
-                assetSymbolOuts: assetSymbolOuts,
-                blockTimestamp: transferIntent.blockTimestamp,
-                chainId: transferIntent.chainId,
-                useQuotecall: useQuotecall,
-                bridgeEnabled: true,
-                autoWrapperEnabled: true,
+
+            (quarkOperationsArray, actionsArray) = QuarkBuilderBase.collectAssetsForAction({
+                actionIntent: QuarkBuilderBase.ActionIntent({
+                    actor: transferIntent.sender,
+                    amountIns: amountIns,
+                    assetSymbolIns: assetSymbolIns,
+                    amountOuts: amountOuts,
+                    assetSymbolOuts: assetSymbolOuts,
+                    blockTimestamp: transferIntent.blockTimestamp,
+                    chainId: transferIntent.chainId
+                }),
                 chainAccountsList: chainAccountsList,
                 payment: payment,
                 quarkOperation: operation,
-                action: action
+                action: action,
+                useQuotecall: useQuotecall
             });
         }
-
-        (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray) =
-            collectAssetsForAction(actionIntent);
         return BuilderResult({
             version: VERSION,
             actions: actionsArray,

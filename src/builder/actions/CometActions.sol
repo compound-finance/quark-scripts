@@ -8,7 +8,7 @@ import {EIP712Helper} from "src/builder/EIP712Helper.sol";
 import {PaymentInfo} from "src/builder/PaymentInfo.sol";
 import {QuarkBuilderBase} from "src/builder/QuarkBuilderBase.sol";
 
-contract Comet is QuarkBuilderBase {
+contract CometActions is QuarkBuilderBase {
     struct CometRepayIntent {
         uint256 amount;
         string assetSymbol;
@@ -57,32 +57,31 @@ contract Comet is QuarkBuilderBase {
             payment
         );
 
-        QuarkBuilderBase.ActionIntent memory actionIntent;
+        IQuarkWallet.QuarkOperation[] memory quarkOperationsArray;
+        Actions.Action[] memory actionsArray;
+
         {
             uint256[] memory amountOuts = new uint256[](1);
             amountOuts[0] = repayAmount;
             string[] memory assetSymbolOuts = new string[](1);
             assetSymbolOuts[0] = repayIntent.assetSymbol;
-            actionIntent = QuarkBuilderBase.ActionIntent({
-                actor: repayIntent.repayer,
-                amountOuts: amountOuts,
-                assetSymbolOuts: assetSymbolOuts,
-                amountIns: repayIntent.collateralAmounts,
-                assetSymbolIns: repayIntent.collateralAssetSymbols,
-                blockTimestamp: repayIntent.blockTimestamp,
-                chainId: repayIntent.chainId,
-                useQuotecall: useQuotecall,
-                bridgeEnabled: true,
-                autoWrapperEnabled: true,
+            (quarkOperationsArray, actionsArray) = QuarkBuilderBase.collectAssetsForAction({
+                actionIntent: QuarkBuilderBase.ActionIntent({
+                    actor: repayIntent.repayer,
+                    amountOuts: amountOuts,
+                    assetSymbolOuts: assetSymbolOuts,
+                    amountIns: repayIntent.collateralAmounts,
+                    assetSymbolIns: repayIntent.collateralAssetSymbols,
+                    blockTimestamp: repayIntent.blockTimestamp,
+                    chainId: repayIntent.chainId
+                }),
                 chainAccountsList: chainAccountsList,
                 payment: payment,
                 quarkOperation: repayQuarkOperation,
-                action: repayAction
+                action: repayAction,
+                useQuotecall: useQuotecall
             });
         }
-
-        (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray) =
-            QuarkBuilderBase.collectAssetsForAction(actionIntent);
 
         return BuilderResult({
             version: VERSION,
@@ -131,32 +130,31 @@ contract Comet is QuarkBuilderBase {
             payment
         );
 
-        QuarkBuilderBase.ActionIntent memory actionIntent;
+        IQuarkWallet.QuarkOperation[] memory quarkOperationsArray;
+        Actions.Action[] memory actionsArray;
         {
             uint256[] memory amountIns = new uint256[](1);
             amountIns[0] = borrowIntent.amount;
             string[] memory assetSymbolIns = new string[](1);
             assetSymbolIns[0] = borrowIntent.assetSymbol;
-            actionIntent = QuarkBuilderBase.ActionIntent({
-                actor: borrowIntent.borrower,
-                amountIns: amountIns,
-                assetSymbolIns: assetSymbolIns,
-                amountOuts: borrowIntent.collateralAmounts,
-                assetSymbolOuts: borrowIntent.collateralAssetSymbols,
-                blockTimestamp: borrowIntent.blockTimestamp,
-                chainId: borrowIntent.chainId,
-                useQuotecall: useQuotecall,
-                bridgeEnabled: true,
-                autoWrapperEnabled: true,
+
+            (quarkOperationsArray, actionsArray) = QuarkBuilderBase.collectAssetsForAction({
+                actionIntent: QuarkBuilderBase.ActionIntent({
+                    actor: borrowIntent.borrower,
+                    amountIns: amountIns,
+                    assetSymbolIns: assetSymbolIns,
+                    amountOuts: borrowIntent.collateralAmounts,
+                    assetSymbolOuts: borrowIntent.collateralAssetSymbols,
+                    blockTimestamp: borrowIntent.blockTimestamp,
+                    chainId: borrowIntent.chainId
+                }),
                 chainAccountsList: chainAccountsList,
                 payment: payment,
                 quarkOperation: borrowQuarkOperation,
-                action: borrowAction
+                action: borrowAction,
+                useQuotecall: useQuotecall
             });
         }
-
-        (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray) =
-            QuarkBuilderBase.collectAssetsForAction(actionIntent);
         return BuilderResult({
             version: VERSION,
             actions: actionsArray,
@@ -207,7 +205,8 @@ contract Comet is QuarkBuilderBase {
             payment
         );
 
-        QuarkBuilderBase.ActionIntent memory actionIntent;
+        IQuarkWallet.QuarkOperation[] memory quarkOperationsArray;
+        Actions.Action[] memory actionsArray;
         {
             uint256[] memory amountOuts = new uint256[](1);
             amountOuts[0] = cometSupplyIntent.amount;
@@ -215,27 +214,24 @@ contract Comet is QuarkBuilderBase {
             assetSymbolOuts[0] = cometSupplyIntent.assetSymbol;
             uint256[] memory amountIns = new uint256[](0);
             string[] memory assetSymbolIns = new string[](0);
-            actionIntent = QuarkBuilderBase.ActionIntent({
-                actor: cometSupplyIntent.sender,
-                amountIns: amountIns,
-                assetSymbolIns: assetSymbolIns,
-                amountOuts: amountOuts,
-                assetSymbolOuts: assetSymbolOuts,
-                blockTimestamp: cometSupplyIntent.blockTimestamp,
-                chainId: cometSupplyIntent.chainId,
-                useQuotecall: isMaxSupply,
-                bridgeEnabled: true,
-                autoWrapperEnabled: true,
+
+            (quarkOperationsArray, actionsArray) = QuarkBuilderBase.collectAssetsForAction({
+                actionIntent: QuarkBuilderBase.ActionIntent({
+                    actor: cometSupplyIntent.sender,
+                    amountIns: amountIns,
+                    assetSymbolIns: assetSymbolIns,
+                    amountOuts: amountOuts,
+                    assetSymbolOuts: assetSymbolOuts,
+                    blockTimestamp: cometSupplyIntent.blockTimestamp,
+                    chainId: cometSupplyIntent.chainId
+                }),
                 chainAccountsList: chainAccountsList,
                 payment: payment,
                 quarkOperation: supplyQuarkOperation,
-                action: supplyAction
+                action: supplyAction,
+                useQuotecall: isMaxSupply
             });
         }
-
-        (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray) =
-            QuarkBuilderBase.collectAssetsForAction(actionIntent);
-
         return BuilderResult({
             version: VERSION,
             actions: actionsArray,
@@ -290,8 +286,8 @@ contract Comet is QuarkBuilderBase {
             }),
             payment
         );
-
-        QuarkBuilderBase.ActionIntent memory actionIntent;
+        IQuarkWallet.QuarkOperation[] memory quarkOperationsArray;
+        Actions.Action[] memory actionsArray;
         {
             uint256[] memory amountIns = new uint256[](1);
             amountIns[0] = actualWithdrawAmount;
@@ -300,27 +296,23 @@ contract Comet is QuarkBuilderBase {
             uint256[] memory amountOuts = new uint256[](0);
             string[] memory assetSymbolOuts = new string[](0);
 
-            actionIntent = QuarkBuilderBase.ActionIntent({
-                actor: cometWithdrawIntent.withdrawer,
-                amountIns: amountIns,
-                assetSymbolIns: assetSymbolIns,
-                amountOuts: amountOuts,
-                assetSymbolOuts: assetSymbolOuts,
-                blockTimestamp: cometWithdrawIntent.blockTimestamp,
-                chainId: cometWithdrawIntent.chainId,
-                useQuotecall: useQuotecall,
-                bridgeEnabled: true,
-                autoWrapperEnabled: true,
+            (quarkOperationsArray, actionsArray) = QuarkBuilderBase.collectAssetsForAction({
+                actionIntent: QuarkBuilderBase.ActionIntent({
+                    actor: cometWithdrawIntent.withdrawer,
+                    amountIns: amountIns,
+                    assetSymbolIns: assetSymbolIns,
+                    amountOuts: amountOuts,
+                    assetSymbolOuts: assetSymbolOuts,
+                    blockTimestamp: cometWithdrawIntent.blockTimestamp,
+                    chainId: cometWithdrawIntent.chainId
+                }),
                 chainAccountsList: chainAccountsList,
                 payment: payment,
                 quarkOperation: cometWithdrawQuarkOperation,
-                action: cometWithdrawAction
+                action: cometWithdrawAction,
+                useQuotecall: useQuotecall
             });
         }
-
-        (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray) =
-            QuarkBuilderBase.collectAssetsForAction(actionIntent);
-
         return BuilderResult({
             version: VERSION,
             actions: actionsArray,

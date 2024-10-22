@@ -57,13 +57,6 @@ contract QuarkBuilderBase {
         string[] assetSymbolIns;
         uint256 blockTimestamp;
         uint256 chainId;
-        bool useQuotecall;
-        bool bridgeEnabled;
-        bool autoWrapperEnabled;
-        Accounts.ChainAccounts[] chainAccountsList;
-        PaymentInfo.Payment payment;
-        IQuarkWallet.QuarkOperation quarkOperation;
-        Actions.Action action;
     }
 
     // quark builder base script consists of
@@ -71,7 +64,14 @@ contract QuarkBuilderBase {
     // - bridge tokens if possible
     // - assert account has enough token and pamynet token to complete actions
     // Then insert middle of custom action
-    function collectAssetsForAction(ActionIntent memory actionIntent)
+    function collectAssetsForAction(
+        ActionIntent memory actionIntent,
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        PaymentInfo.Payment memory payment,
+        IQuarkWallet.QuarkOperation memory quarkOperation,
+        Actions.Action memory action,
+        bool useQuotecall
+    )
         internal
         pure
         returns (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray)
@@ -89,17 +89,17 @@ contract QuarkBuilderBase {
 
         // Flag to check if the assetSymbolOut(used/supplied/transferred out) is the same as the payment token
         bool paymentTokenInAssetSymbolOut = false;
-
+        {
         for (uint256 i = 0; actionIntent.assetSymbolOuts.length > i; ++i) {
             assertFundsAvailable(
                 actionIntent.chainId,
                 actionIntent.assetSymbolOuts[i],
                 actionIntent.amountOuts[i],
-                actionIntent.chainAccountsList,
-                actionIntent.payment
+                chainAccountsList,
+                payment
             );
             // Check if the assetSymbolOut is the same as the payment token
-            if (Strings.stringEqIgnoreCase(actionIntent.assetSymbolOuts[i], actionIntent.payment.currency)) {
+            if (Strings.stringEqIgnoreCase(actionIntent.assetSymbolOuts[i], payment.currency)) {
                 paymentTokenInAssetSymbolOut = true;
             }
 
@@ -108,162 +108,103 @@ contract QuarkBuilderBase {
                     actionIntent.assetSymbolOuts[i],
                     actionIntent.amountOuts[i],
                     actionIntent.chainId,
-                    actionIntent.chainAccountsList,
-                    actionIntent.payment
+                    chainAccountsList,
+                    payment
                 )
             ) {
-                if (actionIntent.bridgeEnabled) {
-                    uint256 amountNeededOnDst = actionIntent.amountOuts[i];
-                    if (
-                        actionIntent.payment.isToken
-                            && Strings.stringEqIgnoreCase(actionIntent.payment.currency, actionIntent.assetSymbolOuts[i])
-                    ) {
-                        amountNeededOnDst += PaymentInfo.findMaxCost(actionIntent.payment, actionIntent.chainId);
-                    }
+                uint256 amountNeededOnDst = actionIntent.amountOuts[i];
+                if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, actionIntent.assetSymbolOuts[i])) {
+                    amountNeededOnDst += PaymentInfo.findMaxCost(payment, actionIntent.chainId);
+                }
 
-                    (IQuarkWallet.QuarkOperation[] memory bridgeQuarkOperations, Actions.Action[] memory bridgeActions)
-                    = Actions.constructBridgeOperations(
-                        Actions.BridgeOperationInfo({
-                            assetSymbol: actionIntent.assetSymbolOuts[i],
-                            amountNeededOnDst: amountNeededOnDst,
-                            dstChainId: actionIntent.chainId,
-                            recipient: actionIntent.actor,
-                            blockTimestamp: actionIntent.blockTimestamp,
-                            useQuotecall: actionIntent.useQuotecall
-                        }),
-                        actionIntent.chainAccountsList,
-                        actionIntent.payment
-                    );
+                (IQuarkWallet.QuarkOperation[] memory bridgeQuarkOperations, Actions.Action[] memory bridgeActions) =
+                Actions.constructBridgeOperations(
+                    Actions.BridgeOperationInfo({
+                        assetSymbol: actionIntent.assetSymbolOuts[i],
+                        amountNeededOnDst: amountNeededOnDst,
+                        dstChainId: actionIntent.chainId,
+                        recipient: actionIntent.actor,
+                        blockTimestamp: actionIntent.blockTimestamp,
+                        useQuotecall: useQuotecall
+                    }),
+                    chainAccountsList,
+                    payment
+                );
 
-                    for (uint256 j = 0; j < bridgeQuarkOperations.length; ++j) {
-                        List.addQuarkOperation(quarkOperations, bridgeQuarkOperations[j]);
-                        List.addAction(actions, bridgeActions[j]);
-                    }
-                } else {
-                    uint256 balanceOnChain = getBalanceOnChain(
-                        actionIntent.assetSymbolOuts[i],
-                        actionIntent.chainId,
-                        actionIntent.chainAccountsList,
-                        actionIntent.payment
-                    );
-                    uint256 amountNeededOnChain = getAmountNeededOnChain(
-                        actionIntent.assetSymbolOuts[i],
-                        actionIntent.amountOuts[i],
-                        actionIntent.chainId,
-                        actionIntent.payment
-                    );
-                    uint256 maxCostOnChain = actionIntent.payment.isToken
-                        ? PaymentInfo.findMaxCost(actionIntent.payment, actionIntent.chainId)
-                        : 0;
-                    uint256 availableAssetBalance =
-                        balanceOnChain >= maxCostOnChain ? balanceOnChain - maxCostOnChain : 0;
-                    revert FundsUnavailable(actionIntent.assetSymbolOuts[i], amountNeededOnChain, availableAssetBalance);
+                for (uint256 j = 0; j < bridgeQuarkOperations.length; ++j) {
+                    List.addQuarkOperation(quarkOperations, bridgeQuarkOperations[j]);
+                    List.addAction(actions, bridgeActions[j]);
                 }
             }
         }
+        }
 
-        if (actionIntent.payment.isToken && !paymentTokenInAssetSymbolOut) {
-            uint256 maxCostOnDstChain = PaymentInfo.findMaxCost(actionIntent.payment, actionIntent.chainId);
+        {
+        if (payment.isToken && !paymentTokenInAssetSymbolOut) {
+            uint256 maxCostOnDstChain = PaymentInfo.findMaxCost(payment, actionIntent.chainId);
 
             for (uint256 k = 0; actionIntent.assetSymbolIns.length > k; ++k) {
-                if (Strings.stringEqIgnoreCase(actionIntent.assetSymbolIns[k], actionIntent.payment.currency)) {
+                if (Strings.stringEqIgnoreCase(actionIntent.assetSymbolIns[k], payment.currency)) {
                     maxCostOnDstChain = Math.subtractFlooredAtZero(maxCostOnDstChain, actionIntent.amountIns[k]);
                 }
             }
 
             if (
-                needsBridgedFunds(
-                    actionIntent.payment.currency,
-                    maxCostOnDstChain,
-                    actionIntent.chainId,
-                    actionIntent.chainAccountsList,
-                    actionIntent.payment
-                )
+                needsBridgedFunds(payment.currency, maxCostOnDstChain, actionIntent.chainId, chainAccountsList, payment)
             ) {
-                if (actionIntent.bridgeEnabled) {
-                    (IQuarkWallet.QuarkOperation[] memory bridgeQuarkOperations, Actions.Action[] memory bridgeActions)
-                    = Actions.constructBridgeOperations(
-                        Actions.BridgeOperationInfo({
-                            assetSymbol: actionIntent.payment.currency,
-                            amountNeededOnDst: maxCostOnDstChain,
-                            dstChainId: actionIntent.chainId,
-                            recipient: actionIntent.actor,
-                            blockTimestamp: actionIntent.blockTimestamp,
-                            useQuotecall: actionIntent.useQuotecall
-                        }),
-                        actionIntent.chainAccountsList,
-                        actionIntent.payment
-                    );
+                (IQuarkWallet.QuarkOperation[] memory bridgeQuarkOperations, Actions.Action[] memory bridgeActions) =
+                Actions.constructBridgeOperations(
+                    Actions.BridgeOperationInfo({
+                        assetSymbol: payment.currency,
+                        amountNeededOnDst: maxCostOnDstChain,
+                        dstChainId: actionIntent.chainId,
+                        recipient: actionIntent.actor,
+                        blockTimestamp: actionIntent.blockTimestamp,
+                        useQuotecall: useQuotecall
+                    }),
+                    chainAccountsList,
+                    payment
+                );
 
-                    for (uint256 i = 0; i < bridgeQuarkOperations.length; ++i) {
-                        List.addQuarkOperation(quarkOperations, bridgeQuarkOperations[i]);
-                        List.addAction(actions, bridgeActions[i]);
-                    }
-                } else {
-                    if (
-                        needsBridgedFunds(
-                            actionIntent.payment.currency,
-                            maxCostOnDstChain,
-                            actionIntent.chainId,
-                            actionIntent.chainAccountsList,
-                            actionIntent.payment
-                        )
-                    ) {
-                        revert FundsUnavailable(
-                            actionIntent.payment.currency,
-                            maxCostOnDstChain,
-                            getBalanceOnChain(
-                                actionIntent.payment.currency,
-                                actionIntent.chainId,
-                                actionIntent.chainAccountsList,
-                                actionIntent.payment
-                            )
-                        );
-                    }
+                for (uint256 i = 0; i < bridgeQuarkOperations.length; ++i) {
+                    List.addQuarkOperation(quarkOperations, bridgeQuarkOperations[i]);
+                    List.addAction(actions, bridgeActions[i]);
                 }
             }
         }
+        }
 
-        if (actionIntent.autoWrapperEnabled) {
-            for (uint256 i = 0; i < actionIntent.assetSymbolOuts.length; ++i) {
-                checkAndInsertWrapOrUnwrapAction({
-                    actions: actions,
-                    quarkOperations: quarkOperations,
-                    chainAccountsList: actionIntent.chainAccountsList,
-                    payment: actionIntent.payment,
-                    assetSymbol: actionIntent.assetSymbolIns[i],
-                    amount: actionIntent.amountIns[i],
-                    chainId: actionIntent.chainId,
-                    account: actionIntent.actor,
-                    blockTimestamp: actionIntent.blockTimestamp,
-                    useQuotecall: actionIntent.useQuotecall
-                });
-            }
+        for (uint256 i = 0; i < actionIntent.assetSymbolOuts.length; ++i) {
+            checkAndInsertWrapOrUnwrapAction({
+                actions: actions,
+                quarkOperations: quarkOperations,
+                chainAccountsList: chainAccountsList,
+                payment: payment,
+                assetSymbol: actionIntent.assetSymbolIns[i],
+                amount: actionIntent.amountIns[i],
+                chainId: actionIntent.chainId,
+                account: actionIntent.actor,
+                blockTimestamp: actionIntent.blockTimestamp,
+                useQuotecall: useQuotecall
+            });
         }
 
         // Insert action and operation that will be wrapped with this
-        List.addAction(actions, actionIntent.action);
-        List.addQuarkOperation(quarkOperations, actionIntent.quarkOperation);
+        List.addAction(actions, action);
+        List.addQuarkOperation(quarkOperations, quarkOperation);
 
         // Convert to array
         quarkOperationsArray = List.toQuarkOperationArray(quarkOperations);
         actionsArray = List.toActionArray(actions);
-
-        // Validate generated actions for affordability
-        if (actionIntent.payment.isToken) {
-            assertSufficientPaymentTokenBalances(
-                actionsArray, actionIntent.chainAccountsList, actionIntent.chainId, actionIntent.actor
-            );
-        }
 
         // Merge operations that are from the same chain into one Multicall operation
         (quarkOperationsArray, actionsArray) =
             QuarkOperationHelper.mergeSameChainOperations(quarkOperationsArray, actionsArray);
 
         // Wrap operations around Paycall/Quotecall if payment is with token
-        if (actionIntent.payment.isToken) {
+        if (payment.isToken) {
             quarkOperationsArray = QuarkOperationHelper.wrapOperationsWithTokenPayment(
-                quarkOperationsArray, actionsArray, actionIntent.payment, actionIntent.useQuotecall
+                quarkOperationsArray, actionsArray, payment, useQuotecall
             );
         }
     }
@@ -333,18 +274,18 @@ contract QuarkBuilderBase {
                     && TokenWrapper.hasWrapperContract(chainAccountsList[i].chainId, assetSymbol)
             ) {
                 {
-                    uint256 counterpartBalance =
-                        getWrapperCounterpartBalance(assetSymbol, chainAccountsList[i].chainId, chainAccountsList);
-                    string memory counterpartSymbol =
-                        TokenWrapper.getWrapperCounterpartSymbol(chainAccountsList[i].chainId, assetSymbol);
-                    // If the user opts for paying with payment token and the payment token is also the action token's counterpart
-                    // reduce the available balance by the max cost
-                    if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, counterpartSymbol)) {
-                        counterpartBalance = Math.subtractFlooredAtZero(
-                            counterpartBalance, PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId)
-                        );
-                    }
-                    aggregateAssetBalance += counterpartBalance;
+                uint256 counterpartBalance =
+                    getWrapperCounterpartBalance(assetSymbol, chainAccountsList[i].chainId, chainAccountsList);
+                string memory counterpartSymbol =
+                    TokenWrapper.getWrapperCounterpartSymbol(chainAccountsList[i].chainId, assetSymbol);
+                // If the user opts for paying with payment token and the payment token is also the action token's counterpart
+                // reduce the available balance by the max cost
+                if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, counterpartSymbol)) {
+                    counterpartBalance = Math.subtractFlooredAtZero(
+                        counterpartBalance, PaymentInfo.findMaxCost(payment, chainAccountsList[i].chainId)
+                    );
+                }
+                aggregateAssetBalance += counterpartBalance;
                 }
             }
         }
