@@ -9,7 +9,7 @@ import {ReplayableHelper} from "test/builder/lib/ReplayableHelper.sol";
 
 import {RecurringSwap} from "src/RecurringSwap.sol";
 import {CCTPBridgeActions} from "src/BridgeScripts.sol";
-
+import {SwapBuilderScripts} from "src/builder/scripts/SwapBuilderScripts.sol";
 import {Actions} from "src/builder/Actions.sol";
 import {Accounts} from "src/builder/Accounts.sol";
 import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
@@ -34,7 +34,7 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
         uint256 interval,
         address sender,
         uint256 blockTimestamp
-    ) internal pure returns (QuarkBuilder.RecurringSwapIntent memory) {
+    ) internal pure returns (SwapBuilderScripts.RecurringSwapIntent memory) {
         address weth = weth_(chainId);
         return recurringSwap_({
             chainId: chainId,
@@ -61,8 +61,8 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
         uint256 interval,
         address sender,
         uint256 blockTimestamp
-    ) internal pure returns (QuarkBuilder.RecurringSwapIntent memory) {
-        return QuarkBuilder.RecurringSwapIntent({
+    ) internal pure returns (SwapBuilderScripts.RecurringSwapIntent memory) {
+        return SwapBuilderScripts.RecurringSwapIntent({
             chainId: chainId,
             sellToken: sellToken,
             sellAmount: sellAmount,
@@ -76,7 +76,7 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
         });
     }
 
-    function constructSwapConfig_(QuarkBuilder.RecurringSwapIntent memory swap)
+    function constructSwapConfig_(SwapBuilderScripts.RecurringSwapIntent memory swap)
         internal
         pure
         returns (RecurringSwap.SwapConfig memory)
@@ -186,7 +186,7 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
 
     function testRecurringExactInSwapSucceeds() public {
         QuarkBuilder builder = new QuarkBuilder();
-        QuarkBuilder.RecurringSwapIntent memory buyWethIntent = buyWeth_({
+        SwapBuilderScripts.RecurringSwapIntent memory buyWethIntent = buyWeth_({
             chainId: 1,
             sellToken: usdc_(1),
             sellAmount: 3000e6,
@@ -277,7 +277,7 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
 
     function testRecurringExactOutSwapSucceeds() public {
         QuarkBuilder builder = new QuarkBuilder();
-        QuarkBuilder.RecurringSwapIntent memory buyWethIntent = buyWeth_({
+        SwapBuilderScripts.RecurringSwapIntent memory buyWethIntent = buyWeth_({
             chainId: 1,
             sellToken: usdc_(1),
             sellAmount: 3000e6,
@@ -368,7 +368,7 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
 
     function testRecurringSwapWithPaycallSucceeds() public {
         QuarkBuilder builder = new QuarkBuilder();
-        QuarkBuilder.RecurringSwapIntent memory buyWethIntent = buyWeth_({
+        SwapBuilderScripts.RecurringSwapIntent memory buyWethIntent = buyWeth_({
             chainId: 1,
             sellToken: usdc_(1),
             sellAmount: 3000e6,

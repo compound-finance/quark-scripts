@@ -159,9 +159,13 @@ contract QuarkBuilderTest {
         return maxCosts;
     }
 
-    function assetPositionLists_(uint256 chainId, address[] memory accounts, uint256 balance) internal pure returns (Accounts.AssetPositions[] memory){
+    function assetPositionLists_(uint256 chainId, address[] memory accounts, uint256 balance)
+        internal
+        pure
+        returns (Accounts.AssetPositions[] memory)
+    {
         Accounts.AssetPositions[] memory assetPositionsList = new Accounts.AssetPositions[](accounts.length * 4);
-        for(uint256 i = 0; i < accounts.length; ++i){
+        for (uint256 i = 0; i < accounts.length; ++i) {
             assetPositionsList[i * 4] = Accounts.AssetPositions({
                 asset: usdc_(chainId),
                 symbol: "USDC",

@@ -6,7 +6,7 @@ import "forge-std/Test.sol";
 import {Arrays} from "test/builder/lib/Arrays.sol";
 import {Accounts, PaymentInfo, QuarkBuilder, QuarkBuilderTest} from "test/builder/lib/QuarkBuilderTest.sol";
 import {QuarkBuilderBase} from "src/builder/QuarkBuilderBase.sol";
-
+import {CometBuilderScripts} from "src/builder/scripts/CometBuilderScripts.sol";
 import {Actions} from "src/builder/Actions.sol";
 import {CCTPBridgeActions} from "src/BridgeScripts.sol";
 import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
@@ -17,7 +17,7 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
     function cometWithdraw_(uint256 chainId, address comet, string memory assetSymbol, uint256 amount)
         internal
         pure
-        returns (QuarkBuilder.CometWithdrawIntent memory)
+        returns (CometBuilderScripts.CometWithdrawIntent memory)
     {
         return cometWithdraw_({
             chainId: chainId,
@@ -34,8 +34,8 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
         string memory assetSymbol,
         uint256 amount,
         address withdrawer
-    ) internal pure returns (QuarkBuilder.CometWithdrawIntent memory) {
-        return QuarkBuilder.CometWithdrawIntent({
+    ) internal pure returns (CometBuilderScripts.CometWithdrawIntent memory) {
+        return CometBuilderScripts.CometWithdrawIntent({
             amount: amount,
             assetSymbol: assetSymbol,
             blockTimestamp: BLOCK_TIMESTAMP,

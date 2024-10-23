@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
 import {QuarkBuilderTest, Accounts, PaymentInfo} from "test/builder/lib/QuarkBuilderTest.sol";
-
+import {MorphoVaultBuilderScripts} from "src/builder/scripts/MorphoVaultBuilderScripts.sol";
 import {Actions} from "src/builder/Actions.sol";
 import {CCTPBridgeActions} from "src/BridgeScripts.sol";
 import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
@@ -23,7 +23,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
     function morphoSupplyIntent_(uint256 chainId, uint256 amount, string memory assetSymbol)
         internal
         pure
-        returns (QuarkBuilder.MorphoVaultSupplyIntent memory)
+        returns (MorphoVaultBuilderScripts.MorphoVaultSupplyIntent memory)
     {
         return
             morphoSupplyIntent_({chainId: chainId, amount: amount, assetSymbol: assetSymbol, sender: address(0xa11ce)});
@@ -32,9 +32,9 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
     function morphoSupplyIntent_(uint256 chainId, uint256 amount, string memory assetSymbol, address sender)
         internal
         pure
-        returns (QuarkBuilder.MorphoVaultSupplyIntent memory)
+        returns (MorphoVaultBuilderScripts.MorphoVaultSupplyIntent memory)
     {
-        return QuarkBuilder.MorphoVaultSupplyIntent({
+        return MorphoVaultBuilderScripts.MorphoVaultSupplyIntent({
             amount: amount,
             assetSymbol: assetSymbol,
             blockTimestamp: BLOCK_TIMESTAMP,
@@ -47,7 +47,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         QuarkBuilder builder = new QuarkBuilder();
         vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "USDC", 2e6, 0e6));
         builder.morphoVaultSupply(
-            QuarkBuilder.MorphoVaultSupplyIntent({
+            MorphoVaultBuilderScripts.MorphoVaultSupplyIntent({
                 amount: 2e6,
                 assetSymbol: "USDC",
                 blockTimestamp: BLOCK_TIMESTAMP,
@@ -64,7 +64,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         // Max cost is too high, so total available funds is 0
         vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "USDC", 1e6, 0e6));
         builder.morphoVaultSupply(
-            QuarkBuilder.MorphoVaultSupplyIntent({
+            MorphoVaultBuilderScripts.MorphoVaultSupplyIntent({
                 amount: 1e6,
                 assetSymbol: "USDC",
                 blockTimestamp: BLOCK_TIMESTAMP,
@@ -107,7 +107,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "USDC", 2e6, 0));
         builder.morphoVaultSupply(
             // there is no bridge to brige from 7777, so we cannot get to our funds
-            QuarkBuilder.MorphoVaultSupplyIntent({
+            MorphoVaultBuilderScripts.MorphoVaultSupplyIntent({
                 amount: 2e6,
                 assetSymbol: "USDC",
                 blockTimestamp: BLOCK_TIMESTAMP,
@@ -122,7 +122,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
     function testSimpleMorphoVaultSupply() public {
         QuarkBuilder builder = new QuarkBuilder();
         QuarkBuilder.BuilderResult memory result = builder.morphoVaultSupply(
-            QuarkBuilder.MorphoVaultSupplyIntent({
+            MorphoVaultBuilderScripts.MorphoVaultSupplyIntent({
                 amount: 1e6,
                 assetSymbol: "USDC",
                 blockTimestamp: BLOCK_TIMESTAMP,
@@ -197,7 +197,7 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
         });
 
         QuarkBuilder.BuilderResult memory result = builder.morphoVaultSupply(
-            QuarkBuilder.MorphoVaultSupplyIntent({
+            MorphoVaultBuilderScripts.MorphoVaultSupplyIntent({
                 amount: type(uint256).max,
                 assetSymbol: "USDC",
                 blockTimestamp: BLOCK_TIMESTAMP,

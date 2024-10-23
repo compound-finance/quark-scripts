@@ -6,6 +6,7 @@ import "forge-std/console.sol";
 
 import {Arrays} from "test/builder/lib/Arrays.sol";
 import {QuarkBuilderTest, Accounts, PaymentInfo} from "test/builder/lib/QuarkBuilderTest.sol";
+import {MorphoBuilderScripts} from "src/builder/scripts/MorphoBuilderScripts.sol";
 import {Actions} from "src/builder/Actions.sol";
 import {CCTPBridgeActions} from "src/BridgeScripts.sol";
 import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
@@ -26,7 +27,7 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
         uint256 amount,
         string memory collateralAssetSymbol,
         uint256 collateralAmount
-    ) internal pure returns (QuarkBuilder.MorphoRepayIntent memory) {
+    ) internal pure returns (MorphoBuilderScripts.MorphoRepayIntent memory) {
         return repayIntent_({
             chainId: chainId,
             assetSymbol: assetSymbol,
@@ -44,8 +45,8 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
         string memory collateralAssetSymbol,
         uint256 collateralAmount,
         address repayer
-    ) internal pure returns (QuarkBuilder.MorphoRepayIntent memory) {
-        return QuarkBuilder.MorphoRepayIntent({
+    ) internal pure returns (MorphoBuilderScripts.MorphoRepayIntent memory) {
+        return MorphoBuilderScripts.MorphoRepayIntent({
             amount: amount,
             assetSymbol: assetSymbol,
             blockTimestamp: BLOCK_TIMESTAMP,

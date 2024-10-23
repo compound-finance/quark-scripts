@@ -7,7 +7,7 @@ import "forge-std/console.sol";
 import {Arrays} from "test/builder/lib/Arrays.sol";
 import {QuarkBuilderTest, Accounts, PaymentInfo, QuarkBuilder} from "test/builder/lib/QuarkBuilderTest.sol";
 import {QuarkBuilderBase} from "src/builder/QuarkBuilderBase.sol";
-
+import {CometBuilderScripts} from "src/builder/scripts/CometBuilderScripts.sol";
 import {Actions} from "src/builder/Actions.sol";
 import {CCTPBridgeActions} from "src/BridgeScripts.sol";
 import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
@@ -25,8 +25,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         uint256 amount,
         string[] memory collateralAssetSymbols,
         uint256[] memory collateralAmounts
-    ) internal pure returns (QuarkBuilder.CometRepayIntent memory) {
-        return QuarkBuilder.CometRepayIntent({
+    ) internal pure returns (CometBuilderScripts.CometRepayIntent memory) {
+        return CometBuilderScripts.CometRepayIntent({
             amount: amount,
             assetSymbol: assetSymbol,
             blockTimestamp: BLOCK_TIMESTAMP,
@@ -506,7 +506,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             morphoVaultPortfolios: emptyMorphoVaultPortfolios_()
         });
 
-        QuarkBuilder.CometRepayIntent memory repayIntent;
+        CometBuilderScripts.CometRepayIntent memory repayIntent;
         // Local scope to avoid stack too deep
         {
             uint256[] memory collateralAmounts = new uint256[](1);
