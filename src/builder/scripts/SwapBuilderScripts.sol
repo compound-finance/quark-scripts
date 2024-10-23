@@ -123,7 +123,7 @@ contract SwapBuilderScripts is QuarkBuilderBase {
                 action: action
             });
         }
-        
+
         return BuilderResult({
             version: VERSION,
             actions: actionsArray,

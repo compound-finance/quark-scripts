@@ -83,7 +83,7 @@ contract MorphoBuilderScripts is QuarkBuilderBase {
             quarkOperation: borrowQuarkOperation,
             action: borrowAction
         });
-        
+
         return BuilderResult({
             version: VERSION,
             actions: actionsArray,

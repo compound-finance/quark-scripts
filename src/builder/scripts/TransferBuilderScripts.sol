@@ -93,7 +93,7 @@ contract TransferBuilderScripts is QuarkBuilderBase {
             quarkOperation: operation,
             action: action
         });
-        
+
         return BuilderResult({
             version: VERSION,
             actions: actionsArray,
