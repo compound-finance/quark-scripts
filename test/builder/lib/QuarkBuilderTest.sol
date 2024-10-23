@@ -58,6 +58,7 @@ contract QuarkBuilderTest {
     bytes32 constant ALICE_DEFAULT_SECRET = bytes32(uint256(12));
     bytes32 constant BOB_DEFAULT_SECRET = bytes32(uint256(2));
     bytes32 constant COB_DEFAULT_SECRET = bytes32(uint256(5));
+    bytes32 constant FELLA_DEFAULT_SECRET = bytes32(uint256(7));
 
     /**
      *
@@ -102,18 +103,28 @@ contract QuarkBuilderTest {
             morphoPositions: emptyMorphoPositions_(),
             morphoVaultPositions: emptyMorphoVaultPositions_()
         });
+        Accounts.QuarkSecret[] memory quarkSecrets = new Accounts.QuarkSecret[](3);
+        quarkSecrets[0] = quarkSecret_(address(0xb0b), BOB_DEFAULT_SECRET);
+        quarkSecrets[1] = quarkSecret_(address(0xa11ce), ALICE_DEFAULT_SECRET);
+        quarkSecrets[2] = quarkSecret_(address(0xfe11a), FELLA_DEFAULT_SECRET);
+
+        address[] memory accounts = new address[](3);
+        accounts[0] = address(0xb0b);
+        accounts[1] = address(0xa11ce);
+        accounts[2] = address(0xfe11a);
+
         chainAccountsList[1] = Accounts.ChainAccounts({
             chainId: 8453,
-            quarkSecrets: quarkSecrets_(address(0xb0b), BOB_DEFAULT_SECRET),
-            assetPositionsList: assetPositionsList_(8453, address(0xb0b), uint256(amount / 2)),
+            quarkSecrets: quarkSecrets,
+            assetPositionsList: assetPositionLists_(8453, accounts, uint256(amount / 2)),
             cometPositions: emptyCometPositions_(),
             morphoPositions: emptyMorphoPositions_(),
             morphoVaultPositions: emptyMorphoVaultPositions_()
         });
         chainAccountsList[2] = Accounts.ChainAccounts({
             chainId: 7777,
-            quarkSecrets: quarkSecrets_(address(0xc0b), COB_DEFAULT_SECRET),
-            assetPositionsList: assetPositionsList_(7777, address(0xc0b), uint256(0)),
+            quarkSecrets: quarkSecrets,
+            assetPositionsList: assetPositionLists_(7777, accounts, uint256(0)),
             cometPositions: emptyCometPositions_(),
             morphoPositions: emptyMorphoPositions_(),
             morphoVaultPositions: emptyMorphoVaultPositions_()
@@ -146,6 +157,45 @@ contract QuarkBuilderTest {
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
         maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: chainId, amount: amount});
         return maxCosts;
+    }
+
+    function assetPositionLists_(uint256 chainId, address[] memory accounts, uint256 balance)
+        internal
+        pure
+        returns (Accounts.AssetPositions[] memory)
+    {
+        Accounts.AssetPositions[] memory assetPositionsList = new Accounts.AssetPositions[](accounts.length * 4);
+        for (uint256 i = 0; i < accounts.length; ++i) {
+            assetPositionsList[i * 4] = Accounts.AssetPositions({
+                asset: usdc_(chainId),
+                symbol: "USDC",
+                decimals: 6,
+                usdPrice: USDC_PRICE,
+                accountBalances: accountBalances_(accounts[i], balance)
+            });
+            assetPositionsList[i * 4 + 1] = Accounts.AssetPositions({
+                asset: usdt_(chainId),
+                symbol: "USDT",
+                decimals: 6,
+                usdPrice: USDT_PRICE,
+                accountBalances: accountBalances_(accounts[i], balance)
+            });
+            assetPositionsList[i * 4 + 2] = Accounts.AssetPositions({
+                asset: weth_(chainId),
+                symbol: "WETH",
+                decimals: 18,
+                usdPrice: WETH_PRICE,
+                accountBalances: accountBalances_(accounts[i], 0)
+            });
+            assetPositionsList[i * 4 + 3] = Accounts.AssetPositions({
+                asset: link_(chainId),
+                symbol: "LINK",
+                decimals: 18,
+                usdPrice: LINK_PRICE,
+                accountBalances: accountBalances_(accounts[i], 0) // empty balance
+            });
+        }
+        return assetPositionsList;
     }
 
     function assetPositionsList_(uint256 chainId, address account, uint256 balance)

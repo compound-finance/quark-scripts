@@ -1283,74 +1283,74 @@ library Actions {
     }
 
     // TODO: Commenting because it is currently unused and will result in stack too deep
-    // function morphoClaimRewards(MorphoClaimRewards memory claimRewards, PaymentInfo.Payment memory payment)
-    //     internal
-    //     pure
-    //     returns (IQuarkWallet.QuarkOperation memory, Action memory)
-    // {
-    //     bytes[] memory scriptSources = new bytes[](1);
-    //     scriptSources[0] = type(MorphoRewardsActions).creationCode;
+    function morphoClaimRewards(MorphoClaimRewards memory claimRewards, PaymentInfo.Payment memory payment)
+        internal
+        pure
+        returns (IQuarkWallet.QuarkOperation memory, Action memory)
+    {
+        bytes[] memory scriptSources = new bytes[](1);
+        scriptSources[0] = type(MorphoRewardsActions).creationCode;
 
-    //     Accounts.ChainAccounts memory accounts =
-    //         Accounts.findChainAccounts(claimRewards.chainId, claimRewards.chainAccountsList);
+        Accounts.ChainAccounts memory accounts =
+            Accounts.findChainAccounts(claimRewards.chainId, claimRewards.chainAccountsList);
 
-    //     Accounts.QuarkSecret memory accountSecret =
-    //         Accounts.findQuarkSecret(claimRewards.claimer, accounts.quarkSecrets);
+        Accounts.QuarkSecret memory accountSecret =
+            Accounts.findQuarkSecret(claimRewards.claimer, accounts.quarkSecrets);
 
-    //     string[] memory rewardsAssetSymbols = new string[](claimRewards.rewards.length);
-    //     uint256[] memory rewardsPrices = new uint256[](claimRewards.rewards.length);
-    //     for (uint256 i = 0; i < claimRewards.rewards.length; ++i) {
-    //         Accounts.AssetPositions memory rewardsAssetPosition =
-    //             Accounts.findAssetPositions(claimRewards.rewards[i], accounts.assetPositionsList);
-    //         rewardsAssetSymbols[i] = rewardsAssetPosition.symbol;
-    //         rewardsPrices[i] = rewardsAssetPosition.usdPrice;
-    //     }
+        string[] memory rewardsAssetSymbols = new string[](claimRewards.rewards.length);
+        uint256[] memory rewardsPrices = new uint256[](claimRewards.rewards.length);
+        for (uint256 i = 0; i < claimRewards.rewards.length; ++i) {
+            Accounts.AssetPositions memory rewardsAssetPosition =
+                Accounts.findAssetPositions(claimRewards.rewards[i], accounts.assetPositionsList);
+            rewardsAssetSymbols[i] = rewardsAssetPosition.symbol;
+            rewardsPrices[i] = rewardsAssetPosition.usdPrice;
+        }
 
-    //     bytes memory scriptCalldata = abi.encodeWithSelector(
-    //         MorphoRewardsActions.claimAll.selector,
-    //         claimRewards.distributors,
-    //         claimRewards.accounts,
-    //         claimRewards.rewards,
-    //         claimRewards.claimables,
-    //         claimRewards.proofs
-    //     );
+        bytes memory scriptCalldata = abi.encodeWithSelector(
+            MorphoRewardsActions.claimAll.selector,
+            claimRewards.distributors,
+            claimRewards.accounts,
+            claimRewards.rewards,
+            claimRewards.claimables,
+            claimRewards.proofs
+        );
 
-    //     // Construct QuarkOperation
-    //     IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-    //         nonce: accountSecret.nonceSecret,
-    //         isReplayable: false,
-    //         scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoRewardsActions).creationCode),
-    //         scriptCalldata: scriptCalldata,
-    //         scriptSources: scriptSources,
-    //         expiry: claimRewards.blockTimestamp + STANDARD_EXPIRY_BUFFER
-    //     });
+        // Construct QuarkOperation
+        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
+            nonce: accountSecret.nonceSecret,
+            isReplayable: false,
+            scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoRewardsActions).creationCode),
+            scriptCalldata: scriptCalldata,
+            scriptSources: scriptSources,
+            expiry: claimRewards.blockTimestamp + STANDARD_EXPIRY_BUFFER
+        });
 
-    //     MorphoClaimRewardsActionContext memory claimRewardsActionContext = MorphoClaimRewardsActionContext({
-    //         amounts: claimRewards.claimables,
-    //         assetSymbols: rewardsAssetSymbols,
-    //         chainId: claimRewards.chainId,
-    //         prices: rewardsPrices,
-    //         tokens: claimRewards.rewards
-    //     });
+        MorphoClaimRewardsActionContext memory claimRewardsActionContext = MorphoClaimRewardsActionContext({
+            amounts: claimRewards.claimables,
+            assetSymbols: rewardsAssetSymbols,
+            chainId: claimRewards.chainId,
+            prices: rewardsPrices,
+            tokens: claimRewards.rewards
+        });
 
-    //     Action memory action = Actions.Action({
-    //         chainId: claimRewards.chainId,
-    //         quarkAccount: claimRewards.claimer,
-    //         actionType: ACTION_TYPE_MORPHO_CLAIM_REWARDS,
-    //         actionContext: abi.encode(claimRewardsActionContext),
-    //         paymentMethod: PaymentInfo.paymentMethodForPayment(payment, false),
-    //         // Null address for OFFCHAIN payment.
-    //         paymentToken: payment.isToken
-    //             ? PaymentInfo.knownToken(payment.currency, claimRewards.chainId).token
-    //             : address(0),
-    //         paymentTokenSymbol: payment.currency,
-    //         paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, claimRewards.chainId) : 0,
-    //         nonceSecret: accountSecret.nonceSecret,
-    //         totalPlays: 1
-    //     });
+        Action memory action = Actions.Action({
+            chainId: claimRewards.chainId,
+            quarkAccount: claimRewards.claimer,
+            actionType: ACTION_TYPE_MORPHO_CLAIM_REWARDS,
+            actionContext: abi.encode(claimRewardsActionContext),
+            paymentMethod: PaymentInfo.paymentMethodForPayment(payment, false),
+            // Null address for OFFCHAIN payment.
+            paymentToken: payment.isToken
+                ? PaymentInfo.knownToken(payment.currency, claimRewards.chainId).token
+                : address(0),
+            paymentTokenSymbol: payment.currency,
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, claimRewards.chainId) : 0,
+            nonceSecret: accountSecret.nonceSecret,
+            totalPlays: 1
+        });
 
-    //     return (quarkOperation, action);
-    // }
+        return (quarkOperation, action);
+    }
 
     function wrapOrUnwrapAsset(
         WrapOrUnwrapAsset memory wrapOrUnwrap,
