@@ -62,11 +62,9 @@ contract QuarkBuilderBase {
         bool autoWrapperEnabled;
     }
 
-    // quark builder base script consists of
-    // - tokens that will be used for the actions
-    // - bridge tokens if possible
-    // - assert account has enough token and pamynet token to complete actions
-    // Then insert middle of custom action
+    /**
+     * @dev Collects assets for an action by checking and bridging assets if necessary to accomodate the intended action.
+     */
     function collectAssetsForAction(
         ActionIntent memory actionIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
