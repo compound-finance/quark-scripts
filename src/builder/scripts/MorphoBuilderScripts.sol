@@ -179,11 +179,6 @@ contract MorphoBuilderScripts is QuarkBuilderBase {
         });
     }
 
-    // TODO: Commenting because it is currently unused and will result in stack too deep
-    // Note: The root case for the stack too deep is the yul optimizer. The optimizer currently
-    // inlines the internal call to `Actions.morphoClaimRewards`. Compiling using `via-ir` but
-    // without the optimizer works.
-
     struct MorphoRewardsClaimIntent {
         uint256 blockTimestamp;
         address claimer;
