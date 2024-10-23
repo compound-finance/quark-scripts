@@ -35,7 +35,7 @@ contract QuarkBuilder is QuarkBuilderBase {
         CometRepayIntent memory repayIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) external view returns (BuilderResult memory /* builderResult */ ) {
+    ) external pure returns (BuilderResult memory /* builderResult */ ) {
         if (repayIntent.collateralAmounts.length != repayIntent.collateralAssetSymbols.length) {
             revert InvalidInput();
         }
@@ -121,7 +121,7 @@ contract QuarkBuilder is QuarkBuilderBase {
         CometBorrowIntent memory borrowIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) external view returns (BuilderResult memory /* builderResult */ ) {
+    ) external pure returns (BuilderResult memory /* builderResult */ ) {
         if (borrowIntent.collateralAmounts.length != borrowIntent.collateralAssetSymbols.length) {
             revert InvalidInput();
         }
@@ -194,7 +194,7 @@ contract QuarkBuilder is QuarkBuilderBase {
         CometSupplyIntent memory cometSupplyIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) external view returns (BuilderResult memory /* builderResult */ ) {
+    ) external pure returns (BuilderResult memory /* builderResult */ ) {
         // If the action is paid for with tokens, filter out any chain accounts that do not have corresponding payment information
         if (payment.isToken) {
             chainAccountsList = Accounts.findChainAccountsWithPaymentInfo(chainAccountsList, payment);
@@ -273,7 +273,7 @@ contract QuarkBuilder is QuarkBuilderBase {
         CometWithdrawIntent memory cometWithdrawIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) external view returns (BuilderResult memory) {
+    ) external pure returns (BuilderResult memory) {
         // XXX confirm that you actually have the amount to withdraw
         bool isMaxWithdraw = cometWithdrawIntent.amount == type(uint256).max;
         bool useQuotecall = false; // never use Quotecall
@@ -356,7 +356,7 @@ contract QuarkBuilder is QuarkBuilderBase {
         TransferIntent memory transferIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) external view returns (BuilderResult memory) {
+    ) external pure returns (BuilderResult memory) {
         // If the action is paid for with tokens, filter out any chain accounts that do not have corresponding payment information
         if (payment.isToken) {
             chainAccountsList = Accounts.findChainAccountsWithPaymentInfo(chainAccountsList, payment);
@@ -445,7 +445,7 @@ contract QuarkBuilder is QuarkBuilderBase {
         ZeroExSwapIntent memory swapIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) external view returns (BuilderResult memory) {
+    ) external pure returns (BuilderResult memory) {
         // If the action is paid for with tokens, filter out any chain accounts that do not have corresponding payment information
         if (payment.isToken) {
             chainAccountsList = Accounts.findChainAccountsWithPaymentInfo(chainAccountsList, payment);
@@ -559,7 +559,7 @@ contract QuarkBuilder is QuarkBuilderBase {
         RecurringSwapIntent memory swapIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) external view returns (BuilderResult memory) {
+    ) external pure returns (BuilderResult memory) {
         // If the action is paid for with tokens, filter out any chain accounts that do not have corresponding payment information
         if (payment.isToken) {
             chainAccountsList = Accounts.findChainAccountsWithPaymentInfo(chainAccountsList, payment);
@@ -646,7 +646,7 @@ contract QuarkBuilder is QuarkBuilderBase {
         MorphoBorrowIntent memory borrowIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) external view returns (BuilderResult memory) {
+    ) external pure returns (BuilderResult memory) {
         bool useQuotecall = false; // never use Quotecall
 
         (IQuarkWallet.QuarkOperation memory borrowQuarkOperation, Actions.Action memory borrowAction) = Actions
@@ -667,13 +667,13 @@ contract QuarkBuilder is QuarkBuilderBase {
         QuarkBuilderBase.ActionIntent memory actionIntent;
         {
             uint256[] memory amountOuts = new uint256[](1);
-            amountOuts[0] = borrowIntent.amount;
+            amountOuts[0] = borrowIntent.collateralAmount;
             string[] memory assetSymbolOuts = new string[](1);
-            assetSymbolOuts[0] = borrowIntent.assetSymbol;
+            assetSymbolOuts[0] = borrowIntent.collateralAssetSymbol;
             uint256[] memory amountIns = new uint256[](1);
-            amountIns[0] = borrowIntent.collateralAmount;
+            amountIns[0] = borrowIntent.amount;
             string[] memory assetSymbolIns = new string[](1);
-            assetSymbolIns[0] = borrowIntent.collateralAssetSymbol;
+            assetSymbolIns[0] = borrowIntent.assetSymbol;
             actionIntent = QuarkBuilderBase.ActionIntent({
                 actor: borrowIntent.borrower,
                 amountIns: amountIns,
@@ -719,7 +719,7 @@ contract QuarkBuilder is QuarkBuilderBase {
         MorphoRepayIntent memory repayIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) external view returns (BuilderResult memory) {
+    ) external pure returns (BuilderResult memory) {
         bool isMaxRepay = repayIntent.amount == type(uint256).max;
         bool useQuotecall = false; // never use Quotecall
 
@@ -805,7 +805,7 @@ contract QuarkBuilder is QuarkBuilderBase {
         MorphoVaultSupplyIntent memory supplyIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) external view returns (BuilderResult memory) {
+    ) external pure returns (BuilderResult memory) {
         // If the action is paid for with tokens, filter out any chain accounts that do not have corresponding payment information
         if (payment.isToken) {
             chainAccountsList = Accounts.findChainAccountsWithPaymentInfo(chainAccountsList, payment);
@@ -883,7 +883,7 @@ contract QuarkBuilder is QuarkBuilderBase {
         MorphoVaultWithdrawIntent memory withdrawIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) external view returns (BuilderResult memory) {
+    ) external pure returns (BuilderResult memory) {
         // XXX confirm that you actually have the amount to withdraw
 
         bool isMaxWithdraw = withdrawIntent.amount == type(uint256).max;
@@ -980,7 +980,7 @@ contract QuarkBuilder is QuarkBuilderBase {
         MorphoRewardsClaimIntent memory claimIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) external view returns (BuilderResult memory) {
+    ) external pure returns (BuilderResult memory) {
         if (
             claimIntent.accounts.length != claimIntent.claimables.length
                 || claimIntent.accounts.length != claimIntent.distributors.length

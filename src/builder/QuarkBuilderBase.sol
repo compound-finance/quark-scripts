@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.27;
-import "forge-std/console.sol";
-
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
 
 import {Actions} from "./Actions.sol";
@@ -76,7 +74,7 @@ contract QuarkBuilderBase {
         Actions.Action memory action
     )
         internal
-        view
+        pure
         returns (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray)
     {
         // Sanity check on ActionIntent
@@ -160,7 +158,7 @@ contract QuarkBuilderBase {
         if (payment.isToken && !paymentTokenInAssetSymbolOut) {
             uint256 maxCostOnDstChain = PaymentInfo.findMaxCost(payment, actionIntent.chainId);
 
-            for (uint256 k = 0; actionIntent.assetSymbolIns.length < k; ++k) {
+            for (uint256 k = 0; k < actionIntent.assetSymbolIns.length; ++k) {
                 if (Strings.stringEqIgnoreCase(actionIntent.assetSymbolIns[k], payment.currency)) {
                     maxCostOnDstChain = Math.subtractFlooredAtZero(maxCostOnDstChain, actionIntent.amountIns[k]);
                 }
@@ -230,9 +228,24 @@ contract QuarkBuilderBase {
         actionsArray = List.toActionArray(actions);
 
         // Validate generated actions for affordability
+        // Note: Do we still need this? Seems unreachable if we always attempt to bridge enough payment token
+        // If not enough, it will always fail at the bridge step
         if (payment.isToken) {
+            uint256 supplementalPaymentTokenBalance = 0;
+            for (uint256 i = 0; i < actionIntent.assetSymbolIns.length; ++i) {
+                if (Strings.stringEqIgnoreCase(actionIntent.assetSymbolIns[i], payment.currency)) {
+                    supplementalPaymentTokenBalance += actionIntent.amountIns[i];
+                }
+            }
+
             assertSufficientPaymentTokenBalances(
-                actionsArray, chainAccountsList, actionIntent.chainId, actionIntent.actor
+                PaymentBalanceAssertionArgs({
+                    actions: actionsArray,
+                    chainAccountsList: chainAccountsList,
+                    targetChainId: actionIntent.chainId,
+                    account: actionIntent.actor,
+                    supplementalPaymentTokenBalance: supplementalPaymentTokenBalance
+                })
             );
         }
 
@@ -255,7 +268,7 @@ contract QuarkBuilderBase {
         uint256 chainId,
         address comet,
         address repayer
-    ) internal view returns (uint256) {
+    ) internal pure returns (uint256) {
         uint256 totalBorrowForAccount = Accounts.totalBorrowForAccount(chainAccountsList, chainId, comet, repayer);
         uint256 buffer = totalBorrowForAccount / 1000; // 0.1%
         return totalBorrowForAccount + buffer;
@@ -267,7 +280,7 @@ contract QuarkBuilderBase {
         address loanToken,
         address collateralToken,
         address repayer
-    ) internal view returns (uint256) {
+    ) internal pure returns (uint256) {
         uint256 totalBorrowForAccount =
             Accounts.totalMorphoBorrowForAccount(chainAccountsList, chainId, loanToken, collateralToken, repayer);
         uint256 buffer = totalBorrowForAccount / 1000; // 0.1%
@@ -280,7 +293,7 @@ contract QuarkBuilderBase {
         uint256 amount,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) internal view {
+    ) internal pure {
         // If no funds need to be bridged, then this check is satisfied
         // TODO: We might still need to check the availability of funds on the target chain, e.g. see if
         // funds are locked in a lending protocol and can't be withdrawn
@@ -342,7 +355,7 @@ contract QuarkBuilderBase {
         uint256 chainId,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) internal view returns (bool) {
+    ) internal pure returns (bool) {
         uint256 balanceOnChain = getBalanceOnChain(assetSymbol, chainId, chainAccountsList, payment);
         uint256 amountNeededOnChain = getAmountNeededOnChain(assetSymbol, amount, chainId, payment);
 
@@ -364,7 +377,7 @@ contract QuarkBuilderBase {
         address account,
         uint256 blockTimestamp,
         bool useQuotecall
-    ) internal view {
+    ) internal pure {
         // Check if inserting wrapOrUnwrap action is necessary
         uint256 assetBalanceOnChain = Accounts.getBalanceOnChain(assetSymbol, chainId, chainAccountsList);
         if (assetBalanceOnChain < amount && TokenWrapper.hasWrapperContract(chainId, assetSymbol)) {
@@ -416,7 +429,7 @@ contract QuarkBuilderBase {
         Accounts.ChainAccounts[] memory chainAccountsList,
         uint256 targetChainId,
         address account
-    ) internal view {
+    ) internal pure {
         return assertSufficientPaymentTokenBalances(
             PaymentBalanceAssertionArgs({
                 actions: actions,
@@ -428,7 +441,7 @@ contract QuarkBuilderBase {
         );
     }
 
-    function assertSufficientPaymentTokenBalances(PaymentBalanceAssertionArgs memory args) internal view {
+    function assertSufficientPaymentTokenBalances(PaymentBalanceAssertionArgs memory args) internal pure {
         Actions.Action[] memory bridgeActions = Actions.findActionsOfType(args.actions, Actions.ACTION_TYPE_BRIDGE);
         Actions.Action[] memory nonBridgeActions =
             Actions.findActionsNotOfType(args.actions, Actions.ACTION_TYPE_BRIDGE);
@@ -574,7 +587,7 @@ contract QuarkBuilderBase {
         string memory assetSymbol,
         uint256 chainId,
         Accounts.ChainAccounts[] memory chainAccountsList
-    ) internal view returns (uint256) {
+    ) internal pure returns (uint256) {
         if (TokenWrapper.hasWrapperContract(chainId, assetSymbol)) {
             // Add counterpart balance to balanceOnChain
             return Accounts.getBalanceOnChain(
@@ -590,7 +603,7 @@ contract QuarkBuilderBase {
         uint256 chainId,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) internal view returns (uint256) {
+    ) internal pure returns (uint256) {
         uint256 balanceOnChain = Accounts.getBalanceOnChain(assetSymbol, chainId, chainAccountsList);
 
         // If there exists a counterpart token, try to wrap/unwrap first before attempting to bridge
@@ -618,7 +631,7 @@ contract QuarkBuilderBase {
         uint256 amount,
         uint256 chainId,
         PaymentInfo.Payment memory payment
-    ) internal view returns (uint256) {
+    ) internal pure returns (uint256) {
         // If action is paid for with tokens and the payment token is the transfer token, then add the payment max cost for the target chain to the amount needed
         uint256 amountNeededOnChain = amount;
         if (payment.isToken && Strings.stringEqIgnoreCase(payment.currency, assetSymbol)) {
