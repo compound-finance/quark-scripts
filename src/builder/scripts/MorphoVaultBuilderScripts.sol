@@ -60,6 +60,7 @@ contract MorphoVaultBuilderScripts is QuarkBuilderBase {
 
         IQuarkWallet.QuarkOperation[] memory quarkOperationsArray;
         Actions.Action[] memory actionsArray;
+        // Note:scope to avoid stack too deep errors
         {
             uint256[] memory amountOuts = new uint256[](1);
             amountOuts[0] = supplyIntent.amount;
@@ -87,6 +88,7 @@ contract MorphoVaultBuilderScripts is QuarkBuilderBase {
                 action: supplyAction
             });
         }
+
         return BuilderResult({
             version: VERSION,
             actions: actionsArray,
@@ -146,6 +148,7 @@ contract MorphoVaultBuilderScripts is QuarkBuilderBase {
         );
 
         ActionIntent memory actionIntent;
+        // Note:scope to avoid stack too deep errors
         {
             uint256[] memory amountIns = new uint256[](1);
             amountIns[0] = actualWithdrawAmount;

@@ -89,6 +89,7 @@ contract SwapBuilderScripts is QuarkBuilderBase {
             );
 
             ActionIntent memory actionIntent;
+            // Note:scope to avoid stack too deep errors
             {
                 uint256[] memory amountOuts = new uint256[](1);
                 amountOuts[0] = swapIntent.sellAmount;
@@ -122,6 +123,7 @@ contract SwapBuilderScripts is QuarkBuilderBase {
                 action: action
             });
         }
+        
         return BuilderResult({
             version: VERSION,
             actions: actionsArray,
@@ -181,6 +183,7 @@ contract SwapBuilderScripts is QuarkBuilderBase {
         );
 
         ActionIntent memory actionIntent;
+        // Note:scope to avoid stack too deep errors
         {
             uint256[] memory amountOuts = new uint256[](1);
             amountOuts[0] = swapIntent.sellAmount;

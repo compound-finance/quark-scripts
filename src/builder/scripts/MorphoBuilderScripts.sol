@@ -51,6 +51,7 @@ contract MorphoBuilderScripts is QuarkBuilderBase {
         );
 
         QuarkBuilderBase.ActionIntent memory actionIntent;
+        // Note:scope to avoid stack too deep errors
         {
             uint256[] memory amountOuts = new uint256[](1);
             amountOuts[0] = borrowIntent.collateralAmount;
@@ -82,6 +83,7 @@ contract MorphoBuilderScripts is QuarkBuilderBase {
             quarkOperation: borrowQuarkOperation,
             action: borrowAction
         });
+        
         return BuilderResult({
             version: VERSION,
             actions: actionsArray,
@@ -139,7 +141,7 @@ contract MorphoBuilderScripts is QuarkBuilderBase {
 
         IQuarkWallet.QuarkOperation[] memory quarkOperationsArray;
         Actions.Action[] memory actionsArray;
-
+        // Note:scope to avoid stack too deep errors
         {
             uint256[] memory amountOuts = new uint256[](1);
             amountOuts[0] = repayAmount;
@@ -225,6 +227,7 @@ contract MorphoBuilderScripts is QuarkBuilderBase {
         );
 
         ActionIntent memory actionIntent;
+        // Note:scope to avoid stack too deep errors
         {
             string[] memory assetSymbolIns = new string[](claimIntent.rewards.length);
             for (uint256 i = 0; i < claimIntent.rewards.length; ++i) {

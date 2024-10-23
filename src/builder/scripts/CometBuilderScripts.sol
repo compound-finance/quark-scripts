@@ -67,6 +67,7 @@ contract CometBuilderScripts is QuarkBuilderBase {
         );
 
         QuarkBuilderBase.ActionIntent memory actionIntent;
+        // Note:scope to avoid stack too deep errors
         {
             uint256[] memory amountOuts = new uint256[](1);
             amountOuts[0] = repayAmount;
@@ -143,6 +144,7 @@ contract CometBuilderScripts is QuarkBuilderBase {
         );
 
         QuarkBuilderBase.ActionIntent memory actionIntent;
+        // Note:scope to avoid stack too deep errors
         {
             uint256[] memory amountIns = new uint256[](1);
             amountIns[0] = borrowIntent.amount;
@@ -170,6 +172,7 @@ contract CometBuilderScripts is QuarkBuilderBase {
             quarkOperation: borrowQuarkOperation,
             action: borrowAction
         });
+        
         return BuilderResult({
             version: VERSION,
             actions: actionsArray,
@@ -222,6 +225,7 @@ contract CometBuilderScripts is QuarkBuilderBase {
 
         IQuarkWallet.QuarkOperation[] memory quarkOperationsArray;
         Actions.Action[] memory actionsArray;
+        // Note:scope to avoid stack too deep errors
         {
             uint256[] memory amountOuts = new uint256[](1);
             amountOuts[0] = cometSupplyIntent.amount;
@@ -249,6 +253,7 @@ contract CometBuilderScripts is QuarkBuilderBase {
                 action: supplyAction
             });
         }
+
         return BuilderResult({
             version: VERSION,
             actions: actionsArray,
@@ -305,6 +310,7 @@ contract CometBuilderScripts is QuarkBuilderBase {
         );
         IQuarkWallet.QuarkOperation[] memory quarkOperationsArray;
         Actions.Action[] memory actionsArray;
+        // Note:scope to avoid stack too deep errors
         {
             uint256[] memory amountIns = new uint256[](1);
             amountIns[0] = actualWithdrawAmount;
@@ -332,6 +338,7 @@ contract CometBuilderScripts is QuarkBuilderBase {
                 action: cometWithdrawAction
             });
         }
+
         return BuilderResult({
             version: VERSION,
             actions: actionsArray,
