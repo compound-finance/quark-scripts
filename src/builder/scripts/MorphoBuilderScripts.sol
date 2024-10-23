@@ -231,13 +231,15 @@ contract MorphoBuilderScripts is QuarkBuilderBase {
 
         ActionIntent memory actionIntent;
         {
-            uint256[] memory amountIns = new uint256[](0);
-            string[] memory assetSymbolIns = new string[](0);
+            string[] memory assetSymbolIns = new string[](claimIntent.rewards.length);
+            for (uint256 i = 0; i < claimIntent.rewards.length; ++i) {
+                assetSymbolIns[i] = Accounts.findAssetPositions(claimIntent.rewards[i], claimIntent.chainId, chainAccountsList).symbol;
+            }
             uint256[] memory amountOuts = new uint256[](0);
             string[] memory assetSymbolOuts = new string[](0);
             actionIntent = ActionIntent({
                 actor: claimIntent.claimer,
-                amountIns: amountIns,
+                amountIns: claimIntent.claimables,
                 assetSymbolIns: assetSymbolIns,
                 amountOuts: amountOuts,
                 assetSymbolOuts: assetSymbolOuts,
