@@ -30,6 +30,14 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         return transferToken_("USDC", chainId, amount, recipient, blockTimestamp);
     }
 
+    function transferUsdc_(uint256 chainId, uint256 amount, address sender, address recipient, uint256 blockTimestamp)
+        internal
+        pure
+        returns (QuarkBuilder.TransferIntent memory)
+    {
+        return transferToken_("USDC", chainId, amount, sender, recipient, blockTimestamp);
+    }
+
     function transferEth_(uint256 chainId, uint256 amount, address recipient, uint256 blockTimestamp)
         internal
         pure
@@ -951,7 +959,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         // Missing amount = 5 USDC - 0.1 USDC = 4.9 USDC
         vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "USDC", 16.3e6, 11.4e6));
         builder.transfer(
-            transferUsdc_(8453, type(uint256).max, address(0xceecee), BLOCK_TIMESTAMP), // transfer max USDC on chain 8453 to 0xceecee
+            transferUsdc_(8453, type(uint256).max, address(0xb0b), address(0xceecee), BLOCK_TIMESTAMP), // transfer max USDC on chain 8453 to 0xceecee
             chainAccountsList, // holding 8 USDC on chains 1, 4 USDC on 8453, 5 USDC on 7777
             paymentUsdc_(maxCosts)
         );
@@ -988,7 +996,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         // max cost there. Therefore, we are short 1e6 USDC.
         vm.expectRevert(abi.encodeWithSelector(Actions.NotEnoughFundsToBridge.selector, "usdc", 3.5e6, 1e6));
         builder.transfer(
-            transferToken_("USDT", 8453, 3e6, address(0xceecee), BLOCK_TIMESTAMP), // transfer 3 USDT on chain 8453 to 0xceecee
+            transferToken_("USDT", 8453, 3e6, address(0xa11ce), address(0xceecee), BLOCK_TIMESTAMP), // transfer 3 USDT on chain 8453 to 0xceecee
             chainAccountsList_(6e6), // holding 6 USDC and USDT in total across chains 1, 8453
             paymentUsdc_(maxCosts)
         );

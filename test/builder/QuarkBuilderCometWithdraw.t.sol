@@ -546,7 +546,7 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
 
         QuarkBuilder builder = new QuarkBuilder();
 
-        vm.expectRevert(QuarkBuilderBase.MaxCostTooHigh.selector);
+        vm.expectRevert(abi.encodeWithSelector(Actions.NotEnoughFundsToBridge.selector, "usdc", 99e6, 99e6));
 
         builder.cometWithdraw(
             cometWithdraw_(1, cometUsdc_(1), "USDC", type(uint256).max),

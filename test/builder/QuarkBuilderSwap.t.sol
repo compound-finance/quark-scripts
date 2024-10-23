@@ -100,7 +100,7 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
         QuarkBuilder builder = new QuarkBuilder();
         vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "USDC", 3000e6, 0e6));
         builder.swap(
-            buyWeth_(1, usdc_(1), 3000e6, 1e18, address(0xfe11a), BLOCK_TIMESTAMP), // swap 3000 USDC on chain 1 to 1 WETH
+            buyWeth_(1, usdc_(1), 3000e6, 1e18, address(0xa11ce), BLOCK_TIMESTAMP), // swap 3000 USDC on chain 1 to 1 WETH
             chainAccountsList_(0e6), // but we are holding 0 USDC in total across 1, 8453
             paymentUsd_()
         );
@@ -112,7 +112,7 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
         // Max cost is too high, so total available funds is 0
         vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "USDC", 30e6, 0e6));
         builder.swap(
-            buyWeth_(1, usdc_(1), 30e6, 0.01e18, address(0xfe11a), BLOCK_TIMESTAMP), // swap 30 USDC on chain 1 to 0.01 WETH
+            buyWeth_(1, usdc_(1), 30e6, 0.01e18, address(0xa11ce), BLOCK_TIMESTAMP), // swap 30 USDC on chain 1 to 0.01 WETH
             chainAccountsList_(60e6), // holding 60 USDC in total across chains 1, 8453
             paymentUsdc_(maxCosts_(1, 1_000e6)) // but costs 1,000 USDC
         );
@@ -124,7 +124,7 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
         vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "USDC", 30e6, 0e6));
         builder.swap(
             // there is no bridge to chain 7777, so we cannot get to our funds
-            buyWeth_(7777, usdc_(7777), 30e6, 0.01e18, address(0xfe11a), BLOCK_TIMESTAMP), // swap 30 USDC on chain 1 to 0.01 WETH
+            buyWeth_(7777, usdc_(7777), 30e6, 0.01e18, address(0xa11ce), BLOCK_TIMESTAMP), // swap 30 USDC on chain 1 to 0.01 WETH
             chainAccountsList_(60e6), // holding 60 USDC in total across chains 1, 8453
             paymentUsd_()
         );
@@ -135,7 +135,7 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
         // The 32e6 is the suggested amount (total available funds) to swap
         vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "USDC", 30e6, 27e6));
         builder.swap(
-            buyWeth_(1, usdc_(1), 30e6, 0.01e18, address(0xfe11a), BLOCK_TIMESTAMP), // swap 30 USDC on chain 1 to 0.01 WETH
+            buyWeth_(1, usdc_(1), 30e6, 0.01e18, address(0xa11ce), BLOCK_TIMESTAMP), // swap 30 USDC on chain 1 to 0.01 WETH
             chainAccountsList_(60e6), // holding 60 USDC in total across 1, 8453
             paymentUsdc_(maxCosts_(1, 3e6)) // but costs 3 USDC
         );

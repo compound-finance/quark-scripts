@@ -247,7 +247,7 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](2);
         maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 1000e6}); // max cost is 1000 USDC
         maxCosts[1] = PaymentInfo.PaymentMaxCost({chainId: 8453, amount: 0.1e6});
-        vm.expectRevert(abi.encodeWithSelector(Actions.NotEnoughFundsToBridge.selector, "usdc", 9.98e8, 9.971e8));
+        vm.expectRevert(abi.encodeWithSelector(Actions.NotEnoughFundsToBridge.selector, "usdc", 998e6, 997.1e6));
         builder.morphoVaultWithdraw(
             morphoWithdrawIntent_(1, 1e6, "USDC"),
             chainAccountsList_(2e6), // holding 2 USDC in total across 1, 8453
@@ -518,7 +518,7 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
 
         QuarkBuilder builder = new QuarkBuilder();
 
-        vm.expectRevert(QuarkBuilderBase.MaxCostTooHigh.selector);
+        vm.expectRevert(abi.encodeWithSelector(Actions.NotEnoughFundsToBridge.selector, "usdc", 95e6, 95e6));
 
         builder.morphoVaultWithdraw(
             morphoWithdrawIntent_(1, type(uint256).max, "USDC"),

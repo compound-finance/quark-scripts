@@ -117,7 +117,7 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
                 buyAmount: 1e18,
                 isExactOut: true,
                 interval: 86_400,
-                sender: address(0xfe11a),
+                sender: address(0xa11ce),
                 blockTimestamp: BLOCK_TIMESTAMP
             }), // swap 3000 USDC on chain 1 to 1 WETH
             chainAccountsList_(0e6), // but we are holding 0 USDC in total across 1, 8453
@@ -128,7 +128,7 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
     function testMaxCostTooHigh() public {
         QuarkBuilder builder = new QuarkBuilder();
         // Max cost is too high, so total available funds is 0
-        vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "USDC", 1_030e6, 0e6));
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "USDC", 30e6, 0e6));
         builder.recurringSwap(
             buyWeth_({
                 chainId: 1,
@@ -137,7 +137,7 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
                 buyAmount: 0.01e18,
                 isExactOut: true,
                 interval: 86_400,
-                sender: address(0xfe11a),
+                sender: address(0xa11ce),
                 blockTimestamp: BLOCK_TIMESTAMP
             }), // swap 30 USDC on chain 1 to 0.01 WETH
             chainAccountsList_(60e6), // holding 60 USDC in total across chains 1, 8453
@@ -147,7 +147,7 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
 
     function testNotEnoughFundsOnTargetChain() public {
         QuarkBuilder builder = new QuarkBuilder();
-        vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "USDC", 80e6, 30e6));
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "USDC", 80e6, 45e6));
         builder.recurringSwap(
             buyWeth_({
                 chainId: 1,
@@ -156,10 +156,10 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
                 buyAmount: 1e18,
                 isExactOut: true,
                 interval: 86_400,
-                sender: address(0xfe11a),
+                sender: address(0xa11ce),
                 blockTimestamp: BLOCK_TIMESTAMP
             }), // swap 80 USDC on chain 1 to 1 WETH
-            chainAccountsList_(60e6), // holding 60 USDC in total across chains 1, 8453
+            chainAccountsList_(90e6), // holding 60 USDC in total across chains 1, 8453
             paymentUsd_()
         );
     }
@@ -167,7 +167,7 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
     function testFundsUnavailableErrorGivesSuggestionForAvailableFunds() public {
         QuarkBuilder builder = new QuarkBuilder();
         // The 27e6 is the suggested amount (total available funds) to swap
-        vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "USDC", 33e6, 27e6));
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "USDC", 30e6, 27e6));
         builder.recurringSwap(
             buyWeth_({
                 chainId: 1,
@@ -176,7 +176,7 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
                 buyAmount: 0.01e18,
                 isExactOut: true,
                 interval: 86_400,
-                sender: address(0xfe11a),
+                sender: address(0xa11ce),
                 blockTimestamp: BLOCK_TIMESTAMP
             }), // swap 30 USDC on chain 1 to 0.01 WETH
             chainAccountsList_(60e6), // holding 60 USDC in total across 1, 8453

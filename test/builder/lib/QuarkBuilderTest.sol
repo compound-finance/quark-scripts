@@ -58,6 +58,7 @@ contract QuarkBuilderTest {
     bytes32 constant ALICE_DEFAULT_SECRET = bytes32(uint256(12));
     bytes32 constant BOB_DEFAULT_SECRET = bytes32(uint256(2));
     bytes32 constant COB_DEFAULT_SECRET = bytes32(uint256(5));
+    bytes32 constant FELLA_DEFAULT_SECRET = bytes32(uint256(7));
 
     /**
      *
@@ -102,13 +103,15 @@ contract QuarkBuilderTest {
             morphoPositions: emptyMorphoPositions_(),
             morphoVaultPositions: emptyMorphoVaultPositions_()
         });
-        Accounts.QuarkSecret[] memory quarkSecrets = new Accounts.QuarkSecret[](2);
+        Accounts.QuarkSecret[] memory quarkSecrets = new Accounts.QuarkSecret[](3);
         quarkSecrets[0] = quarkSecret_(address(0xb0b), BOB_DEFAULT_SECRET);
         quarkSecrets[1] = quarkSecret_(address(0xa11ce), ALICE_DEFAULT_SECRET);
+        quarkSecrets[2] = quarkSecret_(address(0xfe11a), FELLA_DEFAULT_SECRET);
 
-        address[] memory accounts = new address[](2);
+        address[] memory accounts = new address[](3);
         accounts[0] = address(0xb0b);
         accounts[1] = address(0xa11ce);
+        accounts[2] = address(0xfe11a);
 
         chainAccountsList[1] = Accounts.ChainAccounts({
             chainId: 8453,
@@ -120,8 +123,8 @@ contract QuarkBuilderTest {
         });
         chainAccountsList[2] = Accounts.ChainAccounts({
             chainId: 7777,
-            quarkSecrets: quarkSecrets_(address(0xc0b), COB_DEFAULT_SECRET),
-            assetPositionsList: assetPositionsList_(7777, address(0xc0b), uint256(0)),
+            quarkSecrets: quarkSecrets,
+            assetPositionsList: assetPositionLists_(7777, accounts, uint256(0)),
             cometPositions: emptyCometPositions_(),
             morphoPositions: emptyMorphoPositions_(),
             morphoVaultPositions: emptyMorphoVaultPositions_()

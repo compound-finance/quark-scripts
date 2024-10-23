@@ -92,8 +92,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             morphoVaultPortfolios: emptyMorphoVaultPortfolios_()
         });
 
-        vm.expectRevert(QuarkBuilderBase.MaxCostTooHigh.selector);
-
+        vm.expectRevert(abi.encodeWithSelector(Actions.NotEnoughFundsToBridge.selector, "usdc", 0.1e6, 0.1e6));
         builder.cometRepay(
             repayIntent_(1, cometWeth_(1), "WETH", 1e18, collateralAssetSymbols, collateralAmounts),
             chainAccountsFromChainPortfolios(chainPortfolios),
