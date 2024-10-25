@@ -58,7 +58,6 @@ contract QuarkBuilderTest {
     bytes32 constant ALICE_DEFAULT_SECRET = bytes32(uint256(12));
     bytes32 constant BOB_DEFAULT_SECRET = bytes32(uint256(2));
     bytes32 constant COB_DEFAULT_SECRET = bytes32(uint256(5));
-    bytes32 constant FELLA_DEFAULT_SECRET = bytes32(uint256(7));
 
     /**
      *
@@ -95,28 +94,44 @@ contract QuarkBuilderTest {
     // TODO: refactor
     function chainAccountsList_(uint256 amount) internal pure returns (Accounts.ChainAccounts[] memory) {
         Accounts.ChainAccounts[] memory chainAccountsList = new Accounts.ChainAccounts[](3);
+
+        Accounts.QuarkSecret[] memory quarkSecrets = new Accounts.QuarkSecret[](4);
+        quarkSecrets[0] = quarkSecret_(address(0xa11ce), ALICE_DEFAULT_SECRET);
+        quarkSecrets[1] = quarkSecret_(address(0xb0b), BOB_DEFAULT_SECRET);
+        quarkSecrets[2] = quarkSecret_(address(0xc0b), COB_DEFAULT_SECRET);
+
+        address[] memory accounts = new address[](4);
+        accounts[0] = address(0xa11ce);
+        accounts[1] = address(0xb0b);
+        accounts[2] = address(0xc0b);
+
+        uint256[] memory amounts_chain_1 = new uint256[](4);
+        amounts_chain_1[0] = uint256(amount / 2);
+        amounts_chain_1[1] = uint256(0);
+        amounts_chain_1[2] = uint256(0);
+
+        uint256[] memory amounts_chain_8453 = new uint256[](4);
+        amounts_chain_8453[0] = uint256(0);
+        amounts_chain_8453[1] = uint256(amount / 2);
+        amounts_chain_8453[2] = uint256(0);
+
+        uint256[] memory amounts_chain_7777 = new uint256[](4);
+        amounts_chain_7777[0] = uint256(0);
+        amounts_chain_7777[1] = uint256(0);
+        amounts_chain_7777[2] = uint256(0);
+
         chainAccountsList[0] = Accounts.ChainAccounts({
             chainId: 1,
-            quarkSecrets: quarkSecrets_(address(0xa11ce), ALICE_DEFAULT_SECRET),
-            assetPositionsList: assetPositionsList_(1, address(0xa11ce), uint256(amount / 2)),
+            quarkSecrets: quarkSecrets,
+            assetPositionsList: assetPositionLists_(1, accounts, amounts_chain_1),
             cometPositions: emptyCometPositions_(),
             morphoPositions: emptyMorphoPositions_(),
             morphoVaultPositions: emptyMorphoVaultPositions_()
         });
-        Accounts.QuarkSecret[] memory quarkSecrets = new Accounts.QuarkSecret[](3);
-        quarkSecrets[0] = quarkSecret_(address(0xb0b), BOB_DEFAULT_SECRET);
-        quarkSecrets[1] = quarkSecret_(address(0xa11ce), ALICE_DEFAULT_SECRET);
-        quarkSecrets[2] = quarkSecret_(address(0xfe11a), FELLA_DEFAULT_SECRET);
-
-        address[] memory accounts = new address[](3);
-        accounts[0] = address(0xb0b);
-        accounts[1] = address(0xa11ce);
-        accounts[2] = address(0xfe11a);
-
         chainAccountsList[1] = Accounts.ChainAccounts({
             chainId: 8453,
             quarkSecrets: quarkSecrets,
-            assetPositionsList: assetPositionLists_(8453, accounts, uint256(amount / 2)),
+            assetPositionsList: assetPositionLists_(8453, accounts, amounts_chain_8453),
             cometPositions: emptyCometPositions_(),
             morphoPositions: emptyMorphoPositions_(),
             morphoVaultPositions: emptyMorphoVaultPositions_()
@@ -124,7 +139,7 @@ contract QuarkBuilderTest {
         chainAccountsList[2] = Accounts.ChainAccounts({
             chainId: 7777,
             quarkSecrets: quarkSecrets,
-            assetPositionsList: assetPositionLists_(7777, accounts, uint256(0)),
+            assetPositionsList: assetPositionLists_(7777, accounts, amounts_chain_7777),
             cometPositions: emptyCometPositions_(),
             morphoPositions: emptyMorphoPositions_(),
             morphoVaultPositions: emptyMorphoVaultPositions_()
@@ -159,42 +174,44 @@ contract QuarkBuilderTest {
         return maxCosts;
     }
 
-    function assetPositionLists_(uint256 chainId, address[] memory accounts, uint256 balance)
+    function assetPositionLists_(uint256 chainId, address[] memory accounts, uint256[] memory balances)
         internal
         pure
         returns (Accounts.AssetPositions[] memory)
     {
-        Accounts.AssetPositions[] memory assetPositionsList = new Accounts.AssetPositions[](accounts.length * 4);
-        for (uint256 i = 0; i < accounts.length; ++i) {
-            assetPositionsList[i * 4] = Accounts.AssetPositions({
-                asset: usdc_(chainId),
-                symbol: "USDC",
-                decimals: 6,
-                usdPrice: USDC_PRICE,
-                accountBalances: accountBalances_(accounts[i], balance)
-            });
-            assetPositionsList[i * 4 + 1] = Accounts.AssetPositions({
-                asset: usdt_(chainId),
-                symbol: "USDT",
-                decimals: 6,
-                usdPrice: USDT_PRICE,
-                accountBalances: accountBalances_(accounts[i], balance)
-            });
-            assetPositionsList[i * 4 + 2] = Accounts.AssetPositions({
-                asset: weth_(chainId),
-                symbol: "WETH",
-                decimals: 18,
-                usdPrice: WETH_PRICE,
-                accountBalances: accountBalances_(accounts[i], 0)
-            });
-            assetPositionsList[i * 4 + 3] = Accounts.AssetPositions({
-                asset: link_(chainId),
-                symbol: "LINK",
-                decimals: 18,
-                usdPrice: LINK_PRICE,
-                accountBalances: accountBalances_(accounts[i], 0) // empty balance
-            });
-        }
+        Accounts.AssetPositions[] memory assetPositionsList = new Accounts.AssetPositions[](4);
+        assetPositionsList[0] = Accounts.AssetPositions({
+            asset: usdc_(chainId),
+            symbol: "USDC",
+            decimals: 6,
+            usdPrice: USDC_PRICE,
+            accountBalances: accountsBalances_(accounts, balances)
+        });
+        assetPositionsList[1] = Accounts.AssetPositions({
+            asset: usdt_(chainId),
+            symbol: "USDT",
+            decimals: 6,
+            usdPrice: USDT_PRICE,
+            accountBalances: accountsBalances_(accounts, balances)
+        });
+
+        uint256[] memory zeroBalances = new uint256[](accounts.length);
+
+        assetPositionsList[2] = Accounts.AssetPositions({
+            asset: weth_(chainId),
+            symbol: "WETH",
+            decimals: 18,
+            usdPrice: WETH_PRICE,
+            accountBalances: accountsBalances_(accounts, zeroBalances)
+        });
+        assetPositionsList[3] = Accounts.AssetPositions({
+            asset: link_(chainId),
+            symbol: "LINK",
+            decimals: 18,
+            usdPrice: LINK_PRICE,
+            accountBalances: accountsBalances_(accounts, zeroBalances)
+        });
+
         return assetPositionsList;
     }
 
@@ -233,6 +250,18 @@ contract QuarkBuilderTest {
             accountBalances: accountBalances_(account, 0) // empty balance
         });
         return assetPositionsList;
+    }
+
+    function accountsBalances_(address[] memory accounts, uint256[] memory balances)
+        internal
+        pure
+        returns (Accounts.AccountBalance[] memory)
+    {
+        Accounts.AccountBalance[] memory accountsBalances = new Accounts.AccountBalance[](accounts.length);
+        for (uint256 i = 0; i < accounts.length; ++i) {
+            accountsBalances[i] = Accounts.AccountBalance({account: accounts[i], balance: balances[i]});
+        }
+        return accountsBalances;
     }
 
     function accountBalances_(address account, uint256 balance)
