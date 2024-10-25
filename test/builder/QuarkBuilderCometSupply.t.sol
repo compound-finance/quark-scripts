@@ -84,7 +84,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "USDC", 2e6, 0));
         builder.cometSupply(
             // there is no bridge to chain 7777, so we cannot get to our funds
-            cometSupply_(7777, 2e6), // transfer 2 USDC on chain 7777 to 0xfe11a
+            cometSupply_(7777, 2e6), // transfer 2 USDC on chain 7777 to 0xc0b
             chainAccountsList_(3e6), // holding 3 USDC in total across chains 1, 8453
             paymentUsd_()
         );
