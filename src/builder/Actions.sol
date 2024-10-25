@@ -564,28 +564,30 @@ library Actions {
                     }
                 }
 
-                amountLeftToBridge -= amountToBridge;
+                if (amountToBridge > 0) {
+                    amountLeftToBridge -= amountToBridge;
 
-                (IQuarkWallet.QuarkOperation memory operation, Actions.Action memory action) = bridgeAsset(
-                    BridgeAsset({
-                        chainAccountsList: chainAccountsList,
-                        assetSymbol: bridgeInfo.assetSymbol,
-                        amount: amountToBridge,
-                        // where it comes from
-                        srcChainId: srcChainAccounts.chainId,
-                        sender: srcAccountBalances[j].account,
-                        // where it goes
-                        destinationChainId: bridgeInfo.dstChainId,
-                        recipient: bridgeInfo.recipient,
-                        blockTimestamp: bridgeInfo.blockTimestamp
-                    }),
-                    payment,
-                    bridgeInfo.useQuotecall
-                );
+                    (IQuarkWallet.QuarkOperation memory operation, Actions.Action memory action) = bridgeAsset(
+                        BridgeAsset({
+                            chainAccountsList: chainAccountsList,
+                            assetSymbol: bridgeInfo.assetSymbol,
+                            amount: amountToBridge,
+                            // where it comes from
+                            srcChainId: srcChainAccounts.chainId,
+                            sender: srcAccountBalances[j].account,
+                            // where it goes
+                            destinationChainId: bridgeInfo.dstChainId,
+                            recipient: bridgeInfo.recipient,
+                            blockTimestamp: bridgeInfo.blockTimestamp
+                        }),
+                        payment,
+                        bridgeInfo.useQuotecall
+                    );
 
-                List.addAction(actions, action);
-                List.addQuarkOperation(quarkOperations, operation);
-                bridgeActionCount++;
+                    List.addAction(actions, action);
+                    List.addQuarkOperation(quarkOperations, operation);
+                    bridgeActionCount++;
+                }
             }
         }
 
