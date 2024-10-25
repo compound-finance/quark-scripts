@@ -63,7 +63,7 @@ contract TransferActionsBuilder is QuarkBuilderBase {
         );
 
         ActionIntent memory actionIntent;
-        // Note:scope to avoid stack too deep errors
+        // Note: Scope to avoid stack too deep errors
         {
             uint256[] memory amountOuts = new uint256[](1);
             amountOuts[0] = transferIntent.amount;

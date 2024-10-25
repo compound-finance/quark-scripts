@@ -95,27 +95,27 @@ contract QuarkBuilderTest {
     function chainAccountsList_(uint256 amount) internal pure returns (Accounts.ChainAccounts[] memory) {
         Accounts.ChainAccounts[] memory chainAccountsList = new Accounts.ChainAccounts[](3);
 
-        Accounts.QuarkSecret[] memory quarkSecrets = new Accounts.QuarkSecret[](4);
+        Accounts.QuarkSecret[] memory quarkSecrets = new Accounts.QuarkSecret[](3);
         quarkSecrets[0] = quarkSecret_(address(0xa11ce), ALICE_DEFAULT_SECRET);
         quarkSecrets[1] = quarkSecret_(address(0xb0b), BOB_DEFAULT_SECRET);
         quarkSecrets[2] = quarkSecret_(address(0xc0b), COB_DEFAULT_SECRET);
 
-        address[] memory accounts = new address[](4);
+        address[] memory accounts = new address[](3);
         accounts[0] = address(0xa11ce);
         accounts[1] = address(0xb0b);
         accounts[2] = address(0xc0b);
 
-        uint256[] memory amounts_chain_1 = new uint256[](4);
+        uint256[] memory amounts_chain_1 = new uint256[](3);
         amounts_chain_1[0] = uint256(amount / 2);
         amounts_chain_1[1] = uint256(0);
         amounts_chain_1[2] = uint256(0);
 
-        uint256[] memory amounts_chain_8453 = new uint256[](4);
+        uint256[] memory amounts_chain_8453 = new uint256[](3);
         amounts_chain_8453[0] = uint256(0);
         amounts_chain_8453[1] = uint256(amount / 2);
         amounts_chain_8453[2] = uint256(0);
 
-        uint256[] memory amounts_chain_7777 = new uint256[](4);
+        uint256[] memory amounts_chain_7777 = new uint256[](3);
         amounts_chain_7777[0] = uint256(0);
         amounts_chain_7777[1] = uint256(0);
         amounts_chain_7777[2] = uint256(0);

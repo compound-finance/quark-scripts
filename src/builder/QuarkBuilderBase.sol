@@ -49,6 +49,19 @@ contract QuarkBuilderBase {
     error MissingWrapperCounterpart();
     error InvalidRepayActionContext();
 
+    /**
+     * @dev Intent for an action to be executed by the Quark Wallet
+     * @param actor The address of the actor who is initiating the action
+     * @param amountOuts The amounts of assets to be transferred out from actor's account
+     * @param assetSymbolOuts The symbols of the assets to be transferred out from actor's account
+     * @param amountIns The amounts of assets to be transferred in to actor's account
+     * @param assetSymbolIns The symbols of the assets to be transferred in to actor's account
+     * @param blockTimestamp The block timestamp at which the action is initiated
+     * @param chainId The chain ID on which the action is initiated
+     * @param useQuotecall Whether to use Quotecall for the action
+     * @param bridgeEnabled Whether to enable bridging for the action
+     * @param autoWrapperEnabled Whether to enable auto wrapping/unwrapping for the action
+     */
     struct ActionIntent {
         address actor;
         uint256[] amountOuts;
@@ -87,8 +100,8 @@ contract QuarkBuilderBase {
         List.DynamicArray memory actions = List.newList();
         List.DynamicArray memory quarkOperations = List.newList();
 
-        // Flag to check if the assetSymbolOut(used/supplied/transferred out) is the same as the payment token
-        bool paymentTokenInAssetSymbolOut = false;
+        // Flag to check if the assetSymbolOut (used/supplied/transferred out) is the same as the payment token
+        bool paymentTokenIsPartOfAssetSymbolOuts = false;
 
         for (uint256 i = 0; i < actionIntent.assetSymbolOuts.length; ++i) {
             assertFundsAvailable(
@@ -100,7 +113,7 @@ contract QuarkBuilderBase {
             );
             // Check if the assetSymbolOut is the same as the payment token
             if (Strings.stringEqIgnoreCase(actionIntent.assetSymbolOuts[i], payment.currency)) {
-                paymentTokenInAssetSymbolOut = true;
+                paymentTokenIsPartOfAssetSymbolOuts = true;
             }
 
             if (
@@ -154,9 +167,11 @@ contract QuarkBuilderBase {
             }
         }
 
-        if (payment.isToken && !paymentTokenInAssetSymbolOut) {
+        // If payment is token, and is not part of assetSymbolOuts, since if it's part of assetSymbolOuts, it's already handled in above codes
+        if (payment.isToken && !paymentTokenIsPartOfAssetSymbolOuts) {
             uint256 maxCostOnDstChain = PaymentInfo.findMaxCost(payment, actionIntent.chainId);
 
+            // Account for the assets will be gained through the actions, and reduce the maxCostOnDstChain if can
             for (uint256 k = 0; k < actionIntent.assetSymbolIns.length; ++k) {
                 if (Strings.stringEqIgnoreCase(actionIntent.assetSymbolIns[k], payment.currency)) {
                     maxCostOnDstChain = Math.subtractFlooredAtZero(maxCostOnDstChain, actionIntent.amountIns[k]);
@@ -186,17 +201,11 @@ contract QuarkBuilderBase {
                         List.addAction(actions, bridgeActions[i]);
                     }
                 } else {
-                    if (
-                        needsBridgedFunds(
-                            payment.currency, maxCostOnDstChain, actionIntent.chainId, chainAccountsList, payment
-                        )
-                    ) {
-                        revert FundsUnavailable(
-                            payment.currency,
-                            maxCostOnDstChain,
-                            getBalanceOnChain(payment.currency, actionIntent.chainId, chainAccountsList, payment)
-                        );
-                    }
+                    revert FundsUnavailable(
+                        payment.currency,
+                        maxCostOnDstChain,
+                        getBalanceOnChain(payment.currency, actionIntent.chainId, chainAccountsList, payment)
+                    );
                 }
             }
         }
