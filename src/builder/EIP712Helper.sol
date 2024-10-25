@@ -5,7 +5,7 @@ import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
 import {QuarkWalletMetadata} from "quark-core/src/QuarkWallet.sol";
 
 import {Actions} from "src/builder/actions/Actions.sol";
-import {Errors} from "./Errors.sol";
+import {Errors} from "src/builder/Errors.sol";
 
 library EIP712Helper {
     /* ===== Constants ===== */
