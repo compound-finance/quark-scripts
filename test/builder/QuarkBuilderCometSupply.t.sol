@@ -6,8 +6,8 @@ import "forge-std/console.sol";
 
 import {QuarkBuilderTest, Accounts, PaymentInfo, QuarkBuilder} from "test/builder/lib/QuarkBuilderTest.sol";
 import {QuarkBuilderBase} from "src/builder/QuarkBuilderBase.sol";
-import {CometBuilderScripts} from "src/builder/scripts/CometBuilderScripts.sol";
-import {Actions} from "src/builder/Actions.sol";
+import {CometActionsBuilder} from "src/builder/actions/CometActionsBuilder.sol";
+import {Actions} from "src/builder/actions/Actions.sol";
 import {CCTPBridgeActions} from "src/BridgeScripts.sol";
 import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
 import {CometSupplyActions, TransferActions} from "src/DeFiScripts.sol";
@@ -23,9 +23,9 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
     function cometWethSupply_(uint256 chainId, uint256 amount)
         internal
         pure
-        returns (CometBuilderScripts.CometSupplyIntent memory)
+        returns (CometActionsBuilder.CometSupplyIntent memory)
     {
-        return CometBuilderScripts.CometSupplyIntent({
+        return CometActionsBuilder.CometSupplyIntent({
             amount: amount,
             assetSymbol: "WETH",
             blockTimestamp: BLOCK_TIMESTAMP,
@@ -38,7 +38,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
     function cometSupply_(uint256 chainId, uint256 amount)
         internal
         pure
-        returns (CometBuilderScripts.CometSupplyIntent memory)
+        returns (CometActionsBuilder.CometSupplyIntent memory)
     {
         return cometSupply_(chainId, amount, address(0xa11ce));
     }
@@ -46,9 +46,9 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
     function cometSupply_(uint256 chainId, uint256 amount, address sender)
         internal
         pure
-        returns (CometBuilderScripts.CometSupplyIntent memory)
+        returns (CometActionsBuilder.CometSupplyIntent memory)
     {
-        return CometBuilderScripts.CometSupplyIntent({
+        return CometActionsBuilder.CometSupplyIntent({
             amount: amount,
             assetSymbol: "USDC",
             blockTimestamp: BLOCK_TIMESTAMP,

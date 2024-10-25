@@ -5,8 +5,8 @@ import "forge-std/Test.sol";
 
 import {Arrays} from "test/builder/lib/Arrays.sol";
 import {Accounts, PaymentInfo, QuarkBuilderTest} from "test/builder/lib/QuarkBuilderTest.sol";
-import {MorphoVaultBuilderScripts} from "src/builder/scripts/MorphoVaultBuilderScripts.sol";
-import {Actions} from "src/builder/Actions.sol";
+import {MorphoVaultActionsBuilder} from "src/builder/actions/MorphoVaultActionsBuilder.sol";
+import {Actions} from "src/builder/actions/Actions.sol";
 import {CCTPBridgeActions} from "src/BridgeScripts.sol";
 import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
 import {CometWithdrawActions, TransferActions} from "src/DeFiScripts.sol";
@@ -20,7 +20,7 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
     function morphoWithdrawIntent_(uint256 chainId, uint256 amount, string memory assetSymbol)
         internal
         pure
-        returns (MorphoVaultBuilderScripts.MorphoVaultWithdrawIntent memory)
+        returns (MorphoVaultActionsBuilder.MorphoVaultWithdrawIntent memory)
     {
         return morphoWithdrawIntent_({
             amount: amount,
@@ -33,9 +33,9 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
     function morphoWithdrawIntent_(uint256 chainId, uint256 amount, string memory assetSymbol, address withdrawer)
         internal
         pure
-        returns (MorphoVaultBuilderScripts.MorphoVaultWithdrawIntent memory)
+        returns (MorphoVaultActionsBuilder.MorphoVaultWithdrawIntent memory)
     {
-        return MorphoVaultBuilderScripts.MorphoVaultWithdrawIntent({
+        return MorphoVaultActionsBuilder.MorphoVaultWithdrawIntent({
             amount: amount,
             assetSymbol: assetSymbol,
             blockTimestamp: BLOCK_TIMESTAMP,

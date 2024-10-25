@@ -8,8 +8,8 @@ import {QuarkBuilderTest} from "test/builder/lib/QuarkBuilderTest.sol";
 
 import {ApproveAndSwap} from "src/DeFiScripts.sol";
 import {CCTPBridgeActions} from "src/BridgeScripts.sol";
-import {SwapBuilderScripts} from "src/builder/scripts/SwapBuilderScripts.sol";
-import {Actions} from "src/builder/Actions.sol";
+import {SwapActionsBuilder} from "src/builder/actions/SwapActionsBuilder.sol";
+import {Actions} from "src/builder/actions/Actions.sol";
 import {Accounts} from "src/builder/Accounts.sol";
 import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
 import {QuarkBuilder} from "src/builder/QuarkBuilder.sol";
@@ -32,7 +32,7 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
         uint256 buyAmount,
         address sender,
         uint256 blockTimestamp
-    ) internal pure returns (SwapBuilderScripts.ZeroExSwapIntent memory) {
+    ) internal pure returns (SwapActionsBuilder.ZeroExSwapIntent memory) {
         address usdc = usdc_(chainId);
         return zeroExSwap_(
             chainId,
@@ -54,7 +54,7 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
         uint256 buyAmount,
         address sender,
         uint256 blockTimestamp
-    ) internal pure returns (SwapBuilderScripts.ZeroExSwapIntent memory) {
+    ) internal pure returns (SwapActionsBuilder.ZeroExSwapIntent memory) {
         address weth = weth_(chainId);
         return zeroExSwap_(
             chainId,
@@ -79,8 +79,8 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
         uint256 buyAmount,
         address sender,
         uint256 blockTimestamp
-    ) internal pure returns (SwapBuilderScripts.ZeroExSwapIntent memory) {
-        return SwapBuilderScripts.ZeroExSwapIntent({
+    ) internal pure returns (SwapActionsBuilder.ZeroExSwapIntent memory) {
+        return SwapActionsBuilder.ZeroExSwapIntent({
             chainId: chainId,
             entryPoint: entryPoint,
             swapData: swapData,

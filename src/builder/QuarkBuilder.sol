@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.27;
 
-import {CometBuilderScripts} from "src/builder/scripts/CometBuilderScripts.sol";
-import {MorphoVaultBuilderScripts} from "src/builder/scripts/MorphoVaultBuilderScripts.sol";
-import {MorphoBuilderScripts} from "src/builder/scripts/MorphoBuilderScripts.sol";
-import {SwapBuilderScripts} from "src/builder/scripts/SwapBuilderScripts.sol";
-import {TransferBuilderScripts} from "src/builder/scripts/TransferBuilderScripts.sol";
+import {CometActionsBuilder} from "src/builder/actions/CometActionsBuilder.sol";
+import {MorphoVaultActionsBuilder} from "src/builder/actions/MorphoVaultActionsBuilder.sol";
+import {MorphoActionsBuilder} from "src/builder/actions/MorphoActionsBuilder.sol";
+import {SwapActionsBuilder} from "src/builder/actions/SwapActionsBuilder.sol";
+import {TransferActionsBuilder} from "src/builder/actions/TransferActionsBuilder.sol";
 
 contract QuarkBuilder is
-    CometBuilderScripts,
-    MorphoVaultBuilderScripts,
-    MorphoBuilderScripts,
-    SwapBuilderScripts,
-    TransferBuilderScripts
+    CometActionsBuilder,
+    MorphoVaultActionsBuilder,
+    MorphoActionsBuilder,
+    SwapActionsBuilder,
+    TransferActionsBuilder
 {
 // This contract is a composite of the various scripts that can be used to build a Quark operation
 // It is a convenience for developers to have all the scripts in one place

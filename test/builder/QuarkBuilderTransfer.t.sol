@@ -10,8 +10,8 @@ import {CCTPBridgeActions} from "src/BridgeScripts.sol";
 import {Multicall} from "src/Multicall.sol";
 import {TransferActions} from "src/DeFiScripts.sol";
 import {WrapperActions} from "src/WrapperScripts.sol";
-import {TransferBuilderScripts} from "src/builder/scripts/TransferBuilderScripts.sol";
-import {Actions} from "src/builder/Actions.sol";
+import {TransferActionsBuilder} from "src/builder/actions/TransferActionsBuilder.sol";
+import {Actions} from "src/builder/actions/Actions.sol";
 import {Accounts} from "src/builder/Accounts.sol";
 import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
 import {Paycall} from "src/Paycall.sol";
@@ -25,7 +25,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
     function transferUsdc_(uint256 chainId, uint256 amount, address recipient, uint256 blockTimestamp)
         internal
         pure
-        returns (TransferBuilderScripts.TransferIntent memory)
+        returns (TransferActionsBuilder.TransferIntent memory)
     {
         return transferToken_("USDC", chainId, amount, recipient, blockTimestamp);
     }
@@ -33,7 +33,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
     function transferUsdc_(uint256 chainId, uint256 amount, address sender, address recipient, uint256 blockTimestamp)
         internal
         pure
-        returns (TransferBuilderScripts.TransferIntent memory)
+        returns (TransferActionsBuilder.TransferIntent memory)
     {
         return transferToken_("USDC", chainId, amount, sender, recipient, blockTimestamp);
     }
@@ -41,7 +41,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
     function transferEth_(uint256 chainId, uint256 amount, address recipient, uint256 blockTimestamp)
         internal
         pure
-        returns (TransferBuilderScripts.TransferIntent memory)
+        returns (TransferActionsBuilder.TransferIntent memory)
     {
         return transferToken_("ETH", chainId, amount, recipient, blockTimestamp);
     }
@@ -49,7 +49,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
     function transferWeth_(uint256 chainId, uint256 amount, address recipient, uint256 blockTimestamp)
         internal
         pure
-        returns (TransferBuilderScripts.TransferIntent memory)
+        returns (TransferActionsBuilder.TransferIntent memory)
     {
         return transferToken_("WETH", chainId, amount, recipient, blockTimestamp);
     }
@@ -60,7 +60,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         uint256 amount,
         address recipient,
         uint256 blockTimestamp
-    ) internal pure returns (TransferBuilderScripts.TransferIntent memory) {
+    ) internal pure returns (TransferActionsBuilder.TransferIntent memory) {
         return transferToken_({
             chainId: chainId,
             sender: address(0xa11ce),
@@ -78,8 +78,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         address sender,
         address recipient,
         uint256 blockTimestamp
-    ) internal pure returns (TransferBuilderScripts.TransferIntent memory) {
-        return TransferBuilderScripts.TransferIntent({
+    ) internal pure returns (TransferActionsBuilder.TransferIntent memory) {
+        return TransferActionsBuilder.TransferIntent({
             chainId: chainId,
             sender: sender,
             recipient: recipient,

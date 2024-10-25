@@ -6,7 +6,7 @@ import "forge-std/console.sol";
 
 import {Arrays} from "test/builder/lib/Arrays.sol";
 import {Accounts, PaymentInfo, QuarkBuilderTest} from "test/builder/lib/QuarkBuilderTest.sol";
-import {Actions} from "src/builder/Actions.sol";
+import {Actions} from "src/builder/actions/Actions.sol";
 import {CCTPBridgeActions} from "src/BridgeScripts.sol";
 import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
 import {TransferActions} from "src/DeFiScripts.sol";
@@ -16,7 +16,7 @@ import {List} from "src/builder/List.sol";
 import {Paycall} from "src/Paycall.sol";
 import {QuarkBuilder} from "src/builder/QuarkBuilder.sol";
 import {QuarkBuilderBase} from "src/builder/QuarkBuilderBase.sol";
-import {MorphoBuilderScripts} from "src/builder/scripts/MorphoBuilderScripts.sol";
+import {MorphoActionsBuilder} from "src/builder/actions/MorphoActionsBuilder.sol";
 
 contract QuarkBuilderMorphoClaimRewardsTest is Test, QuarkBuilderTest {
     // Fixtures of morpho reward data to pass in
@@ -63,8 +63,8 @@ contract QuarkBuilderMorphoClaimRewardsTest is Test, QuarkBuilderTest {
         address[] memory distributors,
         address[] memory rewards,
         bytes32[][] memory proofs
-    ) internal pure returns (MorphoBuilderScripts.MorphoRewardsClaimIntent memory) {
-        return MorphoBuilderScripts.MorphoRewardsClaimIntent({
+    ) internal pure returns (MorphoActionsBuilder.MorphoRewardsClaimIntent memory) {
+        return MorphoActionsBuilder.MorphoRewardsClaimIntent({
             blockTimestamp: BLOCK_TIMESTAMP,
             claimer: address(0xa11ce),
             chainId: chainId,

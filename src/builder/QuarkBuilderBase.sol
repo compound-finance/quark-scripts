@@ -3,19 +3,19 @@ pragma solidity ^0.8.27;
 
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
 
-import {Actions} from "./Actions.sol";
-import {Accounts} from "./Accounts.sol";
-import {BridgeRoutes} from "./BridgeRoutes.sol";
-import {EIP712Helper} from "./EIP712Helper.sol";
+import {Actions} from "src/builder/actions/Actions.sol";
+import {Accounts} from "src/builder/Accounts.sol";
+import {BridgeRoutes} from "src/builder/BridgeRoutes.sol";
+import {EIP712Helper} from "src/builder/EIP712Helper.sol";
 import {Math} from "src/lib/Math.sol";
-import {MorphoInfo} from "./MorphoInfo.sol";
-import {Strings} from "./Strings.sol";
-import {PaycallWrapper} from "./PaycallWrapper.sol";
-import {QuotecallWrapper} from "./QuotecallWrapper.sol";
-import {PaymentInfo} from "./PaymentInfo.sol";
-import {TokenWrapper} from "./TokenWrapper.sol";
-import {QuarkOperationHelper} from "./QuarkOperationHelper.sol";
-import {List} from "./List.sol";
+import {MorphoInfo} from "src/builder/MorphoInfo.sol";
+import {Strings} from "src/builder/Strings.sol";
+import {PaycallWrapper} from "src/builder/PaycallWrapper.sol";
+import {QuotecallWrapper} from "src/builder/QuotecallWrapper.sol";
+import {PaymentInfo} from "src/builder/PaymentInfo.sol";
+import {TokenWrapper} from "src/builder/TokenWrapper.sol";
+import {QuarkOperationHelper} from "src/builder/QuarkOperationHelper.sol";
+import {List} from "src/builder/List.sol";
 
 contract QuarkBuilderBase {
     /* ===== Output Types ===== */
@@ -36,7 +36,7 @@ contract QuarkBuilderBase {
 
     /* ===== Constants ===== */
 
-    string constant VERSION = "0.1.1";
+    string constant VERSION = "0.1.2";
 
     /* ===== Custom Errors ===== */
 

@@ -7,8 +7,8 @@ import "forge-std/console.sol";
 import {Arrays} from "test/builder/lib/Arrays.sol";
 import {QuarkBuilderTest, Accounts, PaymentInfo, QuarkBuilder} from "test/builder/lib/QuarkBuilderTest.sol";
 import {QuarkBuilderBase} from "src/builder/QuarkBuilderBase.sol";
-import {CometBuilderScripts} from "src/builder/scripts/CometBuilderScripts.sol";
-import {Actions} from "src/builder/Actions.sol";
+import {CometActionsBuilder} from "src/builder/actions/CometActionsBuilder.sol";
+import {Actions} from "src/builder/actions/Actions.sol";
 import {CCTPBridgeActions} from "src/BridgeScripts.sol";
 import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
 import {CometRepayAndWithdrawMultipleAssets} from "src/DeFiScripts.sol";
@@ -25,8 +25,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         uint256 amount,
         string[] memory collateralAssetSymbols,
         uint256[] memory collateralAmounts
-    ) internal pure returns (CometBuilderScripts.CometRepayIntent memory) {
-        return CometBuilderScripts.CometRepayIntent({
+    ) internal pure returns (CometActionsBuilder.CometRepayIntent memory) {
+        return CometActionsBuilder.CometRepayIntent({
             amount: amount,
             assetSymbol: assetSymbol,
             blockTimestamp: BLOCK_TIMESTAMP,
@@ -506,7 +506,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             morphoVaultPortfolios: emptyMorphoVaultPortfolios_()
         });
 
-        CometBuilderScripts.CometRepayIntent memory repayIntent;
+        CometActionsBuilder.CometRepayIntent memory repayIntent;
         // Local scope to avoid stack too deep
         {
             uint256[] memory collateralAmounts = new uint256[](1);

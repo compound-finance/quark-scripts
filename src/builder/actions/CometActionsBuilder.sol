@@ -2,7 +2,7 @@
 pragma solidity ^0.8.27;
 
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
-import {Actions} from "src/builder/Actions.sol";
+import {Actions} from "src/builder/actions/Actions.sol";
 import {Accounts} from "src/builder/Accounts.sol";
 import {BridgeRoutes} from "src/builder/BridgeRoutes.sol";
 import {EIP712Helper} from "src/builder/EIP712Helper.sol";
@@ -17,7 +17,7 @@ import {QuarkOperationHelper} from "src/builder/QuarkOperationHelper.sol";
 import {List} from "src/builder/List.sol";
 import {QuarkBuilderBase} from "src/builder/QuarkBuilderBase.sol";
 
-contract CometBuilderScripts is QuarkBuilderBase {
+contract CometActionsBuilder is QuarkBuilderBase {
     struct CometRepayIntent {
         uint256 amount;
         string assetSymbol;
