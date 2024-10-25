@@ -69,7 +69,7 @@ contract QuarkBuilderBase {
         ActionIntent memory actionIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment,
-        IQuarkWallet.QuarkOperation memory quarkOperation,
+        IQuarkWallet.QuarkOperation memory actionQuarkOperation,
         Actions.Action memory action
     )
         internal
@@ -220,7 +220,7 @@ contract QuarkBuilderBase {
 
         // Insert action and operation that will be wrapped with this
         List.addAction(actions, action);
-        List.addQuarkOperation(quarkOperations, quarkOperation);
+        List.addQuarkOperation(quarkOperations, actionQuarkOperation);
 
         // Convert to array
         quarkOperationsArray = List.toQuarkOperationArray(quarkOperations);

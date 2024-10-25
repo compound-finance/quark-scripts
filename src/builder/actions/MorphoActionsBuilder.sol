@@ -80,7 +80,7 @@ contract MorphoActionsBuilder is QuarkBuilderBase {
             actionIntent: actionIntent,
             chainAccountsList: chainAccountsList,
             payment: payment,
-            quarkOperation: borrowQuarkOperation,
+            actionQuarkOperation: borrowQuarkOperation,
             action: borrowAction
         });
 
@@ -167,7 +167,7 @@ contract MorphoActionsBuilder is QuarkBuilderBase {
                 }),
                 chainAccountsList: chainAccountsList,
                 payment: payment,
-                quarkOperation: repayQuarkOperations,
+                actionQuarkOperation: repayQuarkOperations,
                 action: repayActions
             });
         }
@@ -255,7 +255,7 @@ contract MorphoActionsBuilder is QuarkBuilderBase {
             actionIntent: actionIntent,
             chainAccountsList: chainAccountsList,
             payment: payment,
-            quarkOperation: morphoClaimRewardsQuarkOperation,
+            actionQuarkOperation: morphoClaimRewardsQuarkOperation,
             action: morphoClaimRewardsAction
         });
 

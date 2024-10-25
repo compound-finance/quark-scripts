@@ -92,7 +92,7 @@ contract CometActionsBuilder is QuarkBuilderBase {
             actionIntent: actionIntent,
             chainAccountsList: chainAccountsList,
             payment: payment,
-            quarkOperation: repayQuarkOperation,
+            actionQuarkOperation: repayQuarkOperation,
             action: repayAction
         });
 
@@ -169,7 +169,7 @@ contract CometActionsBuilder is QuarkBuilderBase {
             actionIntent: actionIntent,
             chainAccountsList: chainAccountsList,
             payment: payment,
-            quarkOperation: borrowQuarkOperation,
+            actionQuarkOperation: borrowQuarkOperation,
             action: borrowAction
         });
 
@@ -249,7 +249,7 @@ contract CometActionsBuilder is QuarkBuilderBase {
                 }),
                 chainAccountsList: chainAccountsList,
                 payment: payment,
-                quarkOperation: supplyQuarkOperation,
+                actionQuarkOperation: supplyQuarkOperation,
                 action: supplyAction
             });
         }
@@ -334,7 +334,7 @@ contract CometActionsBuilder is QuarkBuilderBase {
                 }),
                 chainAccountsList: chainAccountsList,
                 payment: payment,
-                quarkOperation: cometWithdrawQuarkOperation,
+                actionQuarkOperation: cometWithdrawQuarkOperation,
                 action: cometWithdrawAction
             });
         }

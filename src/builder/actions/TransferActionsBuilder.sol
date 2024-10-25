@@ -90,7 +90,7 @@ contract TransferActionsBuilder is QuarkBuilderBase {
             actionIntent: actionIntent,
             chainAccountsList: chainAccountsList,
             payment: payment,
-            quarkOperation: operation,
+            actionQuarkOperation: operation,
             action: action
         });
 

@@ -84,7 +84,7 @@ contract MorphoVaultActionsBuilder is QuarkBuilderBase {
                 }),
                 chainAccountsList: chainAccountsList,
                 payment: payment,
-                quarkOperation: supplyQuarkOperation,
+                actionQuarkOperation: supplyQuarkOperation,
                 action: supplyAction
             });
         }
@@ -175,7 +175,7 @@ contract MorphoVaultActionsBuilder is QuarkBuilderBase {
             actionIntent: actionIntent,
             chainAccountsList: chainAccountsList,
             payment: payment,
-            quarkOperation: cometWithdrawQuarkOperation,
+            actionQuarkOperation: cometWithdrawQuarkOperation,
             action: cometWithdrawAction
         });
 
