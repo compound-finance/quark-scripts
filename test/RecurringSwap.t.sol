@@ -14,10 +14,10 @@ import {QuarkMinimalProxy} from "quark-proxy/src/QuarkMinimalProxy.sol";
 import {Cancel} from "src/Cancel.sol";
 import {RecurringSwap} from "src/RecurringSwap.sol";
 
-import {YulHelper} from "./lib/YulHelper.sol";
-import {SignatureHelper} from "./lib/SignatureHelper.sol";
-import {QuarkOperationHelper, ScriptType} from "./lib/QuarkOperationHelper.sol";
-import {MockPriceFeed} from "./mocks/MockPriceFeed.sol";
+import {YulHelper} from "test/lib/YulHelper.sol";
+import {SignatureHelper} from "test/lib/SignatureHelper.sol";
+import {QuarkOperationHelper, ScriptType} from "test/lib/QuarkOperationHelper.sol";
+import {MockPriceFeed} from "test/mocks/MockPriceFeed.sol";
 
 import {AggregatorV3Interface} from "src/vendor/chainlink/AggregatorV3Interface.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
