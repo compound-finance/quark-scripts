@@ -2,7 +2,7 @@
 pragma solidity 0.8.27;
 
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
-import {Actions} from "./Actions.sol";
+import {Actions} from "src/builder/actions/Actions.sol";
 
 library List {
     error IndexOutOfBound();

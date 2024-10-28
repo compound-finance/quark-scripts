@@ -6,8 +6,9 @@ import "forge-std/console.sol";
 
 import {Arrays} from "test/builder/lib/Arrays.sol";
 import {QuarkBuilderTest, Accounts, PaymentInfo, QuarkBuilder} from "test/builder/lib/QuarkBuilderTest.sol";
-
-import {Actions} from "src/builder/Actions.sol";
+import {QuarkBuilderBase} from "src/builder/QuarkBuilderBase.sol";
+import {MorphoActionsBuilder} from "src/builder/actions/MorphoActionsBuilder.sol";
+import {Actions} from "src/builder/actions/Actions.sol";
 import {CCTPBridgeActions} from "src/BridgeScripts.sol";
 import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
 import {MorphoActions} from "src/MorphoScripts.sol";
@@ -25,7 +26,7 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
         uint256 amount,
         string memory collateralAssetSymbol,
         uint256 collateralAmount
-    ) internal pure returns (QuarkBuilder.MorphoBorrowIntent memory) {
+    ) internal pure returns (MorphoActionsBuilder.MorphoBorrowIntent memory) {
         return borrowIntent_({
             chainId: chainId,
             assetSymbol: assetSymbol,
@@ -43,8 +44,8 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
         string memory collateralAssetSymbol,
         uint256 collateralAmount,
         address borrower
-    ) internal pure returns (QuarkBuilder.MorphoBorrowIntent memory) {
-        return QuarkBuilder.MorphoBorrowIntent({
+    ) internal pure returns (MorphoActionsBuilder.MorphoBorrowIntent memory) {
+        return MorphoActionsBuilder.MorphoBorrowIntent({
             amount: amount,
             assetSymbol: assetSymbol,
             blockTimestamp: BLOCK_TIMESTAMP,
@@ -90,7 +91,7 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
 
     function testBorrowFundsUnavailable() public {
         QuarkBuilder builder = new QuarkBuilder();
-        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "WBTC", 1e8, 0));
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "WBTC", 1e8, 0));
         builder.morphoBorrow(
             borrowIntent_(1, "USDC", 1e6, "WBTC", 1e8),
             chainAccountsList_(3e6), // holding 3 USDC in total across chains 1, 8453

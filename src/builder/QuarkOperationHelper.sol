@@ -3,16 +3,16 @@ pragma solidity ^0.8.27;
 
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
 
-import {Multicall} from "../Multicall.sol";
+import {Multicall} from "src/Multicall.sol";
 
-import {Actions} from "./Actions.sol";
-import {CodeJarHelper} from "./CodeJarHelper.sol";
-import {Errors} from "./Errors.sol";
-import {PaycallWrapper} from "./PaycallWrapper.sol";
-import {PaymentInfo} from "./PaymentInfo.sol";
-import {QuotecallWrapper} from "./QuotecallWrapper.sol";
-import {List} from "./List.sol";
-import {HashMap} from "./HashMap.sol";
+import {Actions} from "src/builder/actions/Actions.sol";
+import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
+import {Errors} from "src/builder/Errors.sol";
+import {PaycallWrapper} from "src/builder/PaycallWrapper.sol";
+import {PaymentInfo} from "src/builder/PaymentInfo.sol";
+import {QuotecallWrapper} from "src/builder/QuotecallWrapper.sol";
+import {List} from "src/builder/List.sol";
+import {HashMap} from "src/builder/HashMap.sol";
 
 // Helper library to for transforming Quark Operations
 library QuarkOperationHelper {

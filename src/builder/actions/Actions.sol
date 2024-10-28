@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.27;
 
-import {Accounts} from "./Accounts.sol";
-import {BridgeRoutes, CCTP} from "./BridgeRoutes.sol";
-import {CodeJarHelper} from "./CodeJarHelper.sol";
+import {Accounts} from "src/builder/Accounts.sol";
+import {BridgeRoutes, CCTP} from "src/builder/BridgeRoutes.sol";
+import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
 import {Math} from "src/lib/Math.sol";
-import {PriceFeeds} from "./PriceFeeds.sol";
-import {Strings} from "./Strings.sol";
-import {UniswapRouter} from "./UniswapRouter.sol";
+import {PriceFeeds} from "src/builder/PriceFeeds.sol";
+import {Strings} from "src/builder/Strings.sol";
+import {UniswapRouter} from "src/builder/UniswapRouter.sol";
 
 import {
     ApproveAndSwap,
@@ -16,17 +16,17 @@ import {
     CometSupplyMultipleAssetsAndBorrow,
     CometWithdrawActions,
     TransferActions
-} from "../DeFiScripts.sol";
+} from "src/DeFiScripts.sol";
 import {Math} from "src/lib/Math.sol";
-import {MorphoActions, MorphoRewardsActions, MorphoVaultActions} from "../MorphoScripts.sol";
-import {RecurringSwap} from "../RecurringSwap.sol";
-import {WrapperActions} from "../WrapperScripts.sol";
+import {MorphoActions, MorphoRewardsActions, MorphoVaultActions} from "src/MorphoScripts.sol";
+import {RecurringSwap} from "src/RecurringSwap.sol";
+import {WrapperActions} from "src/WrapperScripts.sol";
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
-import {IMorpho, Position} from "../interfaces/IMorpho.sol";
-import {PaymentInfo} from "./PaymentInfo.sol";
-import {TokenWrapper} from "./TokenWrapper.sol";
-import {MorphoInfo} from "./MorphoInfo.sol";
-import {List} from "./List.sol";
+import {IMorpho, Position} from "src/interfaces/IMorpho.sol";
+import {PaymentInfo} from "src/builder/PaymentInfo.sol";
+import {TokenWrapper} from "src/builder/TokenWrapper.sol";
+import {MorphoInfo} from "src/builder/MorphoInfo.sol";
+import {List} from "src/builder/List.sol";
 
 library Actions {
     /* ===== Constants ===== */
@@ -564,28 +564,30 @@ library Actions {
                     }
                 }
 
-                amountLeftToBridge -= amountToBridge;
+                if (amountToBridge > 0) {
+                    amountLeftToBridge -= amountToBridge;
 
-                (IQuarkWallet.QuarkOperation memory operation, Actions.Action memory action) = bridgeAsset(
-                    BridgeAsset({
-                        chainAccountsList: chainAccountsList,
-                        assetSymbol: bridgeInfo.assetSymbol,
-                        amount: amountToBridge,
-                        // where it comes from
-                        srcChainId: srcChainAccounts.chainId,
-                        sender: srcAccountBalances[j].account,
-                        // where it goes
-                        destinationChainId: bridgeInfo.dstChainId,
-                        recipient: bridgeInfo.recipient,
-                        blockTimestamp: bridgeInfo.blockTimestamp
-                    }),
-                    payment,
-                    bridgeInfo.useQuotecall
-                );
+                    (IQuarkWallet.QuarkOperation memory operation, Actions.Action memory action) = bridgeAsset(
+                        BridgeAsset({
+                            chainAccountsList: chainAccountsList,
+                            assetSymbol: bridgeInfo.assetSymbol,
+                            amount: amountToBridge,
+                            // where it comes from
+                            srcChainId: srcChainAccounts.chainId,
+                            sender: srcAccountBalances[j].account,
+                            // where it goes
+                            destinationChainId: bridgeInfo.dstChainId,
+                            recipient: bridgeInfo.recipient,
+                            blockTimestamp: bridgeInfo.blockTimestamp
+                        }),
+                        payment,
+                        bridgeInfo.useQuotecall
+                    );
 
-                List.addAction(actions, action);
-                List.addQuarkOperation(quarkOperations, operation);
-                bridgeActionCount++;
+                    List.addAction(actions, action);
+                    List.addQuarkOperation(quarkOperations, operation);
+                    bridgeActionCount++;
+                }
             }
         }
 
@@ -1283,74 +1285,74 @@ library Actions {
     }
 
     // TODO: Commenting because it is currently unused and will result in stack too deep
-    // function morphoClaimRewards(MorphoClaimRewards memory claimRewards, PaymentInfo.Payment memory payment)
-    //     internal
-    //     pure
-    //     returns (IQuarkWallet.QuarkOperation memory, Action memory)
-    // {
-    //     bytes[] memory scriptSources = new bytes[](1);
-    //     scriptSources[0] = type(MorphoRewardsActions).creationCode;
+    function morphoClaimRewards(MorphoClaimRewards memory claimRewards, PaymentInfo.Payment memory payment)
+        internal
+        pure
+        returns (IQuarkWallet.QuarkOperation memory, Action memory)
+    {
+        bytes[] memory scriptSources = new bytes[](1);
+        scriptSources[0] = type(MorphoRewardsActions).creationCode;
 
-    //     Accounts.ChainAccounts memory accounts =
-    //         Accounts.findChainAccounts(claimRewards.chainId, claimRewards.chainAccountsList);
+        Accounts.ChainAccounts memory accounts =
+            Accounts.findChainAccounts(claimRewards.chainId, claimRewards.chainAccountsList);
 
-    //     Accounts.QuarkSecret memory accountSecret =
-    //         Accounts.findQuarkSecret(claimRewards.claimer, accounts.quarkSecrets);
+        Accounts.QuarkSecret memory accountSecret =
+            Accounts.findQuarkSecret(claimRewards.claimer, accounts.quarkSecrets);
 
-    //     string[] memory rewardsAssetSymbols = new string[](claimRewards.rewards.length);
-    //     uint256[] memory rewardsPrices = new uint256[](claimRewards.rewards.length);
-    //     for (uint256 i = 0; i < claimRewards.rewards.length; ++i) {
-    //         Accounts.AssetPositions memory rewardsAssetPosition =
-    //             Accounts.findAssetPositions(claimRewards.rewards[i], accounts.assetPositionsList);
-    //         rewardsAssetSymbols[i] = rewardsAssetPosition.symbol;
-    //         rewardsPrices[i] = rewardsAssetPosition.usdPrice;
-    //     }
+        string[] memory rewardsAssetSymbols = new string[](claimRewards.rewards.length);
+        uint256[] memory rewardsPrices = new uint256[](claimRewards.rewards.length);
+        for (uint256 i = 0; i < claimRewards.rewards.length; ++i) {
+            Accounts.AssetPositions memory rewardsAssetPosition =
+                Accounts.findAssetPositions(claimRewards.rewards[i], accounts.assetPositionsList);
+            rewardsAssetSymbols[i] = rewardsAssetPosition.symbol;
+            rewardsPrices[i] = rewardsAssetPosition.usdPrice;
+        }
 
-    //     bytes memory scriptCalldata = abi.encodeWithSelector(
-    //         MorphoRewardsActions.claimAll.selector,
-    //         claimRewards.distributors,
-    //         claimRewards.accounts,
-    //         claimRewards.rewards,
-    //         claimRewards.claimables,
-    //         claimRewards.proofs
-    //     );
+        bytes memory scriptCalldata = abi.encodeWithSelector(
+            MorphoRewardsActions.claimAll.selector,
+            claimRewards.distributors,
+            claimRewards.accounts,
+            claimRewards.rewards,
+            claimRewards.claimables,
+            claimRewards.proofs
+        );
 
-    //     // Construct QuarkOperation
-    //     IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
-    //         nonce: accountSecret.nonceSecret,
-    //         isReplayable: false,
-    //         scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoRewardsActions).creationCode),
-    //         scriptCalldata: scriptCalldata,
-    //         scriptSources: scriptSources,
-    //         expiry: claimRewards.blockTimestamp + STANDARD_EXPIRY_BUFFER
-    //     });
+        // Construct QuarkOperation
+        IQuarkWallet.QuarkOperation memory quarkOperation = IQuarkWallet.QuarkOperation({
+            nonce: accountSecret.nonceSecret,
+            isReplayable: false,
+            scriptAddress: CodeJarHelper.getCodeAddress(type(MorphoRewardsActions).creationCode),
+            scriptCalldata: scriptCalldata,
+            scriptSources: scriptSources,
+            expiry: claimRewards.blockTimestamp + STANDARD_EXPIRY_BUFFER
+        });
 
-    //     MorphoClaimRewardsActionContext memory claimRewardsActionContext = MorphoClaimRewardsActionContext({
-    //         amounts: claimRewards.claimables,
-    //         assetSymbols: rewardsAssetSymbols,
-    //         chainId: claimRewards.chainId,
-    //         prices: rewardsPrices,
-    //         tokens: claimRewards.rewards
-    //     });
+        MorphoClaimRewardsActionContext memory claimRewardsActionContext = MorphoClaimRewardsActionContext({
+            amounts: claimRewards.claimables,
+            assetSymbols: rewardsAssetSymbols,
+            chainId: claimRewards.chainId,
+            prices: rewardsPrices,
+            tokens: claimRewards.rewards
+        });
 
-    //     Action memory action = Actions.Action({
-    //         chainId: claimRewards.chainId,
-    //         quarkAccount: claimRewards.claimer,
-    //         actionType: ACTION_TYPE_MORPHO_CLAIM_REWARDS,
-    //         actionContext: abi.encode(claimRewardsActionContext),
-    //         paymentMethod: PaymentInfo.paymentMethodForPayment(payment, false),
-    //         // Null address for OFFCHAIN payment.
-    //         paymentToken: payment.isToken
-    //             ? PaymentInfo.knownToken(payment.currency, claimRewards.chainId).token
-    //             : address(0),
-    //         paymentTokenSymbol: payment.currency,
-    //         paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, claimRewards.chainId) : 0,
-    //         nonceSecret: accountSecret.nonceSecret,
-    //         totalPlays: 1
-    //     });
+        Action memory action = Actions.Action({
+            chainId: claimRewards.chainId,
+            quarkAccount: claimRewards.claimer,
+            actionType: ACTION_TYPE_MORPHO_CLAIM_REWARDS,
+            actionContext: abi.encode(claimRewardsActionContext),
+            paymentMethod: PaymentInfo.paymentMethodForPayment(payment, false),
+            // Null address for OFFCHAIN payment.
+            paymentToken: payment.isToken
+                ? PaymentInfo.knownToken(payment.currency, claimRewards.chainId).token
+                : address(0),
+            paymentTokenSymbol: payment.currency,
+            paymentMaxCost: payment.isToken ? PaymentInfo.findMaxCost(payment, claimRewards.chainId) : 0,
+            nonceSecret: accountSecret.nonceSecret,
+            totalPlays: 1
+        });
 
-    //     return (quarkOperation, action);
-    // }
+        return (quarkOperation, action);
+    }
 
     function wrapOrUnwrapAsset(
         WrapOrUnwrapAsset memory wrapOrUnwrap,

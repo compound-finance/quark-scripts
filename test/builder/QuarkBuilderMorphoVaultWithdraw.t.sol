@@ -5,7 +5,8 @@ import "forge-std/Test.sol";
 
 import {Arrays} from "test/builder/lib/Arrays.sol";
 import {Accounts, PaymentInfo, QuarkBuilderTest} from "test/builder/lib/QuarkBuilderTest.sol";
-import {Actions} from "src/builder/Actions.sol";
+import {MorphoVaultActionsBuilder} from "src/builder/actions/MorphoVaultActionsBuilder.sol";
+import {Actions} from "src/builder/actions/Actions.sol";
 import {CCTPBridgeActions} from "src/BridgeScripts.sol";
 import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
 import {CometWithdrawActions, TransferActions} from "src/DeFiScripts.sol";
@@ -13,12 +14,13 @@ import {MorphoInfo} from "src/builder/MorphoInfo.sol";
 import {MorphoVaultActions} from "src/MorphoScripts.sol";
 import {Paycall} from "src/Paycall.sol";
 import {QuarkBuilder} from "src/builder/QuarkBuilder.sol";
+import {QuarkBuilderBase} from "src/builder/QuarkBuilderBase.sol";
 
 contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
     function morphoWithdrawIntent_(uint256 chainId, uint256 amount, string memory assetSymbol)
         internal
         pure
-        returns (QuarkBuilder.MorphoVaultWithdrawIntent memory)
+        returns (MorphoVaultActionsBuilder.MorphoVaultWithdrawIntent memory)
     {
         return morphoWithdrawIntent_({
             amount: amount,
@@ -31,9 +33,9 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
     function morphoWithdrawIntent_(uint256 chainId, uint256 amount, string memory assetSymbol, address withdrawer)
         internal
         pure
-        returns (QuarkBuilder.MorphoVaultWithdrawIntent memory)
+        returns (MorphoVaultActionsBuilder.MorphoVaultWithdrawIntent memory)
     {
-        return QuarkBuilder.MorphoVaultWithdrawIntent({
+        return MorphoVaultActionsBuilder.MorphoVaultWithdrawIntent({
             amount: amount,
             assetSymbol: assetSymbol,
             blockTimestamp: BLOCK_TIMESTAMP,
@@ -246,7 +248,7 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](2);
         maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 1000e6}); // max cost is 1000 USDC
         maxCosts[1] = PaymentInfo.PaymentMaxCost({chainId: 8453, amount: 0.1e6});
-        vm.expectRevert(abi.encodeWithSelector(Actions.NotEnoughFundsToBridge.selector, "usdc", 9.98e8, 9.971e8));
+        vm.expectRevert(abi.encodeWithSelector(Actions.NotEnoughFundsToBridge.selector, "usdc", 998e6, 997.1e6));
         builder.morphoVaultWithdraw(
             morphoWithdrawIntent_(1, 1e6, "USDC"),
             chainAccountsList_(2e6), // holding 2 USDC in total across 1, 8453
@@ -517,7 +519,7 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
 
         QuarkBuilder builder = new QuarkBuilder();
 
-        vm.expectRevert(QuarkBuilder.MaxCostTooHigh.selector);
+        vm.expectRevert(abi.encodeWithSelector(Actions.NotEnoughFundsToBridge.selector, "usdc", 95e6, 95e6));
 
         builder.morphoVaultWithdraw(
             morphoWithdrawIntent_(1, type(uint256).max, "USDC"),

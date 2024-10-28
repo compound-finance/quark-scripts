@@ -6,8 +6,9 @@ import "forge-std/console.sol";
 
 import {Arrays} from "test/builder/lib/Arrays.sol";
 import {QuarkBuilderTest, Accounts, PaymentInfo, QuarkBuilder} from "test/builder/lib/QuarkBuilderTest.sol";
-
-import {Actions} from "src/builder/Actions.sol";
+import {QuarkBuilderBase} from "src/builder/QuarkBuilderBase.sol";
+import {CometActionsBuilder} from "src/builder/actions/CometActionsBuilder.sol";
+import {Actions} from "src/builder/actions/Actions.sol";
 import {CCTPBridgeActions} from "src/BridgeScripts.sol";
 import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
 import {CometRepayAndWithdrawMultipleAssets} from "src/DeFiScripts.sol";
@@ -24,8 +25,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
         uint256 amount,
         string[] memory collateralAssetSymbols,
         uint256[] memory collateralAmounts
-    ) internal pure returns (QuarkBuilder.CometRepayIntent memory) {
-        return QuarkBuilder.CometRepayIntent({
+    ) internal pure returns (CometActionsBuilder.CometRepayIntent memory) {
+        return CometActionsBuilder.CometRepayIntent({
             amount: amount,
             assetSymbol: assetSymbol,
             blockTimestamp: BLOCK_TIMESTAMP,
@@ -47,7 +48,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
 
         QuarkBuilder builder = new QuarkBuilder();
 
-        vm.expectRevert(QuarkBuilder.InvalidInput.selector);
+        vm.expectRevert(QuarkBuilderBase.InvalidInput.selector);
 
         builder.cometRepay(
             repayIntent_(1, cometUsdc_(1), "USDC", 1e6, collateralAssetSymbols, collateralAmounts),
@@ -62,7 +63,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
 
         QuarkBuilder builder = new QuarkBuilder();
 
-        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "USDC", 1e6, 0));
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "USDC", 1e6, 0));
 
         builder.cometRepay(
             repayIntent_(1, cometUsdc_(1), "USDC", 1e6, collateralAssetSymbols, collateralAmounts), // attempting to repay 1 USDC
@@ -91,8 +92,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             morphoVaultPortfolios: emptyMorphoVaultPortfolios_()
         });
 
-        vm.expectRevert(QuarkBuilder.MaxCostTooHigh.selector);
-
+        vm.expectRevert(abi.encodeWithSelector(Actions.NotEnoughFundsToBridge.selector, "usdc", 0.1e6, 0.1e6));
         builder.cometRepay(
             repayIntent_(1, cometWeth_(1), "WETH", 1e18, collateralAssetSymbols, collateralAmounts),
             chainAccountsFromChainPortfolios(chainPortfolios),
@@ -506,7 +506,7 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             morphoVaultPortfolios: emptyMorphoVaultPortfolios_()
         });
 
-        QuarkBuilder.CometRepayIntent memory repayIntent;
+        CometActionsBuilder.CometRepayIntent memory repayIntent;
         // Local scope to avoid stack too deep
         {
             uint256[] memory collateralAmounts = new uint256[](1);

@@ -5,8 +5,9 @@ import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
 import {QuarkBuilderTest, Accounts, PaymentInfo, QuarkBuilder} from "test/builder/lib/QuarkBuilderTest.sol";
-
-import {Actions} from "src/builder/Actions.sol";
+import {QuarkBuilderBase} from "src/builder/QuarkBuilderBase.sol";
+import {CometActionsBuilder} from "src/builder/actions/CometActionsBuilder.sol";
+import {Actions} from "src/builder/actions/Actions.sol";
 import {CCTPBridgeActions} from "src/BridgeScripts.sol";
 import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
 import {CometSupplyActions, TransferActions} from "src/DeFiScripts.sol";
@@ -22,9 +23,9 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
     function cometWethSupply_(uint256 chainId, uint256 amount)
         internal
         pure
-        returns (QuarkBuilder.CometSupplyIntent memory)
+        returns (CometActionsBuilder.CometSupplyIntent memory)
     {
-        return QuarkBuilder.CometSupplyIntent({
+        return CometActionsBuilder.CometSupplyIntent({
             amount: amount,
             assetSymbol: "WETH",
             blockTimestamp: BLOCK_TIMESTAMP,
@@ -37,7 +38,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
     function cometSupply_(uint256 chainId, uint256 amount)
         internal
         pure
-        returns (QuarkBuilder.CometSupplyIntent memory)
+        returns (CometActionsBuilder.CometSupplyIntent memory)
     {
         return cometSupply_(chainId, amount, address(0xa11ce));
     }
@@ -45,9 +46,9 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
     function cometSupply_(uint256 chainId, uint256 amount, address sender)
         internal
         pure
-        returns (QuarkBuilder.CometSupplyIntent memory)
+        returns (CometActionsBuilder.CometSupplyIntent memory)
     {
-        return QuarkBuilder.CometSupplyIntent({
+        return CometActionsBuilder.CometSupplyIntent({
             amount: amount,
             assetSymbol: "USDC",
             blockTimestamp: BLOCK_TIMESTAMP,
@@ -59,7 +60,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
 
     function testInsufficientFunds() public {
         QuarkBuilder builder = new QuarkBuilder();
-        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "USDC", 2e6, 0e6));
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "USDC", 2e6, 0e6));
         builder.cometSupply(
             cometSupply_(1, 2e6),
             chainAccountsList_(0e6), // but we are holding 0 USDC in total across 1, 8453
@@ -70,7 +71,7 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
     function testMaxCostTooHigh() public {
         QuarkBuilder builder = new QuarkBuilder();
         // Max cost is too high, so total available funds is 0
-        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "USDC", 1e6, 0e6));
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "USDC", 1e6, 0e6));
         builder.cometSupply(
             cometSupply_(1, 1e6),
             chainAccountsList_(2e6), // holding 2 USDC in total across 1, 8453
@@ -80,10 +81,10 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
 
     function testFundsUnavailable() public {
         QuarkBuilder builder = new QuarkBuilder();
-        vm.expectRevert(abi.encodeWithSelector(QuarkBuilder.FundsUnavailable.selector, "USDC", 2e6, 0));
+        vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "USDC", 2e6, 0));
         builder.cometSupply(
             // there is no bridge to chain 7777, so we cannot get to our funds
-            cometSupply_(7777, 2e6), // transfer 2 USDC on chain 7777 to 0xfe11a
+            cometSupply_(7777, 2e6), // transfer 2 USDC on chain 7777 to 0xc0b
             chainAccountsList_(3e6), // holding 3 USDC in total across chains 1, 8453
             paymentUsd_()
         );
