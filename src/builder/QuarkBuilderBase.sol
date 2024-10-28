@@ -167,7 +167,7 @@ contract QuarkBuilderBase {
             }
         }
 
-        // If payment is token, and is not part of assetSymbolOuts, since if it's part of assetSymbolOuts, it's already handled in above codes
+        // When paying with tokens and the payment token is not an asset out, we need to bridge over the payment token
         if (payment.isToken && !paymentTokenIsPartOfAssetSymbolOuts) {
             uint256 maxCostOnDstChain = PaymentInfo.findMaxCost(payment, actionIntent.chainId);
 
