@@ -171,7 +171,7 @@ contract QuarkBuilderBase {
         if (payment.isToken && !paymentTokenIsPartOfAssetSymbolOuts) {
             uint256 maxCostOnDstChain = PaymentInfo.findMaxCost(payment, actionIntent.chainId);
 
-            // Account for the assets will be gained through the actions, and reduce the maxCostOnDstChain if can
+            // We can reduce the amount to bridge by the amount of payment tokens that are coming in to the actor's account
             for (uint256 k = 0; k < actionIntent.assetSymbolIns.length; ++k) {
                 if (Strings.stringEqIgnoreCase(actionIntent.assetSymbolIns[k], payment.currency)) {
                     maxCostOnDstChain = Math.subtractFlooredAtZero(maxCostOnDstChain, actionIntent.amountIns[k]);
