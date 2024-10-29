@@ -19,8 +19,9 @@ import {QuarkScript} from "quark-core/src/QuarkScript.sol";
 contract RecurringSwap is QuarkScript {
     using SafeERC20 for IERC20;
 
-    error BadPrice();
+    error BadPrice(address priceFeed);
     error InvalidInput();
+    error StalePrice(address priceFeed, uint256 timeSinceUpdate);
     error SwapWindowClosed(uint256 currentWindowStartTime, uint256 windowLength, uint256 currentTime);
     error SwapWindowNotOpen(uint256 nextWindowStartTime, uint256 windowLength, uint256 currentTime);
 
@@ -40,6 +41,10 @@ contract RecurringSwap is QuarkScript {
 
     /// @notice The factor to scale up intermediate values by to preserve precision during multiplication and division
     uint256 public constant PRECISION_FACTOR = 1e18;
+
+    /// @notice The maximum staleness period for price feeds, set to 1 day.
+    ///         Even though some price feeds have heartbeats of less than 1 day, most have it set to 1 day.
+    uint256 public constant MAX_PRICE_FEED_STALENESS = 1 days;
 
     /**
      * @dev Note: This script uses the following storage layout in the Quark wallet:
@@ -80,6 +85,9 @@ contract RecurringSwap is QuarkScript {
     /// @notice Parameters for controlling slippage in a swap operation
     struct SlippageParams {
         /// @dev Maximum acceptable slippage, expressed as a percentage where 100% = 1e18
+        /// Note: The deviation threshold of general Chainlink feeds is between 0.5-2%.
+        ///       It’s important to consider that using multiple price feeds can amplify
+        ///       the potential for slippage beyond the expected limits.
         uint256 maxSlippage;
         /// @dev Price feed addresses for determining market exchange rates between token pairs
         /// Example: For SUSHI -> SNX swap, use [SUSHI/ETH feed, SNX/ETH feed]
@@ -165,9 +173,12 @@ contract RecurringSwap is QuarkScript {
         for (uint256 i = 0; i < config.slippageParams.priceFeeds.length; ++i) {
             // Get price from oracle
             AggregatorV3Interface priceFeed = AggregatorV3Interface(config.slippageParams.priceFeeds[i]);
-            (, int256 rawPrice,,,) = priceFeed.latestRoundData();
+            (, int256 rawPrice,, uint256 updatedAt,) = priceFeed.latestRoundData();
             if (rawPrice <= 0) {
-                revert BadPrice();
+                revert BadPrice(address(priceFeed));
+            }
+            if (block.timestamp - updatedAt > MAX_PRICE_FEED_STALENESS) {
+                revert StalePrice(address(priceFeed), block.timestamp - updatedAt);
             }
             uint256 price = uint256(rawPrice);
             uint256 priceScale = 10 ** uint256(priceFeed.decimals());

@@ -14,10 +14,12 @@ import {QuarkMinimalProxy} from "quark-proxy/src/QuarkMinimalProxy.sol";
 import {Cancel} from "src/Cancel.sol";
 import {RecurringSwap} from "src/RecurringSwap.sol";
 
-import {YulHelper} from "./lib/YulHelper.sol";
-import {SignatureHelper} from "./lib/SignatureHelper.sol";
-import {QuarkOperationHelper, ScriptType} from "./lib/QuarkOperationHelper.sol";
+import {YulHelper} from "test/lib/YulHelper.sol";
+import {SignatureHelper} from "test/lib/SignatureHelper.sol";
+import {QuarkOperationHelper, ScriptType} from "test/lib/QuarkOperationHelper.sol";
+import {MockPriceFeed} from "test/mocks/MockPriceFeed.sol";
 
+import {AggregatorV3Interface} from "src/vendor/chainlink/AggregatorV3Interface.sol";
 import {IERC20} from "openzeppelin/token/ERC20/IERC20.sol";
 
 contract RecurringSwapTest is Test {
@@ -38,6 +40,8 @@ contract RecurringSwapTest is Test {
     uint256 alicePrivateKey = 0x8675309;
     address aliceAccount = vm.addr(alicePrivateKey);
     QuarkWallet aliceWallet; // see constructor()
+
+    MockPriceFeed mockPriceFeed;
 
     bytes recurringSwap = new YulHelper().getCode("RecurringSwap.sol/RecurringSwap.json");
 
@@ -74,6 +78,8 @@ contract RecurringSwapTest is Test {
             QuarkWallet(payable(new QuarkMinimalProxy(address(walletImplementation), aliceAccount, address(0))));
         console.log("Alice signer: %s", aliceAccount);
         console.log("Alice wallet at: %s", address(aliceWallet));
+
+        mockPriceFeed = new MockPriceFeed();
     }
 
     /* ===== recurring swap tests ===== */
@@ -298,9 +304,13 @@ contract RecurringSwapTest is Test {
         // gas: disable gas metering except while executing operations
         vm.pauseGasMetering();
 
+        // Set up mock price feed so prices aren't stale after warping
+        (, int256 price,,,) = AggregatorV3Interface(ETH_USD_PRICE_FEED).latestRoundData();
+        mockPriceFeed.setLatestAnswer(price, block.timestamp);
+
         deal(USDC, address(aliceWallet), 100_000e6);
         uint256 amountToSwap = 10 ether;
-        RecurringSwap.SwapConfig memory swapConfig = _createSwapConfig({
+        RecurringSwap.SwapConfig memory swapConfig = _createSwapConfigWithMockPriceFeed({
             startTime: block.timestamp,
             swapInterval: SWAP_WINDOW_INTERVAL,
             swapLength: SWAP_WINDOW_LENGTH,
@@ -450,6 +460,10 @@ contract RecurringSwapTest is Test {
         // gas: disable gas metering except while executing operations
         vm.pauseGasMetering();
 
+        // Set up mock price feed so prices aren't stale after warping
+        (, int256 price,,,) = AggregatorV3Interface(ETH_USD_PRICE_FEED).latestRoundData();
+        mockPriceFeed.setLatestAnswer(price, block.timestamp);
+
         deal(USDC, address(aliceWallet), 100_000e6);
         uint256 amountToSwap1 = 10 ether;
         uint256 amountToSwap2 = 5 ether;
@@ -460,7 +474,7 @@ contract RecurringSwapTest is Test {
         // Local scope to avoid stack too deep
         {
             // Two swap configs using the same nonce: one to swap 10 ETH and the other to swap 5 ETH
-            RecurringSwap.SwapConfig memory swapConfig1 = _createSwapConfig({
+            RecurringSwap.SwapConfig memory swapConfig1 = _createSwapConfigWithMockPriceFeed({
                 startTime: block.timestamp,
                 swapInterval: SWAP_WINDOW_INTERVAL,
                 swapLength: SWAP_WINDOW_LENGTH,
@@ -475,7 +489,7 @@ contract RecurringSwapTest is Test {
                 5
             );
             op1.expiry = type(uint256).max;
-            RecurringSwap.SwapConfig memory swapConfig2 = _createSwapConfig({
+            RecurringSwap.SwapConfig memory swapConfig2 = _createSwapConfigWithMockPriceFeed({
                 startTime: block.timestamp,
                 swapInterval: SWAP_WINDOW_INTERVAL,
                 swapLength: SWAP_WINDOW_LENGTH,
@@ -553,9 +567,13 @@ contract RecurringSwapTest is Test {
         // gas: disable gas metering except while executing operations
         vm.pauseGasMetering();
 
+        // Set up mock price feed so prices aren't stale after warping
+        (, int256 price,,,) = AggregatorV3Interface(ETH_USD_PRICE_FEED).latestRoundData();
+        mockPriceFeed.setLatestAnswer(price, block.timestamp);
+
         deal(USDC, address(aliceWallet), 100_000e6);
         uint256 amountToSwap = 10 ether;
-        RecurringSwap.SwapConfig memory swapConfig = _createSwapConfig({
+        RecurringSwap.SwapConfig memory swapConfig = _createSwapConfigWithMockPriceFeed({
             startTime: block.timestamp,
             swapInterval: SWAP_WINDOW_INTERVAL,
             swapLength: SWAP_WINDOW_LENGTH,
@@ -583,6 +601,7 @@ contract RecurringSwapTest is Test {
         assertEq(IERC20(WETH).balanceOf(address(aliceWallet)), amountToSwap);
 
         // 2. Skip a few swap intervals by warping past multiple swap intervals
+        mockPriceFeed.setLatestAnswer(price, block.timestamp + 10 * SWAP_WINDOW_INTERVAL);
         vm.warp(block.timestamp + 10 * SWAP_WINDOW_INTERVAL);
 
         // 3. Execute recurring swap a second time
@@ -709,10 +728,14 @@ contract RecurringSwapTest is Test {
         // gas: disable gas metering except while executing operations
         vm.pauseGasMetering();
 
+        // Set up mock price feed so prices aren't stale after warping
+        (, int256 price,,,) = AggregatorV3Interface(ETH_USD_PRICE_FEED).latestRoundData();
+        mockPriceFeed.setLatestAnswer(price, block.timestamp);
+
         deal(USDC, address(aliceWallet), 100_000e6);
         uint256 amountToSwap = 10 ether;
         uint256 windowLength = 30;
-        RecurringSwap.SwapConfig memory swapConfig = _createSwapConfig({
+        RecurringSwap.SwapConfig memory swapConfig = _createSwapConfigWithMockPriceFeed({
             startTime: block.timestamp,
             swapInterval: SWAP_WINDOW_INTERVAL,
             swapLength: windowLength,
@@ -888,6 +911,73 @@ contract RecurringSwapTest is Test {
         aliceWallet.executeQuarkOperation(op, signature1);
     }
 
+    function testRevertsForBadPrice() public {
+        // gas: disable gas metering except while executing operations
+        vm.pauseGasMetering();
+
+        // Set up mock price feed with bad price
+        mockPriceFeed.setLatestAnswer(0, block.timestamp);
+
+        deal(USDC, address(aliceWallet), 100_000e6);
+        uint256 amountToSwap = 10 ether;
+        RecurringSwap.SwapConfig memory swapConfig = _createSwapConfigWithMockPriceFeed({
+            startTime: block.timestamp,
+            swapInterval: SWAP_WINDOW_INTERVAL,
+            swapLength: SWAP_WINDOW_LENGTH,
+            amount: amountToSwap,
+            isExactOut: true
+        });
+        (QuarkWallet.QuarkOperation memory op, bytes32[] memory submissionTokens) = new QuarkOperationHelper()
+            .newReplayableOpWithCalldata(
+            aliceWallet,
+            recurringSwap,
+            abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig),
+            ScriptType.ScriptAddress,
+            2
+        );
+        op.expiry = type(uint256).max;
+        bytes memory signature1 = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
+
+        // gas: meter execute
+        vm.resumeGasMetering();
+        vm.expectRevert(abi.encodeWithSelector(RecurringSwap.BadPrice.selector, address(mockPriceFeed)));
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[0], signature1);
+    }
+
+    function testRevertsForStalePrice() public {
+        // gas: disable gas metering except while executing operations
+        vm.pauseGasMetering();
+
+        // Set up mock price feed with stale price
+        (, int256 price,,,) = AggregatorV3Interface(ETH_USD_PRICE_FEED).latestRoundData();
+        mockPriceFeed.setLatestAnswer(price, block.timestamp - 86_401);
+
+        deal(USDC, address(aliceWallet), 100_000e6);
+        uint256 amountToSwap = 10 ether;
+        RecurringSwap.SwapConfig memory swapConfig = _createSwapConfigWithMockPriceFeed({
+            startTime: block.timestamp,
+            swapInterval: SWAP_WINDOW_INTERVAL,
+            swapLength: SWAP_WINDOW_LENGTH,
+            amount: amountToSwap,
+            isExactOut: true
+        });
+        (QuarkWallet.QuarkOperation memory op, bytes32[] memory submissionTokens) = new QuarkOperationHelper()
+            .newReplayableOpWithCalldata(
+            aliceWallet,
+            recurringSwap,
+            abi.encodeWithSelector(RecurringSwap.swap.selector, swapConfig),
+            ScriptType.ScriptAddress,
+            2
+        );
+        op.expiry = type(uint256).max;
+        bytes memory signature1 = new SignatureHelper().signOp(alicePrivateKey, aliceWallet, op);
+
+        // gas: meter execute
+        vm.resumeGasMetering();
+        vm.expectRevert(abi.encodeWithSelector(RecurringSwap.StalePrice.selector, address(mockPriceFeed), 86_401));
+        aliceWallet.executeQuarkOperationWithSubmissionToken(op, submissionTokens[0], signature1);
+    }
+
     /* ===== helper functions ===== */
 
     function _array1(address address0) internal pure returns (address[] memory) {
@@ -914,6 +1004,28 @@ contract RecurringSwapTest is Test {
         arr[0] = bool0;
         arr[1] = bool1;
         return arr;
+    }
+
+    function _createSwapConfigWithMockPriceFeed(
+        uint256 startTime,
+        uint256 swapInterval,
+        uint256 swapLength,
+        uint256 amount,
+        bool isExactOut
+    ) internal view returns (RecurringSwap.SwapConfig memory) {
+        RecurringSwap.SlippageParams memory slippageParams = RecurringSwap.SlippageParams({
+            maxSlippage: 1e17, // 1%
+            priceFeeds: _array1(address(mockPriceFeed)),
+            shouldInvert: _array1(true)
+        });
+        return _createSwapConfig({
+            startTime: startTime,
+            swapInterval: swapInterval,
+            swapLength: swapLength,
+            amount: amount,
+            isExactOut: isExactOut,
+            slippageParams: slippageParams
+        });
     }
 
     function _createSwapConfig(
