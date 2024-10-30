@@ -11,6 +11,7 @@ import {Math} from "src/lib/Math.sol";
 import {MorphoInfo} from "src/builder/MorphoInfo.sol";
 import {Strings} from "src/builder/Strings.sol";
 import {PaycallWrapper} from "src/builder/PaycallWrapper.sol";
+import {Paycall} from "src/Paycall.sol";
 import {QuotecallWrapper} from "src/builder/QuotecallWrapper.sol";
 import {PaymentInfo} from "src/builder/PaymentInfo.sol";
 import {TokenWrapper} from "src/builder/TokenWrapper.sol";
@@ -32,6 +33,16 @@ contract QuarkBuilderBase {
         // Client-provided paymentCurrency string that was used to derive token addresses.
         // Client may re-use this string to construct a request that simulates the transaction.
         string paymentCurrency;
+    }
+
+    struct Simulation {
+        string currency;
+        uint256 operationGasUsed;
+        uint256 factoryGasUsed;
+        uint256 ethGasPrice;
+        uint256 operationCurrencyEstimate;
+        uint256 factoryCurrencyEstimate;
+        uint256 currencyEstimate;
     }
 
     /* ===== Constants ===== */
@@ -73,6 +84,77 @@ contract QuarkBuilderBase {
         bool useQuotecall;
         bool bridgeEnabled;
         bool autoWrapperEnabled;
+    }
+
+    function simulateAndGetActions(
+        ActionIntent memory actionIntent,
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        PaymentInfo.Payment memory payment,
+        IQuarkWallet.QuarkOperation memory actionQuarkOperation,
+        Actions.Action memory action
+    )
+        internal
+        view
+        returns (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray)
+    {
+        if (!payment.isToken) {
+            return collectAssetsForAction({
+                actionIntent: actionIntent,
+                chainAccountsList: chainAccountsList,
+                payment: payment,
+                actionQuarkOperation: actionQuarkOperation,
+                action: action
+            });
+        } else {
+            PaymentInfo.Payment memory usdPayment =
+                PaymentInfo.Payment({isToken: false, currency: "usd", maxCosts: new PaymentInfo.PaymentMaxCost[](0)});
+
+            (IQuarkWallet.QuarkOperation[] memory usdQuarkOperationsArray, Actions.Action[] memory usdActionsArray) =
+            collectAssetsForAction({
+                actionIntent: actionIntent,
+                chainAccountsList: chainAccountsList,
+                payment: usdPayment,
+                actionQuarkOperation: actionQuarkOperation,
+                action: action
+            });
+
+            BuilderResult memory builderResult = BuilderResult({
+                version: VERSION,
+                actions: usdActionsArray,
+                quarkOperations: usdQuarkOperationsArray,
+                paymentCurrency: payment.currency,
+                eip712Data: EIP712Helper.eip712DataForQuarkOperations(usdQuarkOperationsArray, usdActionsArray)
+            });
+
+            (bool success, bytes memory result) = Actions.SIMULATE_FFI_ADDRESS.staticcall(abi.encode(builderResult));
+            require(success, "Simulate FFI failed");
+            Simulation[] memory simulations = abi.decode(result, (Simulation[]));
+
+            PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](simulations.length);
+            uint256 paycallBuffer = 1.3e4; // 130% buffer for paycall gas estimation
+
+            for (uint256 i = 0; i < simulations.length; ++i) {
+                Simulation memory simulation = simulations[i];
+                // TODO: Magic number should be coming from a shared place
+                uint256 currencyEstimateWithPaycallOverhead = (135_000 + simulation.operationGasUsed);
+                uint256 amount = currencyEstimateWithPaycallOverhead * paycallBuffer / 1e4
+                    * simulation.operationCurrencyEstimate / simulation.operationGasUsed;
+                maxCosts[i] = PaymentInfo.PaymentMaxCost({chainId: actionIntent.chainId, amount: amount});
+            }
+
+            PaymentInfo.Payment memory tokenPayment =
+                PaymentInfo.Payment({isToken: true, currency: payment.currency, maxCosts: maxCosts});
+
+            (quarkOperationsArray, actionsArray) = collectAssetsForAction({
+                actionIntent: actionIntent,
+                chainAccountsList: chainAccountsList,
+                payment: tokenPayment,
+                actionQuarkOperation: actionQuarkOperation,
+                action: action
+            });
+
+            return (quarkOperationsArray, actionsArray);
+        }
     }
 
     /**

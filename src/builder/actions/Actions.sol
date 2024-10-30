@@ -68,6 +68,9 @@ library Actions {
     uint256 constant RECURRING_SWAP_MAX_SLIPPAGE = 1e17; // 1%
     uint256 constant RECURRING_SWAP_WINDOW_LENGTH = 1 days;
 
+    /* FFI Addresses (starts from 0xFF1000, FFI with 100 reserved addresses) */
+    address constant SIMULATE_FFI_ADDRESS = address(0xFF1001);
+
     /* ===== Custom Errors ===== */
 
     error BridgingUnsupportedForAsset();
