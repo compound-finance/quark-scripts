@@ -95,6 +95,9 @@ contract QuarkBuilderBase {
     )
         internal
         view
+        // TODO: Perhaps this should also return the simulation so we don't have to do that again from the client side. 
+        // However, we will need to resimulate on the client on an interval anyway, so I'm not sure. Perhaps we expose another function
+        // that just takes quark operations array, actions array and payment that does the resimulation
         returns (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray)
     {
         if (!payment.isToken) {
