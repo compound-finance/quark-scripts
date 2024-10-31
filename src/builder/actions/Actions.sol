@@ -69,7 +69,7 @@ library Actions {
     uint256 constant RECURRING_SWAP_WINDOW_LENGTH = 1 days;
 
     /* FFI Addresses (starts from 0xFF1000, FFI with 100 reserved addresses) */
-    address constant SIMULATE_FFI_ADDRESS = address(0xFF1001);
+    address constant SIMULATION_FFI_ADDRESS = address(0xFF1001);
 
     /* ===== Custom Errors ===== */
 

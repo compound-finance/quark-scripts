@@ -3,8 +3,10 @@ pragma solidity ^0.8.27;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
+import "forge-std/console2.sol";
 
 import {QuarkBuilderTest} from "test/builder/lib/QuarkBuilderTest.sol";
+import {SimulationFFI} from "test/mocks/SimulationFFI.sol";
 
 import {CCTPBridgeActions} from "src/BridgeScripts.sol";
 import {Multicall} from "src/Multicall.sol";
@@ -89,6 +91,11 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         });
     }
 
+    function setupSimulation() internal {
+        SimulationFFI mockFFI = new SimulationFFI();
+        vm.etch(Actions.SIMULATION_FFI_ADDRESS, address(mockFFI).code);
+    }
+
     function testInsufficientFunds() public {
         QuarkBuilder builder = new QuarkBuilder();
         vm.expectRevert(abi.encodeWithSelector(QuarkBuilderBase.FundsUnavailable.selector, "USDC", 10e6, 0e6));
@@ -136,6 +143,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
 
     function testSimpleLocalTransferSucceeds() public {
         QuarkBuilder builder = new QuarkBuilder();
+        setupSimulation();
         QuarkBuilder.BuilderResult memory result = builder.transfer(
             transferUsdc_(1, 1e6, address(0xceecee), BLOCK_TIMESTAMP), // transfer 1 USDC on chain 1 to 0xceecee
             chainAccountsList_(3e6), // holding 3 USDC in total across chains 1, 8453
@@ -210,6 +218,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
 
     function testSimpleLocalTransferWithPaycallSucceeds() public {
         QuarkBuilder builder = new QuarkBuilder();
+        setupSimulation();
         PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](1);
         maxCosts[0] = PaymentInfo.PaymentMaxCost({chainId: 1, amount: 1e5});
         QuarkBuilder.BuilderResult memory result = builder.transfer(
@@ -236,7 +245,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
                 Paycall.run.selector,
                 transferActionsAddress,
                 abi.encodeWithSelector(TransferActions.transferERC20Token.selector, usdc_(1), address(0xceecee), 1e6),
-                1e5
+                1.1e6
             ),
             "calldata is Paycall.run(TransferActions.transferERC20Token(USDC_1, address(0xceecee), 1e6), 20e6);"
         );

@@ -76,18 +76,21 @@ contract MorphoActionsBuilder is QuarkBuilderBase {
         }
 
         (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray) =
-        QuarkBuilderBase.collectAssetsForAction({
-            actionIntent: actionIntent,
-            chainAccountsList: chainAccountsList,
-            payment: payment,
-            actionQuarkOperation: borrowQuarkOperation,
-            action: borrowAction
-        });
+            (new IQuarkWallet.QuarkOperation[](0), new Actions.Action[](0));
+        // (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray) =
+        // QuarkBuilderBase.collectAssetsForAction({
+        //     actionIntent: actionIntent,
+        //     chainAccountsList: chainAccountsList,
+        //     payment: payment,
+        //     actionQuarkOperation: borrowQuarkOperation,
+        //     action: borrowAction
+        // });
 
         return BuilderResult({
             version: VERSION,
             actions: actionsArray,
             quarkOperations: quarkOperationsArray,
+            simulations: new Simulation[](0),
             paymentCurrency: payment.currency,
             eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
         });
@@ -152,30 +155,33 @@ contract MorphoActionsBuilder is QuarkBuilderBase {
             string[] memory assetSymbolIns = new string[](1);
             assetSymbolIns[0] = repayIntent.collateralAssetSymbol;
 
-            (quarkOperationsArray, actionsArray) = QuarkBuilderBase.collectAssetsForAction({
-                actionIntent: QuarkBuilderBase.ActionIntent({
-                    actor: repayIntent.repayer,
-                    amountIns: amountIns,
-                    assetSymbolIns: assetSymbolIns,
-                    amountOuts: amountOuts,
-                    assetSymbolOuts: assetSymbolOuts,
-                    blockTimestamp: repayIntent.blockTimestamp,
-                    chainId: repayIntent.chainId,
-                    useQuotecall: useQuotecall,
-                    bridgeEnabled: true,
-                    autoWrapperEnabled: true
-                }),
-                chainAccountsList: chainAccountsList,
-                payment: payment,
-                actionQuarkOperation: repayQuarkOperations,
-                action: repayActions
-            });
+            (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray) =
+                (new IQuarkWallet.QuarkOperation[](0), new Actions.Action[](0));
+            // (quarkOperationsArray, actionsArray) = QuarkBuilderBase.collectAssetsForAction({
+            //     actionIntent: QuarkBuilderBase.ActionIntent({
+            //         actor: repayIntent.repayer,
+            //         amountIns: amountIns,
+            //         assetSymbolIns: assetSymbolIns,
+            //         amountOuts: amountOuts,
+            //         assetSymbolOuts: assetSymbolOuts,
+            //         blockTimestamp: repayIntent.blockTimestamp,
+            //         chainId: repayIntent.chainId,
+            //         useQuotecall: useQuotecall,
+            //         bridgeEnabled: true,
+            //         autoWrapperEnabled: true
+            //     }),
+            //     chainAccountsList: chainAccountsList,
+            //     payment: payment,
+            //     actionQuarkOperation: repayQuarkOperations,
+            //     action: repayActions
+            // });
         }
 
         return BuilderResult({
             version: VERSION,
             actions: actionsArray,
             quarkOperations: quarkOperationsArray,
+            simulations: new Simulation[](0),
             paymentCurrency: payment.currency,
             eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
         });
@@ -251,18 +257,21 @@ contract MorphoActionsBuilder is QuarkBuilderBase {
         }
 
         (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray) =
-        collectAssetsForAction({
-            actionIntent: actionIntent,
-            chainAccountsList: chainAccountsList,
-            payment: payment,
-            actionQuarkOperation: morphoClaimRewardsQuarkOperation,
-            action: morphoClaimRewardsAction
-        });
+            (new IQuarkWallet.QuarkOperation[](0), new Actions.Action[](0));
+        // (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray) =
+        // collectAssetsForAction({
+        //     actionIntent: actionIntent,
+        //     chainAccountsList: chainAccountsList,
+        //     payment: payment,
+        //     actionQuarkOperation: morphoClaimRewardsQuarkOperation,
+        //     action: morphoClaimRewardsAction
+        // });
 
         return BuilderResult({
             version: VERSION,
             actions: actionsArray,
             quarkOperations: quarkOperationsArray,
+            simulations: new Simulation[](0),
             paymentCurrency: payment.currency,
             eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
         });

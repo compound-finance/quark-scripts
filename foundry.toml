@@ -6,12 +6,14 @@ solc = "0.8.27"
 evm_version = "cancun"
 bytecode_hash = "none"
 cbor_metadata = false
+# Ignore the tstore warning
+ignored_error_codes = [2394]
 
 libs = ["./lib"]
 
 [profile.ir]
 via_ir = true
-optimizer = true
+optimizer = false
 optimizer_runs = 100000000
 
 [fmt]

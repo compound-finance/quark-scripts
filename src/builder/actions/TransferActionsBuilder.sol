@@ -85,8 +85,11 @@ contract TransferActionsBuilder is QuarkBuilderBase {
             });
         }
 
-        (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray) =
-        simulateAndGetActions({
+        (
+            IQuarkWallet.QuarkOperation[] memory quarkOperationsArray,
+            Actions.Action[] memory actionsArray,
+            Simulation[] memory simulations
+        ) = simulateAndGetActions({
             actionIntent: actionIntent,
             chainAccountsList: chainAccountsList,
             payment: payment,
@@ -98,6 +101,7 @@ contract TransferActionsBuilder is QuarkBuilderBase {
             version: VERSION,
             actions: actionsArray,
             quarkOperations: quarkOperationsArray,
+            simulations: simulations,
             paymentCurrency: payment.currency,
             eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
         });
