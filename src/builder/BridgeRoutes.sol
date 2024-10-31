@@ -26,16 +26,21 @@ library CCTP {
         address bridge;
     }
 
+    // @dev Source: TokenMessenger contract from https://developers.circle.com/stablecoins/evm-smart-contracts
     function knownChains() internal pure returns (CCTPChain[] memory) {
-        CCTPChain[] memory chains = new CCTPChain[](4);
+        CCTPChain[] memory chains = new CCTPChain[](6);
         // Mainnet
         chains[0] = CCTPChain({chainId: 1, domainId: 0, bridge: 0xBd3fa81B58Ba92a82136038B25aDec7066af3155});
         // Base
         chains[1] = CCTPChain({chainId: 8453, domainId: 6, bridge: 0x1682Ae6375C4E4A97e4B583BC394c861A46D8962});
+        // Arbitrum
+        chains[2] = CCTPChain({chainId: 42161, domainId: 3, bridge: 0x19330d10D9Cc8751218eaf51E8885D058642E08A});
         // Sepolia
-        chains[2] = CCTPChain({chainId: 11155111, domainId: 0, bridge: 0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5});
+        chains[3] = CCTPChain({chainId: 11155111, domainId: 0, bridge: 0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5});
         // Base Sepolia
-        chains[3] = CCTPChain({chainId: 84532, domainId: 6, bridge: 0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5});
+        chains[4] = CCTPChain({chainId: 84532, domainId: 6, bridge: 0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5});
+        // Arbitrum Sepolia
+        chains[5] = CCTPChain({chainId: 421614, domainId: 3, bridge: 0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5});
         return chains;
     }
 
