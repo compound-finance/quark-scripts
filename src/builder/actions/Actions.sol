@@ -1724,4 +1724,14 @@ library Actions {
         WithdrawAndBorrowActionContext[] memory ws = new WithdrawAndBorrowActionContext[](1);
         return ws[0];
     }
+
+    function emptyMorphoVaultSupplyActionContext() external pure returns (MorphoVaultSupplyActionContext memory) {
+        MorphoVaultSupplyActionContext[] memory ms = new MorphoVaultSupplyActionContext[](1);
+        return ms[0];
+    }
+
+    function emptyMorphoVaultWithdrawActionContext() external pure returns (MorphoVaultWithdrawActionContext memory) {
+        MorphoVaultWithdrawActionContext[] memory mw = new MorphoVaultWithdrawActionContext[](1);
+        return mw[0];
+    }
 }
