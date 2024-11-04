@@ -382,10 +382,11 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             result.actions[0].actionContext,
             abi.encode(
                 Actions.BridgeActionContext({
-                    amount: 2e6,
                     price: USDC_PRICE,
                     token: USDC_1,
                     assetSymbol: "USDC",
+                    inputAmount: 2e6,
+                    outputAmount: 2e6,
                     chainId: 1,
                     recipient: address(0xb0b),
                     destinationChainId: 8453,
@@ -513,10 +514,11 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             result.actions[0].actionContext,
             abi.encode(
                 Actions.BridgeActionContext({
-                    amount: 2.1e6,
                     price: USDC_PRICE,
                     token: USDC_1,
                     assetSymbol: "USDC",
+                    inputAmount: 2.1e6,
+                    outputAmount: 2.1e6,
                     chainId: 1,
                     recipient: address(0xb0b),
                     destinationChainId: 8453,
@@ -644,10 +646,11 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             result.actions[0].actionContext,
             abi.encode(
                 Actions.BridgeActionContext({
-                    amount: 1.5e6,
                     price: USDC_PRICE,
                     token: USDC_1,
                     assetSymbol: "USDC",
+                    inputAmount: 1.5e6,
+                    outputAmount: 1.5e6,
                     chainId: 1,
                     recipient: address(0xb0b),
                     destinationChainId: 8453,
@@ -879,10 +882,11 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             result.actions[0].actionContext,
             abi.encode(
                 Actions.BridgeActionContext({
-                    amount: 7.5e6,
                     price: USDC_PRICE,
                     token: USDC_1,
                     assetSymbol: "USDC",
+                    inputAmount: 7.5e6,
+                    outputAmount: 7.5e6,
                     chainId: 1,
                     recipient: address(0xb0b),
                     destinationChainId: 8453,

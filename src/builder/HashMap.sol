@@ -92,12 +92,12 @@ library HashMap {
         return remove(map, abi.encode(key));
     }
 
-    function getUint256(Map memory map, uint256 key) internal pure returns (uint256) {
-        return abi.decode(get(map, abi.encode(key)), (uint256));
+    function getUint256(Map memory map, bytes memory key) internal pure returns (uint256) {
+        return abi.decode(get(map, key), (uint256));
     }
 
-    function putUint256(Map memory map, uint256 key, uint256 value) internal pure returns (Map memory) {
-        return put(map, abi.encode(key), abi.encode(value));
+    function putUint256(Map memory map, bytes memory key, uint256 value) internal pure returns (Map memory) {
+        return put(map, key, abi.encode(value));
     }
 
     function keysUint256(Map memory map) internal pure returns (uint256[] memory) {

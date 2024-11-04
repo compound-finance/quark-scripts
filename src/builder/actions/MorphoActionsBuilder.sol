@@ -32,7 +32,7 @@ contract MorphoActionsBuilder is QuarkBuilderBase {
         MorphoBorrowIntent memory borrowIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) external pure returns (BuilderResult memory) {
+    ) external view returns (BuilderResult memory) {
         bool useQuotecall = false; // never use Quotecall
 
         (IQuarkWallet.QuarkOperation memory borrowQuarkOperation, Actions.Action memory borrowAction) = Actions
@@ -107,7 +107,7 @@ contract MorphoActionsBuilder is QuarkBuilderBase {
         MorphoRepayIntent memory repayIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) external pure returns (BuilderResult memory) {
+    ) external view returns (BuilderResult memory) {
         bool isMaxRepay = repayIntent.amount == type(uint256).max;
         bool useQuotecall = false; // never use Quotecall
 
@@ -196,7 +196,7 @@ contract MorphoActionsBuilder is QuarkBuilderBase {
         MorphoRewardsClaimIntent memory claimIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) external pure returns (BuilderResult memory) {
+    ) external view returns (BuilderResult memory) {
         if (
             claimIntent.accounts.length != claimIntent.claimables.length
                 || claimIntent.accounts.length != claimIntent.distributors.length

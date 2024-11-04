@@ -30,7 +30,7 @@ contract MorphoVaultActionsBuilder is QuarkBuilderBase {
         MorphoVaultSupplyIntent memory supplyIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) external pure returns (BuilderResult memory) {
+    ) external view returns (BuilderResult memory) {
         // If the action is paid for with tokens, filter out any chain accounts that do not have corresponding payment information
         if (payment.isToken) {
             chainAccountsList = Accounts.findChainAccountsWithPaymentInfo(chainAccountsList, payment);
@@ -110,7 +110,7 @@ contract MorphoVaultActionsBuilder is QuarkBuilderBase {
         MorphoVaultWithdrawIntent memory withdrawIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) external pure returns (BuilderResult memory) {
+    ) external view returns (BuilderResult memory) {
         // XXX confirm that you actually have the amount to withdraw
 
         bool isMaxWithdraw = withdrawIntent.amount == type(uint256).max;

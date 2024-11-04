@@ -634,10 +634,11 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
             result.actions[0].actionContext,
             abi.encode(
                 Actions.BridgeActionContext({
-                    amount: 1e6,
                     price: USDC_PRICE,
                     token: USDC_1,
                     assetSymbol: "USDC",
+                    inputAmount: 1e6,
+                    outputAmount: 1e6,
                     chainId: 1,
                     recipient: address(0xb0b),
                     destinationChainId: 8453,

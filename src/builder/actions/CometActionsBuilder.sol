@@ -33,7 +33,7 @@ contract CometActionsBuilder is QuarkBuilderBase {
         CometRepayIntent memory repayIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) external pure returns (BuilderResult memory /* builderResult */ ) {
+    ) external view returns (BuilderResult memory /* builderResult */ ) {
         if (repayIntent.collateralAmounts.length != repayIntent.collateralAssetSymbols.length) {
             revert InvalidInput();
         }
@@ -120,7 +120,7 @@ contract CometActionsBuilder is QuarkBuilderBase {
         CometBorrowIntent memory borrowIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) external pure returns (BuilderResult memory /* builderResult */ ) {
+    ) external view returns (BuilderResult memory /* builderResult */ ) {
         if (borrowIntent.collateralAmounts.length != borrowIntent.collateralAssetSymbols.length) {
             revert InvalidInput();
         }
@@ -195,7 +195,7 @@ contract CometActionsBuilder is QuarkBuilderBase {
         CometSupplyIntent memory cometSupplyIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) external pure returns (BuilderResult memory /* builderResult */ ) {
+    ) external view returns (BuilderResult memory /* builderResult */ ) {
         // If the action is paid for with tokens, filter out any chain accounts that do not have corresponding payment information
         if (payment.isToken) {
             chainAccountsList = Accounts.findChainAccountsWithPaymentInfo(chainAccountsList, payment);
@@ -276,7 +276,7 @@ contract CometActionsBuilder is QuarkBuilderBase {
         CometWithdrawIntent memory cometWithdrawIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) external pure returns (BuilderResult memory) {
+    ) external view returns (BuilderResult memory) {
         // XXX confirm that you actually have the amount to withdraw
         bool isMaxWithdraw = cometWithdrawIntent.amount == type(uint256).max;
         bool useQuotecall = false; // never use Quotecall

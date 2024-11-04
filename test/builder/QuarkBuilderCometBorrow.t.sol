@@ -723,10 +723,11 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
             result.actions[0].actionContext,
             abi.encode(
                 Actions.BridgeActionContext({
-                    amount: 1e6,
                     price: USDC_PRICE,
                     token: USDC_1,
                     assetSymbol: "USDC",
+                    inputAmount: 1e6,
+                    outputAmount: 1e6,
                     chainId: 1,
                     recipient: address(0xa11ce),
                     destinationChainId: 8453,
@@ -920,10 +921,11 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
             result.actions[0].actionContext,
             abi.encode(
                 Actions.BridgeActionContext({
-                    amount: 2.2e6,
                     price: USDC_PRICE,
                     token: USDC_1,
                     assetSymbol: "USDC",
+                    inputAmount: 2.2e6,
+                    outputAmount: 2.2e6,
                     chainId: 1,
                     recipient: address(0xa11ce),
                     destinationChainId: 8453,

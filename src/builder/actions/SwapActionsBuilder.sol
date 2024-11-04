@@ -37,7 +37,7 @@ contract SwapActionsBuilder is QuarkBuilderBase {
         ZeroExSwapIntent memory swapIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) external pure returns (BuilderResult memory) {
+    ) external view returns (BuilderResult memory) {
         // If the action is paid for with tokens, filter out any chain accounts that do not have corresponding payment information
         if (payment.isToken) {
             chainAccountsList = Accounts.findChainAccountsWithPaymentInfo(chainAccountsList, payment);
@@ -153,7 +153,7 @@ contract SwapActionsBuilder is QuarkBuilderBase {
         RecurringSwapIntent memory swapIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) external pure returns (BuilderResult memory) {
+    ) external view returns (BuilderResult memory) {
         // If the action is paid for with tokens, filter out any chain accounts that do not have corresponding payment information
         if (payment.isToken) {
             chainAccountsList = Accounts.findChainAccountsWithPaymentInfo(chainAccountsList, payment);
