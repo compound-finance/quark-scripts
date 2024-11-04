@@ -23,7 +23,7 @@ import {RecurringSwap} from "src/RecurringSwap.sol";
 import {WrapperActions} from "src/WrapperScripts.sol";
 import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
 import {IMorpho, Position} from "src/interfaces/IMorpho.sol";
-import {IFFI} from "src/interfaces/IFFI.sol";
+import {FFI} from "src/builder/FFI.sol";
 import {PaymentInfo} from "src/builder/PaymentInfo.sol";
 import {TokenWrapper} from "src/builder/TokenWrapper.sol";
 import {MorphoInfo} from "src/builder/MorphoInfo.sol";
@@ -69,9 +69,6 @@ library Actions {
     uint256 constant AVERAGE_BLOCK_TIME = 12 seconds;
     uint256 constant RECURRING_SWAP_MAX_SLIPPAGE = 1e17; // 1%
     uint256 constant RECURRING_SWAP_WINDOW_LENGTH = 1 days;
-
-    /* FFI Addresses (starts from 0xFF1000, FFI with 100 reserved addresses) */
-    address constant ACROSS_FFI_ADDRESS = address(0xFF1000);
 
     /* ===== Custom Errors ===== */
 
@@ -471,7 +468,7 @@ library Actions {
         BridgeOperationInfo memory bridgeInfo,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) internal view returns (IQuarkWallet.QuarkOperation[] memory, Action[] memory) {
+    ) internal pure returns (IQuarkWallet.QuarkOperation[] memory, Action[] memory) {
         /*
          * at most one bridge operation per non-destination chain,
          * and at most one transferIntent operation on the destination chain.
@@ -610,7 +607,7 @@ library Actions {
 
     function bridgeAsset(BridgeAsset memory bridge, PaymentInfo.Payment memory payment, bool useQuotecall)
         internal
-        view
+        pure
         returns (IQuarkWallet.QuarkOperation memory, Action memory)
     {
         if (CCTP.canBridge(bridge.srcChainId, bridge.destinationChainId, bridge.assetSymbol)) {
@@ -689,7 +686,7 @@ library Actions {
 
     function bridgeAcross(BridgeAsset memory bridge, PaymentInfo.Payment memory payment, bool useQuotecall)
         internal
-        view
+        pure
         returns (IQuarkWallet.QuarkOperation memory, Action memory)
     {
         Accounts.ChainAccounts memory srcChainAccounts =
@@ -711,19 +708,13 @@ library Actions {
         scriptSources[0] = Across.bridgeScriptSource();
 
         // Make FFI call to fetch a quote from Across API
-        bytes memory ffiCalldata = abi.encodeCall(
-            IFFI.requestAcrossQuote,
-            (
-                srcAssetPositions.asset,
-                dstAssetPositions.asset,
-                bridge.srcChainId,
-                bridge.destinationChainId,
-                bridge.amount
-            )
+        (uint256 gasFee, uint256 variableFeePct) = FFI.requestAcrossQuote(
+            srcAssetPositions.asset,
+            dstAssetPositions.asset,
+            bridge.srcChainId,
+            bridge.destinationChainId,
+            bridge.amount
         );
-        (bool success, bytes memory result) = ACROSS_FFI_ADDRESS.staticcall(ffiCalldata);
-        require(success, "FFI failed");
-        (uint256 gasFee, uint256 variableFeePct) = abi.decode(result, (uint256, uint256));
 
         // The quote should consist of a fixed gas fee and variable fee. To calculate the input
         // amount, we scale the bridge.amount by the variable fee and add the fixed gas fee to it.

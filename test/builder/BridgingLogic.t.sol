@@ -16,6 +16,7 @@ import {Actions} from "src/builder/actions/Actions.sol";
 import {Accounts} from "src/builder/Accounts.sol";
 import {Across} from "src/builder/BridgeRoutes.sol";
 import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
+import {FFI} from "src/builder/FFI.sol";
 import {Paycall} from "src/Paycall.sol";
 import {PaycallWrapper} from "src/builder/PaycallWrapper.sol";
 import {PaymentInfo} from "src/builder/PaymentInfo.sol";
@@ -30,7 +31,7 @@ contract BridgingLogicTest is Test, QuarkBuilderTest {
     function setUp() public {
         // Deploy mock FFI for calling Across API
         AcrossFFI mockFFI = new AcrossFFI();
-        vm.etch(Actions.ACROSS_FFI_ADDRESS, address(mockFFI).code);
+        vm.etch(FFI.ACROSS_FFI_ADDRESS, address(mockFFI).code);
     }
 
     function testSimpleBridgeWETHTransferSucceeds() public {

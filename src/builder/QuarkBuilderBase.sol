@@ -37,7 +37,7 @@ contract QuarkBuilderBase {
 
     /* ===== Constants ===== */
 
-    string constant VERSION = "0.1.3";
+    string constant VERSION = "0.2.0";
 
     /* ===== Custom Errors ===== */
 
@@ -87,7 +87,7 @@ contract QuarkBuilderBase {
         Actions.Action memory action
     )
         internal
-        view
+        pure
         returns (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray)
     {
         // Sanity check on ActionIntent

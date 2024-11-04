@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity 0.8.27;
 
-/// @dev Interface for foreign function interface (FFI) contracts
-interface IFFI {
+/// @dev Interface for Across foreign function interface (FFI) contracts
+interface IAcrossFFI {
     function requestAcrossQuote(
         address inputToken,
         address outputToken,
