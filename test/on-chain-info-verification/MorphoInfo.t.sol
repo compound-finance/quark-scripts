@@ -42,7 +42,7 @@ contract MorphoInfoTest is Test {
         // Fork setup to get on-chain on base sepolia
         vm.createSelectFork(
             vm.envString("SEPOLIA_RPC_URL"),
-            6546096 // 2024-08-21 16:27:00 PST
+            7027030 // 2024-11-06 17:27:00 PST
         );
 
         verifyKnownMarketsParams(11155111);
