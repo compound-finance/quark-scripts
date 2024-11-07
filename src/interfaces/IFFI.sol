@@ -11,4 +11,9 @@ interface IFFI {
         external
         pure
         returns (QuarkBuilderBase.Simulation[] memory);
+
+    function getGasPrices(string memory currencySymbol)
+        external
+        view
+        returns (QuarkBuilderBase.GasPricesResult memory);
 }

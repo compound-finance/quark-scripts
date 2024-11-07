@@ -7,8 +7,7 @@ import {QuarkBuilderBase} from "src/builder/QuarkBuilderBase.sol";
 import "../../src/builder/Strings.sol";
 
 contract SimulationFFI {
-    // Using the array of quark operations and actions, we can generate all the data required
-    // for the simulate call
+    // Mock simulate FFI implementation
     function simulate(IQuarkWallet.QuarkOperation[] memory quarkOperations, Actions.Action[] memory actionsArray)
         external
         pure
@@ -32,6 +31,7 @@ contract SimulationFFI {
                 currencyScale = 1e2;
             } else {
                 currencyScale = 1e6;
+                operationGasUsed += 135_000; // Estimated paycall buffer
             }
 
             uint256 operationCurrencyEstimate = operationGasUsed * gasPrice * ethPriceInUSD * currencyScale / 1e18;

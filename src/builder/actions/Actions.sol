@@ -70,6 +70,7 @@ library Actions {
 
     /* FFI Addresses (starts from 0xFF1000, FFI with 100 reserved addresses) */
     address constant SIMULATION_FFI_ADDRESS = address(0xFF1001);
+    address constant GAS_PRICE_FFI_ADDRESS = address(0xFF1002);
 
     /* ===== Custom Errors ===== */
 
