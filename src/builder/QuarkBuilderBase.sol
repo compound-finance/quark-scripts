@@ -7,15 +7,20 @@ import {Actions} from "src/builder/actions/Actions.sol";
 import {Accounts} from "src/builder/Accounts.sol";
 import {BridgeRoutes} from "src/builder/BridgeRoutes.sol";
 import {EIP712Helper} from "src/builder/EIP712Helper.sol";
+import {SimulationHelper} from "src/builder/SimulationHelper.sol";
 import {Math} from "src/lib/Math.sol";
 import {MorphoInfo} from "src/builder/MorphoInfo.sol";
 import {Strings} from "src/builder/Strings.sol";
 import {PaycallWrapper} from "src/builder/PaycallWrapper.sol";
+import {Paycall} from "src/Paycall.sol";
 import {QuotecallWrapper} from "src/builder/QuotecallWrapper.sol";
 import {PaymentInfo} from "src/builder/PaymentInfo.sol";
 import {TokenWrapper} from "src/builder/TokenWrapper.sol";
 import {QuarkOperationHelper} from "src/builder/QuarkOperationHelper.sol";
 import {List} from "src/builder/List.sol";
+import {IFFI} from "src/interfaces/IFFI.sol";
+
+import "forge-std/console2.sol";
 
 contract QuarkBuilderBase {
     /* ===== Output Types ===== */
@@ -27,11 +32,36 @@ contract QuarkBuilderBase {
         IQuarkWallet.QuarkOperation[] quarkOperations;
         // Array of action context and other metadata corresponding 1:1 with quarkOperations
         Actions.Action[] actions;
+        // Array of simulations corresponding 1:1 with quarkOperations
+        Simulation[] simulations;
         // Struct containing containing EIP-712 data for a QuarkOperation or MultiQuarkOperation
         EIP712Helper.EIP712Data eip712Data;
         // Client-provided paymentCurrency string that was used to derive token addresses.
         // Client may re-use this string to construct a request that simulates the transaction.
         string paymentCurrency;
+    }
+
+    struct Simulation {
+        // TODO: Update simulation API to include chainId
+        uint256 chainId;
+        string currency;
+        uint256 operationGasUsed;
+        uint256 factoryGasUsed;
+        uint256 ethGasPrice;
+        uint256 operationCurrencyEstimate;
+        uint256 factoryCurrencyEstimate;
+        uint256 currencyEstimate;
+    }
+
+    struct GasPricesResult {
+        string currency;
+        uint256 currencyPrice;
+        GasPrice[] gasPrices;
+    }
+
+    struct GasPrice {
+        uint256 chainId;
+        uint256 ethGasPrice;
     }
 
     /* ===== Constants ===== */
@@ -75,6 +105,186 @@ contract QuarkBuilderBase {
         bool autoWrapperEnabled;
     }
 
+    function simulateAndGetActions(
+        ActionIntent memory actionIntent,
+        Accounts.ChainAccounts[] memory chainAccountsList,
+        PaymentInfo.Payment memory payment,
+        IQuarkWallet.QuarkOperation memory actionQuarkOperation,
+        Actions.Action memory action
+    )
+        internal
+        view
+        returns (
+            IQuarkWallet.QuarkOperation[] memory quarkOperationsArray,
+            Actions.Action[] memory actionsArray,
+            Simulation[] memory simulations
+        )
+    {
+        // TODO: Share logic between branches
+        if (!payment.isToken) {
+            (quarkOperationsArray, actionsArray) = collectAssetsForAction({
+                actionIntent: actionIntent,
+                chainAccountsList: chainAccountsList,
+                payment: payment,
+                actionQuarkOperation: actionQuarkOperation,
+                action: action
+            });
+
+            bytes memory ffiCalldata = abi.encodeCall(IFFI.simulate, (quarkOperationsArray, actionsArray));
+
+            (bool success, bytes memory result) = Actions.SIMULATION_FFI_ADDRESS.staticcall(ffiCalldata);
+            require(success, "Simulate FFI failed");
+
+            simulations = abi.decode(result, (Simulation[]));
+
+            return (quarkOperationsArray, actionsArray, simulations);
+        } else {
+            // 1. Simulate with USD to get the estimated cost in USD for the transaction
+            // 2. Simulate again with an approximate usdc cost based on the USD price. This gives a closer
+            //    estimate of the cost in USDC
+            // 3. Use the final results to build the operations and actions
+            PaymentInfo.Payment memory usdPayment =
+                PaymentInfo.Payment({isToken: false, currency: "usd", maxCosts: new PaymentInfo.PaymentMaxCost[](0)});
+
+            Actions.Action memory usdAction = Actions.Action({
+                chainId: action.chainId,
+                quarkAccount: action.quarkAccount,
+                actionType: action.actionType,
+                actionContext: action.actionContext,
+                paymentMethod: PaymentInfo.PAYMENT_METHOD_OFFCHAIN,
+                paymentToken: PaymentInfo.NON_TOKEN_PAYMENT,
+                paymentTokenSymbol: "usd",
+                paymentMaxCost: 0,
+                nonceSecret: action.nonceSecret,
+                totalPlays: action.totalPlays
+            });
+
+            (IQuarkWallet.QuarkOperation[] memory usdQuarkOperationsArray, Actions.Action[] memory usdActionsArray) =
+            collectAssetsForAction({
+                actionIntent: actionIntent,
+                chainAccountsList: chainAccountsList,
+                payment: usdPayment,
+                actionQuarkOperation: actionQuarkOperation,
+                action: usdAction
+            });
+
+            bytes memory usdFfiCalldata = abi.encodeCall(IFFI.simulate, (usdQuarkOperationsArray, usdActionsArray));
+            (bool usdSimulationSuccess, bytes memory usdSimulationResult) =
+                Actions.SIMULATION_FFI_ADDRESS.staticcall(usdFfiCalldata);
+            require(usdSimulationSuccess, "Simulate FFI failed");
+            Simulation[] memory usdSimulations = abi.decode(usdSimulationResult, (Simulation[]));
+
+            uint256[] memory chainIds = new uint256[](chainAccountsList.length);
+            for (uint256 i = 0; i < chainAccountsList.length; ++i) {
+                chainIds[i] = chainAccountsList[i].chainId;
+            }
+
+            bytes memory getGasPricesCalldata = abi.encodeCall(IFFI.getGasPrices, (payment.currency));
+            (bool getGasPricesSuccess, bytes memory getGasPricesResult) =
+                Actions.GAS_PRICE_FFI_ADDRESS.staticcall(getGasPricesCalldata);
+            require(getGasPricesSuccess, "Gas estimate FFI failed");
+            GasPricesResult memory gasPrices = abi.decode(getGasPricesResult, (GasPricesResult));
+
+            PaymentInfo.PaymentMaxCost[] memory maxCosts = new PaymentInfo.PaymentMaxCost[](chainIds.length);
+            uint256 gasCostBuffer = 1.1e4; // 110%
+
+            for (uint256 i = 0; i < chainIds.length; ++i) {
+                uint256 chainId = chainIds[i];
+
+                int256 simulationIndex = -1;
+                for (uint256 j = 0; j < usdSimulations.length; ++j) {
+                    if (usdSimulations[j].chainId == chainId) {
+                        simulationIndex = int256(j);
+                        break;
+                    }
+                }
+
+                // If there is no simulation for the chain, set the max cost to be
+                // the max cost for bridging from that chain
+                if (simulationIndex == -1) {
+                    uint256 maxCost =
+                        SimulationHelper.getMaxCost(chainId, gasPrices, SimulationHelper.BRIDGE_GAS_AMOUNT);
+                    maxCosts[i] = PaymentInfo.PaymentMaxCost({chainId: chainId, amount: maxCost});
+                } else {
+                    Simulation memory simulation = usdSimulations[uint256(simulationIndex)];
+                    // TODO: Magic number should be coming from a shared place
+                    uint256 currencyEstimateWithPaycallOverhead = (135_000 + simulation.operationGasUsed);
+                    uint256 amount = (
+                        currencyEstimateWithPaycallOverhead * gasCostBuffer * simulation.operationCurrencyEstimate
+                    ) / (simulation.operationGasUsed * 1e4);
+
+                    // Convert USD to USDC
+                    amount = (amount * 1e6) / 1e2;
+
+                    maxCosts[i] = PaymentInfo.PaymentMaxCost({chainId: simulation.chainId, amount: amount});
+                }
+
+                console2.log("Max cost for chain", chainId, maxCosts[i].amount);
+            }
+
+            PaymentInfo.Payment memory tokenPayment =
+                PaymentInfo.Payment({isToken: true, currency: payment.currency, maxCosts: maxCosts});
+
+            Actions.Action memory paycallAction = Actions.Action({
+                chainId: action.chainId,
+                quarkAccount: action.quarkAccount,
+                actionType: action.actionType,
+                actionContext: action.actionContext,
+                paymentMethod: action.paymentMethod,
+                paymentToken: action.paymentToken,
+                paymentTokenSymbol: action.paymentTokenSymbol,
+                paymentMaxCost: PaymentInfo.findMaxCost(tokenPayment, action.chainId),
+                nonceSecret: action.nonceSecret,
+                totalPlays: action.totalPlays
+            });
+
+            (quarkOperationsArray, actionsArray) = collectAssetsForAction({
+                actionIntent: actionIntent,
+                chainAccountsList: chainAccountsList,
+                payment: tokenPayment,
+                actionQuarkOperation: actionQuarkOperation,
+                action: paycallAction
+            });
+
+            bytes memory ffiCalldata = abi.encodeCall(IFFI.simulate, (quarkOperationsArray, actionsArray));
+            (bool success, bytes memory result) = Actions.SIMULATION_FFI_ADDRESS.staticcall(ffiCalldata);
+            require(success, "Simulate FFI failed");
+
+            simulations = abi.decode(result, (Simulation[]));
+            maxCosts = new PaymentInfo.PaymentMaxCost[](simulations.length);
+
+            for (uint256 i = 0; i < simulations.length; ++i) {
+                simulations[i].currencyEstimate = (simulations[i].currencyEstimate * gasCostBuffer) / 1e4;
+                maxCosts[i].chainId = simulations[i].chainId;
+                maxCosts[i].amount = simulations[i].currencyEstimate;
+            }
+
+            tokenPayment = PaymentInfo.Payment({isToken: true, currency: payment.currency, maxCosts: maxCosts});
+            paycallAction = Actions.Action({
+                chainId: paycallAction.chainId,
+                quarkAccount: paycallAction.quarkAccount,
+                actionType: paycallAction.actionType,
+                actionContext: paycallAction.actionContext,
+                paymentMethod: paycallAction.paymentMethod,
+                paymentToken: paycallAction.paymentToken,
+                paymentTokenSymbol: paycallAction.paymentTokenSymbol,
+                paymentMaxCost: PaymentInfo.findMaxCost(tokenPayment, action.chainId),
+                nonceSecret: paycallAction.nonceSecret,
+                totalPlays: paycallAction.totalPlays
+            });
+
+            (quarkOperationsArray, actionsArray) = collectAssetsForAction({
+                actionIntent: actionIntent,
+                chainAccountsList: chainAccountsList,
+                payment: tokenPayment,
+                actionQuarkOperation: actionQuarkOperation,
+                action: paycallAction
+            });
+
+            return (quarkOperationsArray, actionsArray, simulations);
+        }
+    }
+
     /**
      * @dev Collects assets for an action by checking and bridging assets if necessary to accomodate the intended action.
      */
@@ -86,7 +296,7 @@ contract QuarkBuilderBase {
         Actions.Action memory action
     )
         internal
-        pure
+        view
         returns (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray)
     {
         // Sanity check on ActionIntent
@@ -116,6 +326,12 @@ contract QuarkBuilderBase {
                 paymentTokenIsPartOfAssetSymbolOuts = true;
             }
 
+            for (uint256 j = 0; j < payment.maxCosts.length; ++j) {
+                console2.log("payment maxCosts chainId", payment.maxCosts[j].chainId);
+                console2.log("actionIntent chainId", actionIntent.chainId);
+                console2.log("payment maxCosts amount", payment.maxCosts[j].amount);
+            }
+
             if (
                 needsBridgedFunds(
                     actionIntent.assetSymbolOuts[i],
@@ -125,6 +341,7 @@ contract QuarkBuilderBase {
                     payment
                 )
             ) {
+                console2.log("Needs bridged funds for asset:", actionIntent.assetSymbolOuts[i]);
                 if (actionIntent.bridgeEnabled) {
                     uint256 amountNeededOnDst = actionIntent.amountOuts[i];
                     if (
@@ -132,6 +349,8 @@ contract QuarkBuilderBase {
                     ) {
                         amountNeededOnDst += PaymentInfo.findMaxCost(payment, actionIntent.chainId);
                     }
+
+                    console2.log("Amount needed on dst:", amountNeededOnDst);
 
                     (IQuarkWallet.QuarkOperation[] memory bridgeQuarkOperations, Actions.Action[] memory bridgeActions)
                     = Actions.constructBridgeOperations(
@@ -178,9 +397,15 @@ contract QuarkBuilderBase {
                 }
             }
 
+            console2.log(
+                "Needs bridge funds for payment:",
+                needsBridgedFunds(payment.currency, maxCostOnDstChain, actionIntent.chainId, chainAccountsList, payment)
+            );
+
             if (
                 needsBridgedFunds(payment.currency, maxCostOnDstChain, actionIntent.chainId, chainAccountsList, payment)
             ) {
+                console2.log("actionIntent.bridgeEnabled", actionIntent.bridgeEnabled);
                 if (actionIntent.bridgeEnabled) {
                     (IQuarkWallet.QuarkOperation[] memory bridgeQuarkOperations, Actions.Action[] memory bridgeActions)
                     = Actions.constructBridgeOperations(
@@ -195,6 +420,8 @@ contract QuarkBuilderBase {
                         chainAccountsList,
                         payment
                     );
+
+                    console2.log("Num bridge quark operations:", bridgeQuarkOperations.length);
 
                     for (uint256 i = 0; i < bridgeQuarkOperations.length; ++i) {
                         List.addQuarkOperation(quarkOperations, bridgeQuarkOperations[i]);
@@ -257,6 +484,9 @@ contract QuarkBuilderBase {
             );
         }
 
+        console2.log("Num quark operations:", quarkOperationsArray.length);
+        console2.log("Num actions:", actionsArray.length);
+
         // Merge operations that are from the same chain into one Multicall operation
         (quarkOperationsArray, actionsArray) =
             QuarkOperationHelper.mergeSameChainOperations(quarkOperationsArray, actionsArray);
@@ -301,7 +531,7 @@ contract QuarkBuilderBase {
         uint256 amount,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) internal pure {
+    ) internal view {
         // If no funds need to be bridged, then this check is satisfied
         // TODO: We might still need to check the availability of funds on the target chain, e.g. see if
         // funds are locked in a lending protocol and can't be withdrawn
@@ -312,6 +542,8 @@ contract QuarkBuilderBase {
         // Check each chain to see if there are enough action assets to be bridged over
         uint256 aggregateAssetBalance;
         uint256 aggregateMaxCosts;
+
+        console2.log("payment.isToken", payment.isToken);
         for (uint256 i = 0; i < chainAccountsList.length; ++i) {
             Accounts.AssetPositions memory positions =
                 Accounts.findAssetPositions(assetSymbol, chainAccountsList[i].assetPositionsList);
@@ -350,6 +582,8 @@ contract QuarkBuilderBase {
             }
         }
 
+        console2.log("aggregateAssetBalance", aggregateAssetBalance);
+        console2.log("aggregateMaxCosts", aggregateMaxCosts);
         uint256 aggregateAvailableAssetBalance =
             aggregateAssetBalance >= aggregateMaxCosts ? aggregateAssetBalance - aggregateMaxCosts : 0;
         if (aggregateAvailableAssetBalance < amount) {
@@ -437,7 +671,7 @@ contract QuarkBuilderBase {
         Accounts.ChainAccounts[] memory chainAccountsList,
         uint256 targetChainId,
         address account
-    ) internal pure {
+    ) internal view {
         return assertSufficientPaymentTokenBalances(
             PaymentBalanceAssertionArgs({
                 actions: actions,
@@ -449,7 +683,7 @@ contract QuarkBuilderBase {
         );
     }
 
-    function assertSufficientPaymentTokenBalances(PaymentBalanceAssertionArgs memory args) internal pure {
+    function assertSufficientPaymentTokenBalances(PaymentBalanceAssertionArgs memory args) internal view {
         Actions.Action[] memory bridgeActions = Actions.findActionsOfType(args.actions, Actions.ACTION_TYPE_BRIDGE);
         Actions.Action[] memory nonBridgeActions =
             Actions.findActionsNotOfType(args.actions, Actions.ACTION_TYPE_BRIDGE);
@@ -465,7 +699,11 @@ contract QuarkBuilderBase {
                     bridgeActions[i].paymentToken, bridgeActions[i].chainId, args.chainAccountsList
                 )
             );
+
             if (bridgeActionContext.token == bridgeActions[i].paymentToken) {
+                console2.log("paymentAssetBalanceOnChain", paymentAssetBalanceOnChain);
+                console2.log("bridgeActions[i].paymentMaxCost", bridgeActions[i].paymentMaxCost);
+                console2.log("bridgeActionContext.amount", bridgeActionContext.amount);
                 // If the payment token is the transfer token and this is the target chain, we need to account for the transfer amount
                 // If its bridge step, check if user has enough balance to cover the bridge amount
                 if (paymentAssetBalanceOnChain < bridgeActions[i].paymentMaxCost + bridgeActionContext.amount) {
@@ -487,12 +725,14 @@ contract QuarkBuilderBase {
             Accounts.findAssetPositions(paymentTokenSymbol, args.targetChainId, args.chainAccountsList)
         ); // assumes that all non-bridge actions occur on the target chain
         uint256 paymentTokenCost = 0;
+        console2.log("nonBridgeActions.length", nonBridgeActions.length);
 
         for (uint256 i = 0; i < nonBridgeActions.length; ++i) {
             Actions.Action memory nonBridgeAction = nonBridgeActions[i];
             if (nonBridgeAction.chainId != args.targetChainId) {
                 revert InvalidActionChain();
             }
+            console2.log("nonBridgeAction.paymentMaxCost", nonBridgeAction.paymentMaxCost);
             paymentTokenCost += nonBridgeAction.paymentMaxCost;
 
             if (Strings.stringEqIgnoreCase(nonBridgeAction.actionType, Actions.ACTION_TYPE_BORROW)) {
@@ -583,10 +823,15 @@ contract QuarkBuilderBase {
             }
         }
 
+        console2.log("paymentTokenCost", paymentTokenCost);
+        console2.log("targetChainPaymentTokenBalance", targetChainPaymentTokenBalance);
+        console2.log("paymentTokenBridgeAmount", paymentTokenBridgeAmount);
+        console2.log("supplementalPaymentTokenBalance", args.supplementalPaymentTokenBalance);
         if (
             paymentTokenCost
                 > (targetChainPaymentTokenBalance + paymentTokenBridgeAmount + args.supplementalPaymentTokenBalance)
         ) {
+            console2.log("Hit 1");
             revert MaxCostTooHigh();
         }
     }

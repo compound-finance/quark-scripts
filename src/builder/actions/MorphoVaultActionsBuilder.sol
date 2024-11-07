@@ -69,30 +69,33 @@ contract MorphoVaultActionsBuilder is QuarkBuilderBase {
             uint256[] memory amountIns = new uint256[](0);
             string[] memory assetSymbolIns = new string[](0);
 
-            (quarkOperationsArray, actionsArray) = collectAssetsForAction({
-                actionIntent: ActionIntent({
-                    actor: supplyIntent.sender,
-                    amountIns: amountIns,
-                    assetSymbolIns: assetSymbolIns,
-                    amountOuts: amountOuts,
-                    assetSymbolOuts: assetSymbolOuts,
-                    blockTimestamp: supplyIntent.blockTimestamp,
-                    chainId: supplyIntent.chainId,
-                    useQuotecall: useQuotecall,
-                    bridgeEnabled: true,
-                    autoWrapperEnabled: true
-                }),
-                chainAccountsList: chainAccountsList,
-                payment: payment,
-                actionQuarkOperation: supplyQuarkOperation,
-                action: supplyAction
-            });
+            (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray) =
+                (new IQuarkWallet.QuarkOperation[](0), new Actions.Action[](0));
+            // (quarkOperationsArray, actionsArray) = collectAssetsForAction({
+            //     actionIntent: ActionIntent({
+            //         actor: supplyIntent.sender,
+            //         amountIns: amountIns,
+            //         assetSymbolIns: assetSymbolIns,
+            //         amountOuts: amountOuts,
+            //         assetSymbolOuts: assetSymbolOuts,
+            //         blockTimestamp: supplyIntent.blockTimestamp,
+            //         chainId: supplyIntent.chainId,
+            //         useQuotecall: useQuotecall,
+            //         bridgeEnabled: true,
+            //         autoWrapperEnabled: true
+            //     }),
+            //     chainAccountsList: chainAccountsList,
+            //     payment: payment,
+            //     actionQuarkOperation: supplyQuarkOperation,
+            //     action: supplyAction
+            // });
         }
 
         return BuilderResult({
             version: VERSION,
             actions: actionsArray,
             quarkOperations: quarkOperationsArray,
+            simulations: new Simulation[](0),
             paymentCurrency: payment.currency,
             eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
         });
@@ -171,18 +174,21 @@ contract MorphoVaultActionsBuilder is QuarkBuilderBase {
         }
 
         (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray) =
-        collectAssetsForAction({
-            actionIntent: actionIntent,
-            chainAccountsList: chainAccountsList,
-            payment: payment,
-            actionQuarkOperation: cometWithdrawQuarkOperation,
-            action: cometWithdrawAction
-        });
+            (new IQuarkWallet.QuarkOperation[](0), new Actions.Action[](0));
+        // (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray) =
+        // collectAssetsForAction({
+        //     actionIntent: actionIntent,
+        //     chainAccountsList: chainAccountsList,
+        //     payment: payment,
+        //     actionQuarkOperation: cometWithdrawQuarkOperation,
+        //     action: cometWithdrawAction
+        // });
 
         return BuilderResult({
             version: VERSION,
             actions: actionsArray,
             quarkOperations: quarkOperationsArray,
+            simulations: new Simulation[](0),
             paymentCurrency: payment.currency,
             eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
         });

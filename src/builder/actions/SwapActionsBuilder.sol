@@ -115,19 +115,22 @@ contract SwapActionsBuilder is QuarkBuilderBase {
                 });
             }
 
-            (quarkOperationsArray, actionsArray) = collectAssetsForAction({
-                actionIntent: actionIntent,
-                chainAccountsList: chainAccountsList,
-                payment: payment,
-                actionQuarkOperation: operation,
-                action: action
-            });
+            (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray) =
+            (new IQuarkWallet.QuarkOperation[](0), new Actions.Action[](0));
+            // (quarkOperationsArray, actionsArray) = collectAssetsForAction({
+            //     actionIntent: actionIntent,
+            //     chainAccountsList: chainAccountsList,
+            //     payment: payment,
+            //     actionQuarkOperation: operation,
+            //     action: action
+            // });
         }
 
         return BuilderResult({
             version: VERSION,
             actions: actionsArray,
             quarkOperations: quarkOperationsArray,
+            simulations: new Simulation[](0),
             paymentCurrency: payment.currency,
             eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
         });
@@ -210,18 +213,21 @@ contract SwapActionsBuilder is QuarkBuilderBase {
         }
 
         (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray) =
-        collectAssetsForAction({
-            actionIntent: actionIntent,
-            chainAccountsList: chainAccountsList,
-            payment: payment,
-            actionQuarkOperation: operation,
-            action: action
-        });
+            (new IQuarkWallet.QuarkOperation[](0), new Actions.Action[](0));
+        // (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray) =
+        // collectAssetsForAction({
+        //     actionIntent: actionIntent,
+        //     chainAccountsList: chainAccountsList,
+        //     payment: payment,
+        //     actionQuarkOperation: operation,
+        //     action: action
+        // });
 
         return BuilderResult({
             version: VERSION,
             actions: actionsArray,
             quarkOperations: quarkOperationsArray,
+            simulations: new Simulation[](0),
             paymentCurrency: payment.currency,
             eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
         });

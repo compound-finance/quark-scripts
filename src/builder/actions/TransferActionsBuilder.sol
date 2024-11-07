@@ -31,7 +31,7 @@ contract TransferActionsBuilder is QuarkBuilderBase {
         TransferIntent memory transferIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment
-    ) external pure returns (BuilderResult memory) {
+    ) external view returns (BuilderResult memory) {
         // If the action is paid for with tokens, filter out any chain accounts that do not have corresponding payment information
         if (payment.isToken) {
             chainAccountsList = Accounts.findChainAccountsWithPaymentInfo(chainAccountsList, payment);
@@ -42,6 +42,8 @@ contract TransferActionsBuilder is QuarkBuilderBase {
         // TransferMax will always use quotecall to avoid leaving dust in wallet
         bool useQuotecall = isMaxTransfer;
 
+        // TODO: The intent shouldn't be changed! in the builder function we need to determine how much
+        // amount out if it is max...
         // Convert transferIntent to user aggregated balance
         if (isMaxTransfer) {
             transferIntent.amount = Accounts.totalAvailableAsset(transferIntent.assetSymbol, chainAccountsList, payment);
@@ -85,8 +87,11 @@ contract TransferActionsBuilder is QuarkBuilderBase {
             });
         }
 
-        (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray) =
-        collectAssetsForAction({
+        (
+            IQuarkWallet.QuarkOperation[] memory quarkOperationsArray,
+            Actions.Action[] memory actionsArray,
+            Simulation[] memory simulations
+        ) = simulateAndGetActions({
             actionIntent: actionIntent,
             chainAccountsList: chainAccountsList,
             payment: payment,
@@ -98,6 +103,7 @@ contract TransferActionsBuilder is QuarkBuilderBase {
             version: VERSION,
             actions: actionsArray,
             quarkOperations: quarkOperationsArray,
+            simulations: simulations,
             paymentCurrency: payment.currency,
             eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
         });

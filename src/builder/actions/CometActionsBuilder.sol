@@ -88,18 +88,21 @@ contract CometActionsBuilder is QuarkBuilderBase {
         }
 
         (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray) =
-        QuarkBuilderBase.collectAssetsForAction({
-            actionIntent: actionIntent,
-            chainAccountsList: chainAccountsList,
-            payment: payment,
-            actionQuarkOperation: repayQuarkOperation,
-            action: repayAction
-        });
+            (new IQuarkWallet.QuarkOperation[](0), new Actions.Action[](0));
+        // (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray) =
+        // QuarkBuilderBase.collectAssetsForAction({
+        //     actionIntent: actionIntent,
+        //     chainAccountsList: chainAccountsList,
+        //     payment: payment,
+        //     actionQuarkOperation: repayQuarkOperation,
+        //     action: repayAction
+        // });
 
         return BuilderResult({
             version: VERSION,
             actions: actionsArray,
             quarkOperations: quarkOperationsArray,
+            simulations: new Simulation[](0),
             paymentCurrency: payment.currency,
             eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
         });
@@ -165,18 +168,21 @@ contract CometActionsBuilder is QuarkBuilderBase {
         }
 
         (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray) =
-        QuarkBuilderBase.collectAssetsForAction({
-            actionIntent: actionIntent,
-            chainAccountsList: chainAccountsList,
-            payment: payment,
-            actionQuarkOperation: borrowQuarkOperation,
-            action: borrowAction
-        });
+            (new IQuarkWallet.QuarkOperation[](0), new Actions.Action[](0));
+        // (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray) =
+        // QuarkBuilderBase.collectAssetsForAction({
+        //     actionIntent: actionIntent,
+        //     chainAccountsList: chainAccountsList,
+        //     payment: payment,
+        //     actionQuarkOperation: borrowQuarkOperation,
+        //     action: borrowAction
+        // });
 
         return BuilderResult({
             version: VERSION,
             actions: actionsArray,
             quarkOperations: quarkOperationsArray,
+            simulations: new Simulation[](0),
             paymentCurrency: payment.currency,
             eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
         });
@@ -234,30 +240,33 @@ contract CometActionsBuilder is QuarkBuilderBase {
             uint256[] memory amountIns = new uint256[](0);
             string[] memory assetSymbolIns = new string[](0);
 
-            (quarkOperationsArray, actionsArray) = QuarkBuilderBase.collectAssetsForAction({
-                actionIntent: QuarkBuilderBase.ActionIntent({
-                    actor: cometSupplyIntent.sender,
-                    amountIns: amountIns,
-                    assetSymbolIns: assetSymbolIns,
-                    amountOuts: amountOuts,
-                    assetSymbolOuts: assetSymbolOuts,
-                    blockTimestamp: cometSupplyIntent.blockTimestamp,
-                    chainId: cometSupplyIntent.chainId,
-                    useQuotecall: isMaxSupply,
-                    bridgeEnabled: true,
-                    autoWrapperEnabled: true
-                }),
-                chainAccountsList: chainAccountsList,
-                payment: payment,
-                actionQuarkOperation: supplyQuarkOperation,
-                action: supplyAction
-            });
+            (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray) =
+                (new IQuarkWallet.QuarkOperation[](0), new Actions.Action[](0));
+            // (quarkOperationsArray, actionsArray) = QuarkBuilderBase.collectAssetsForAction({
+            //     actionIntent: QuarkBuilderBase.ActionIntent({
+            //         actor: cometSupplyIntent.sender,
+            //         amountIns: amountIns,
+            //         assetSymbolIns: assetSymbolIns,
+            //         amountOuts: amountOuts,
+            //         assetSymbolOuts: assetSymbolOuts,
+            //         blockTimestamp: cometSupplyIntent.blockTimestamp,
+            //         chainId: cometSupplyIntent.chainId,
+            //         useQuotecall: isMaxSupply,
+            //         bridgeEnabled: true,
+            //         autoWrapperEnabled: true
+            //     }),
+            //     chainAccountsList: chainAccountsList,
+            //     payment: payment,
+            //     actionQuarkOperation: supplyQuarkOperation,
+            //     action: supplyAction
+            // });
         }
 
         return BuilderResult({
             version: VERSION,
             actions: actionsArray,
             quarkOperations: quarkOperationsArray,
+            simulations: new Simulation[](0),
             paymentCurrency: payment.currency,
             eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
         });
@@ -319,30 +328,33 @@ contract CometActionsBuilder is QuarkBuilderBase {
             uint256[] memory amountOuts = new uint256[](0);
             string[] memory assetSymbolOuts = new string[](0);
 
-            (quarkOperationsArray, actionsArray) = QuarkBuilderBase.collectAssetsForAction({
-                actionIntent: QuarkBuilderBase.ActionIntent({
-                    actor: cometWithdrawIntent.withdrawer,
-                    amountIns: amountIns,
-                    assetSymbolIns: assetSymbolIns,
-                    amountOuts: amountOuts,
-                    assetSymbolOuts: assetSymbolOuts,
-                    blockTimestamp: cometWithdrawIntent.blockTimestamp,
-                    chainId: cometWithdrawIntent.chainId,
-                    useQuotecall: useQuotecall,
-                    bridgeEnabled: true,
-                    autoWrapperEnabled: true
-                }),
-                chainAccountsList: chainAccountsList,
-                payment: payment,
-                actionQuarkOperation: cometWithdrawQuarkOperation,
-                action: cometWithdrawAction
-            });
+            (IQuarkWallet.QuarkOperation[] memory quarkOperationsArray, Actions.Action[] memory actionsArray) =
+                (new IQuarkWallet.QuarkOperation[](0), new Actions.Action[](0));
+            // (quarkOperationsArray, actionsArray) = QuarkBuilderBase.collectAssetsForAction({
+            //     actionIntent: QuarkBuilderBase.ActionIntent({
+            //         actor: cometWithdrawIntent.withdrawer,
+            //         amountIns: amountIns,
+            //         assetSymbolIns: assetSymbolIns,
+            //         amountOuts: amountOuts,
+            //         assetSymbolOuts: assetSymbolOuts,
+            //         blockTimestamp: cometWithdrawIntent.blockTimestamp,
+            //         chainId: cometWithdrawIntent.chainId,
+            //         useQuotecall: useQuotecall,
+            //         bridgeEnabled: true,
+            //         autoWrapperEnabled: true
+            //     }),
+            //     chainAccountsList: chainAccountsList,
+            //     payment: payment,
+            //     actionQuarkOperation: cometWithdrawQuarkOperation,
+            //     action: cometWithdrawAction
+            // });
         }
 
         return BuilderResult({
             version: VERSION,
             actions: actionsArray,
             quarkOperations: quarkOperationsArray,
+            simulations: new Simulation[](0),
             paymentCurrency: payment.currency,
             eip712Data: EIP712Helper.eip712DataForQuarkOperations(quarkOperationsArray, actionsArray)
         });
