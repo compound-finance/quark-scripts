@@ -975,6 +975,7 @@ library Actions {
         Accounts.QuarkSecret memory accountSecret = Accounts.findQuarkSecret(transfer.sender, accounts.quarkSecrets);
 
         bytes memory scriptCalldata;
+        // TODO: The client always sends WETH, so i think this branch is never called
         if (Strings.stringEqIgnoreCase(transfer.assetSymbol, "ETH")) {
             // Native token transfer
             scriptCalldata = abi.encodeWithSelector(

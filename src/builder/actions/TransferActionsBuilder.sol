@@ -30,12 +30,15 @@ contract TransferActionsBuilder is QuarkBuilderBase {
     function transfer(
         TransferIntent memory transferIntent,
         Accounts.ChainAccounts[] memory chainAccountsList,
-        PaymentInfo.Payment memory payment
+        string memory paymentCurrency
     ) external view returns (BuilderResult memory) {
+        bool paymentIsToken = PaymentInfo.knownToken(paymentCurrency, transferIntent.chainId);
+
+        // TODO: Why do we need this check?
         // If the action is paid for with tokens, filter out any chain accounts that do not have corresponding payment information
-        if (payment.isToken) {
-            chainAccountsList = Accounts.findChainAccountsWithPaymentInfo(chainAccountsList, payment);
-        }
+        // if (paymentIsToken) {
+        //     chainAccountsList = Accounts.findChainAccountsWithPaymentInfo(chainAccountsList, payment);
+        // }
 
         // Initialize TransferMax flag
         bool isMaxTransfer = transferIntent.amount == type(uint256).max;
@@ -45,9 +48,9 @@ contract TransferActionsBuilder is QuarkBuilderBase {
         // TODO: The intent shouldn't be changed! in the builder function we need to determine how much
         // amount out if it is max...
         // Convert transferIntent to user aggregated balance
-        if (isMaxTransfer) {
-            transferIntent.amount = Accounts.totalAvailableAsset(transferIntent.assetSymbol, chainAccountsList, payment);
-        }
+        // if (isMaxTransfer) {
+        //     transferIntent.amount = Accounts.totalAvailableAsset(transferIntent.assetSymbol, chainAccountsList, payment);
+        // }
 
         // Then, transfer `amount` of `assetSymbol` to `recipient`
         (IQuarkWallet.QuarkOperation memory operation, Actions.Action memory action) = Actions.transferAsset(
