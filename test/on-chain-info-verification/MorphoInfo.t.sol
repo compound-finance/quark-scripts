@@ -20,7 +20,7 @@ contract MorphoInfoTest is Test {
         // Fork setup to get on-chain on eth mainnet
         vm.createSelectFork(
             vm.envString("MAINNET_RPC_URL"),
-            20580267 // 2024-08-21 16:27:00 PST
+            21145787 // 2024-11-08 14:04:00 PST
         );
 
         verifyKnownMarketsParams(1);
@@ -31,7 +31,7 @@ contract MorphoInfoTest is Test {
         // Fork setup to get on-chain on base mainnet
         vm.createSelectFork(
             vm.envString("BASE_MAINNET_RPC_URL"),
-            18746757 // 2024-08-21 16:27:00 PST
+            22156966 // 2024-11-08 14:00:00 PST
         );
 
         verifyKnownMarketsParams(8453);
@@ -42,7 +42,7 @@ contract MorphoInfoTest is Test {
         // Fork setup to get on-chain on base sepolia
         vm.createSelectFork(
             vm.envString("SEPOLIA_RPC_URL"),
-            7027030 // 2024-11-06 17:27:00 PST
+            7038811 // 2024-11-08 14:10:00 PST
         );
 
         verifyKnownMarketsParams(11155111);
