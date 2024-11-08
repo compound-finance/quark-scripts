@@ -556,8 +556,9 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
             result.actions[0].actionContext,
             abi.encode(
                 Actions.BridgeActionContext({
-                    amount: 2.2e6,
                     assetSymbol: "USDC",
+                    inputAmount: 2.2e6,
+                    outputAmount: 2.2e6,
                     bridgeType: Actions.BRIDGE_TYPE_CCTP,
                     chainId: 1,
                     destinationChainId: 8453,
@@ -870,8 +871,9 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
             result.actions[0].actionContext,
             abi.encode(
                 Actions.BridgeActionContext({
-                    amount: 10.11e6,
                     assetSymbol: "USDC",
+                    inputAmount: 10.11e6,
+                    outputAmount: 10.11e6,
                     bridgeType: Actions.BRIDGE_TYPE_CCTP,
                     chainId: 1,
                     destinationChainId: 8453,

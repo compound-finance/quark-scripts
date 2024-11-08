@@ -384,8 +384,9 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
             result.actions[0].actionContext,
             abi.encode(
                 Actions.BridgeActionContext({
-                    amount: 1e6,
                     assetSymbol: "USDC",
+                    inputAmount: 1e6,
+                    outputAmount: 1e6,
                     bridgeType: Actions.BRIDGE_TYPE_CCTP,
                     chainId: 1,
                     destinationChainId: 8453,

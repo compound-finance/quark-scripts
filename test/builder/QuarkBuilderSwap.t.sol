@@ -622,10 +622,11 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
             result.actions[0].actionContext,
             abi.encode(
                 Actions.BridgeActionContext({
-                    amount: 1000e6,
                     price: USDC_PRICE,
                     token: USDC_1,
                     assetSymbol: "USDC",
+                    inputAmount: 1000e6,
+                    outputAmount: 1000e6,
                     chainId: 1,
                     recipient: address(0xb0b),
                     destinationChainId: 8453,
@@ -767,10 +768,11 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
             result.actions[0].actionContext,
             abi.encode(
                 Actions.BridgeActionContext({
-                    amount: 1001e6,
                     price: USDC_PRICE,
                     token: USDC_1,
                     assetSymbol: "USDC",
+                    inputAmount: 1001e6,
+                    outputAmount: 1001e6,
                     chainId: 1,
                     recipient: address(0xb0b),
                     destinationChainId: 8453,
@@ -911,10 +913,11 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
             result.actions[0].actionContext,
             abi.encode(
                 Actions.BridgeActionContext({
-                    amount: 3000e6,
                     price: USDC_PRICE,
                     token: USDC_1,
                     assetSymbol: "USDC",
+                    inputAmount: 3000e6,
+                    outputAmount: 3000e6,
                     chainId: 1,
                     recipient: address(0xb0b),
                     destinationChainId: 8453,
@@ -1056,10 +1059,11 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
             result.actions[0].actionContext,
             abi.encode(
                 Actions.BridgeActionContext({
-                    amount: 500e6,
                     price: USDC_PRICE,
                     token: USDC_1,
                     assetSymbol: "USDC",
+                    inputAmount: 500e6,
+                    outputAmount: 500e6,
                     chainId: 1,
                     recipient: address(0xb0b),
                     destinationChainId: 8453,
