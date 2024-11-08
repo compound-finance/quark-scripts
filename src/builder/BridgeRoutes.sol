@@ -110,6 +110,10 @@ library Across {
         address bridge; // SpokePool contract
     }
 
+    /// @notice The buffer to subtrace from the quote timestamp to ensure it isn't some time in
+    ///         the future, which would cause the Across SpokePool contract to revert
+    uint32 public constant QUOTE_TIMESTAMP_BUFFER = 30 seconds;
+
     /// @notice The amount of time that the bridge action has to be filled before timing out
     uint256 public constant FILL_DEADLINE_BUFFER = 10 minutes;
 
@@ -184,7 +188,7 @@ library Across {
                 outputAmount, // outputAmount
                 dstChainId, // destinationChainId
                 address(0), // exclusiveRelayer
-                uint32(blockTimestamp), // quoteTimestamp
+                uint32(blockTimestamp) - QUOTE_TIMESTAMP_BUFFER, // quoteTimestamp
                 uint32(blockTimestamp + FILL_DEADLINE_BUFFER), // fillDeadline
                 0, // exclusivityDeadline
                 new bytes(0), // message

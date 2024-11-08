@@ -8,8 +8,9 @@ import {IAcrossFFI} from "src/interfaces/IAcrossFFI.sol";
  * @notice Defines the addresses of reserved FFIs and methods for calling them
  */
 library FFI {
-    /* FFI Addresses (starts from 0xFF1000, FFI with 100 reserved addresses) */
-    address constant ACROSS_FFI_ADDRESS = address(0xFF1000);
+    /// FFI Addresses (starts from 0xFF1000, FFI with 1000 reserved addresses)
+    /// 0xFF1000-0xFF1009 are reserved for framework-level FFIs like console log
+    address constant ACROSS_FFI_ADDRESS = address(0xFF1010);
 
     function requestAcrossQuote(
         address inputToken,

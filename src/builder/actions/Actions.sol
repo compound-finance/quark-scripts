@@ -612,8 +612,7 @@ library Actions {
     {
         if (CCTP.canBridge(bridge.srcChainId, bridge.destinationChainId, bridge.assetSymbol)) {
             return bridgeUSDC(bridge, payment, useQuotecall);
-        }
-        if (Across.canBridge(bridge.srcChainId, bridge.destinationChainId, bridge.assetSymbol)) {
+        } else if (Across.canBridge(bridge.srcChainId, bridge.destinationChainId, bridge.assetSymbol)) {
             return bridgeAcross(bridge, payment, useQuotecall);
         } else {
             revert BridgingUnsupportedForAsset();

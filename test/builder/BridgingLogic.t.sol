@@ -105,7 +105,7 @@ contract BridgingLogicTest is Test, QuarkBuilderTest {
                     1e18, // outputAmount
                     8453, // destinationChainId
                     address(0), // exclusiveRelayer
-                    uint32(BLOCK_TIMESTAMP), // quoteTimestamp
+                    uint32(BLOCK_TIMESTAMP) - Across.QUOTE_TIMESTAMP_BUFFER, // quoteTimestamp
                     uint32(BLOCK_TIMESTAMP + Across.FILL_DEADLINE_BUFFER), // fillDeadline
                     0, // exclusivityDeadline
                     new bytes(0), // message
