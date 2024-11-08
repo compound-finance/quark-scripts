@@ -368,7 +368,12 @@ library MorphoInfo {
         );
 
         // === Sepolia testnet morpho vaults ===
-        // None
+        // USDC (Legend USDC)
+        addMorphoVaultAddress(
+            knownVaults,
+            MorphoVaultKey({chainId: 11155111, supplyAssetSymbol: "USDC"}),
+            0x62559B2707013890FBB111280d2aE099a2EFc342
+        );
 
         // === Base Sepolia testnet morpho vaults ===
         // None
