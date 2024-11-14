@@ -81,7 +81,8 @@ contract TransferActionsBuilder is QuarkBuilderBase {
                 chainId: transferIntent.chainId,
                 useQuotecall: useQuotecall,
                 bridgeEnabled: true,
-                autoWrapperEnabled: true
+                autoWrapperEnabled: true,
+                preferAcross: true
             });
         }
 

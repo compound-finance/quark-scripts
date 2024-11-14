@@ -74,6 +74,7 @@ contract QuarkBuilderBase {
         bool useQuotecall;
         bool bridgeEnabled;
         bool autoWrapperEnabled;
+        bool preferAcross;
     }
 
     /**
@@ -135,7 +136,8 @@ contract QuarkBuilderBase {
                             dstChainId: actionIntent.chainId,
                             recipient: actionIntent.actor,
                             blockTimestamp: actionIntent.blockTimestamp,
-                            useQuotecall: actionIntent.useQuotecall
+                            useQuotecall: actionIntent.useQuotecall,
+                            preferAcross: actionIntent.preferAcross
                         }),
                         chainAccountsList,
                         payment
@@ -193,7 +195,8 @@ contract QuarkBuilderBase {
                             dstChainId: actionIntent.chainId,
                             recipient: actionIntent.actor,
                             blockTimestamp: actionIntent.blockTimestamp,
-                            useQuotecall: actionIntent.useQuotecall
+                            useQuotecall: actionIntent.useQuotecall,
+                            preferAcross: actionIntent.preferAcross
                         }),
                         chainAccountsList,
                         payment

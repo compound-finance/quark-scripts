@@ -83,7 +83,8 @@ contract CometActionsBuilder is QuarkBuilderBase {
                 chainId: repayIntent.chainId,
                 useQuotecall: useQuotecall,
                 bridgeEnabled: true,
-                autoWrapperEnabled: true
+                autoWrapperEnabled: true,
+                preferAcross: true
             });
         }
 
@@ -160,7 +161,8 @@ contract CometActionsBuilder is QuarkBuilderBase {
                 chainId: borrowIntent.chainId,
                 useQuotecall: useQuotecall,
                 bridgeEnabled: true,
-                autoWrapperEnabled: true
+                autoWrapperEnabled: true,
+                preferAcross: true
             });
         }
 
@@ -245,7 +247,8 @@ contract CometActionsBuilder is QuarkBuilderBase {
                     chainId: cometSupplyIntent.chainId,
                     useQuotecall: isMaxSupply,
                     bridgeEnabled: true,
-                    autoWrapperEnabled: true
+                    autoWrapperEnabled: true,
+                    preferAcross: true
                 }),
                 chainAccountsList: chainAccountsList,
                 payment: payment,
@@ -330,7 +333,8 @@ contract CometActionsBuilder is QuarkBuilderBase {
                     chainId: cometWithdrawIntent.chainId,
                     useQuotecall: useQuotecall,
                     bridgeEnabled: true,
-                    autoWrapperEnabled: true
+                    autoWrapperEnabled: true,
+                    preferAcross: true
                 }),
                 chainAccountsList: chainAccountsList,
                 payment: payment,

@@ -111,7 +111,8 @@ contract SwapActionsBuilder is QuarkBuilderBase {
                     chainId: swapIntent.chainId,
                     useQuotecall: isMaxSwap,
                     bridgeEnabled: true,
-                    autoWrapperEnabled: true
+                    autoWrapperEnabled: true,
+                    preferAcross: true
                 });
             }
 
@@ -205,7 +206,8 @@ contract SwapActionsBuilder is QuarkBuilderBase {
                 chainId: swapIntent.chainId,
                 useQuotecall: false,
                 bridgeEnabled: false,
-                autoWrapperEnabled: false
+                autoWrapperEnabled: false,
+                preferAcross: true
             });
         }
 

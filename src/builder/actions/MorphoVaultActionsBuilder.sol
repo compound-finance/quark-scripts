@@ -80,7 +80,8 @@ contract MorphoVaultActionsBuilder is QuarkBuilderBase {
                     chainId: supplyIntent.chainId,
                     useQuotecall: useQuotecall,
                     bridgeEnabled: true,
-                    autoWrapperEnabled: true
+                    autoWrapperEnabled: true,
+                    preferAcross: true
                 }),
                 chainAccountsList: chainAccountsList,
                 payment: payment,
@@ -166,7 +167,8 @@ contract MorphoVaultActionsBuilder is QuarkBuilderBase {
                 chainId: withdrawIntent.chainId,
                 useQuotecall: useQuotecall,
                 bridgeEnabled: true,
-                autoWrapperEnabled: true
+                autoWrapperEnabled: true,
+                preferAcross: true
             });
         }
 
