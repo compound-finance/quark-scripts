@@ -248,9 +248,8 @@ library PriceFeeds {
                     reverse[1] = false;
                     return (path, reverse);
                 } else if (
-                    Strings
-                        // e.g. IN/ABC and ABC/OUT -> We want IN/ABC and ABC/OUT, which equates to reverse=[false, false]
-                        .stringEqIgnoreCase(inputAssetPriceFeeds[i].quoteSymbol, outputAssetPriceFeeds[j].baseSymbol)
+                    // e.g. IN/ABC and ABC/OUT -> We want IN/ABC and ABC/OUT, which equates to reverse=[false, false]
+                    Strings.stringEqIgnoreCase(inputAssetPriceFeeds[i].quoteSymbol, outputAssetPriceFeeds[j].baseSymbol)
                 ) {
                     address[] memory path = new address[](2);
                     bool[] memory reverse = new bool[](2);
@@ -260,9 +259,8 @@ library PriceFeeds {
                     reverse[1] = false;
                     return (path, reverse);
                 } else if (
-                    Strings
-                        // e.g. ABC/IN and OUT/ABC -> We want IN/ABC and ABC/OUT, which equates to reverse=[true, true]
-                        .stringEqIgnoreCase(inputAssetPriceFeeds[i].baseSymbol, outputAssetPriceFeeds[j].quoteSymbol)
+                    // e.g. ABC/IN and OUT/ABC -> We want IN/ABC and ABC/OUT, which equates to reverse=[true, true]
+                    Strings.stringEqIgnoreCase(inputAssetPriceFeeds[i].baseSymbol, outputAssetPriceFeeds[j].quoteSymbol)
                 ) {
                     address[] memory path = new address[](2);
                     bool[] memory reverse = new bool[](2);
@@ -272,9 +270,10 @@ library PriceFeeds {
                     reverse[1] = true;
                     return (path, reverse);
                 } else if (
-                    Strings
-                        // e.g. IN/ABC and OUT/ABC -> We want IN/ABC and ABC/OUT, which equates to reverse=[false, true]
-                        .stringEqIgnoreCase(inputAssetPriceFeeds[i].quoteSymbol, outputAssetPriceFeeds[j].quoteSymbol)
+                    // e.g. IN/ABC and OUT/ABC -> We want IN/ABC and ABC/OUT, which equates to reverse=[false, true]
+                    Strings.stringEqIgnoreCase(
+                        inputAssetPriceFeeds[i].quoteSymbol, outputAssetPriceFeeds[j].quoteSymbol
+                    )
                 ) {
                     address[] memory path = new address[](2);
                     bool[] memory reverse = new bool[](2);

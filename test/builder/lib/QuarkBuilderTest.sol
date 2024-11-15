@@ -450,17 +450,17 @@ contract QuarkBuilderTest {
                     chainPortfolios[i].account,
                     chainPortfolios[i].assetSymbols,
                     chainPortfolios[i].assetBalances
-                    ),
+                ),
                 // cometPositions: cometPositionsFor
                 cometPositions: cometPositionsForCometPorfolios(
                     chainPortfolios[i].chainId, chainPortfolios[i].account, chainPortfolios[i].cometPortfolios
-                    ),
+                ),
                 morphoPositions: morphoPositionsForMorphoPortfolios(
                     chainPortfolios[i].chainId, chainPortfolios[i].account, chainPortfolios[i].morphoPortfolios
-                    ),
+                ),
                 morphoVaultPositions: morphoVaultPositionsForMorphoVaultPortfolios(
                     chainPortfolios[i].chainId, chainPortfolios[i].account, chainPortfolios[i].morphoVaultPortfolios
-                    )
+                )
             });
         }
 

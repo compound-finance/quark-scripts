@@ -30,7 +30,7 @@ library QuotecallWrapper {
             scriptAddress: CodeJarHelper.getCodeAddress(quotecallSource),
             scriptCalldata: abi.encodeWithSelector(
                 Quotecall.run.selector, operation.scriptAddress, operation.scriptCalldata, quotedAmount
-                ),
+            ),
             scriptSources: scriptSources,
             expiry: operation.expiry
         });

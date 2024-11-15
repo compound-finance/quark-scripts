@@ -666,7 +666,7 @@ library Actions {
             scriptAddress: CodeJarHelper.getCodeAddress(scriptSources[0]),
             scriptCalldata: CCTP.encodeBridgeUSDC(
                 bridge.srcChainId, bridge.destinationChainId, bridge.amount, bridge.recipient, srcUSDCPositions.asset
-                ),
+            ),
             scriptSources: scriptSources,
             expiry: bridge.blockTimestamp + BRIDGE_EXPIRY_BUFFER
         });
@@ -1187,7 +1187,7 @@ library Actions {
             morpho: MorphoInfo.getMorphoAddress(borrowInput.chainId),
             morphoMarketId: MorphoInfo.marketId(
                 MorphoInfo.getMarketParams(borrowInput.chainId, borrowInput.collateralAssetSymbol, borrowInput.assetSymbol)
-                )
+            )
         });
         Action memory action = Actions.Action({
             chainId: borrowInput.chainId,
@@ -1257,7 +1257,7 @@ library Actions {
             morpho: MorphoInfo.getMorphoAddress(repayInput.chainId),
             morphoMarketId: MorphoInfo.marketId(
                 MorphoInfo.getMarketParams(repayInput.chainId, repayInput.collateralAssetSymbol, repayInput.assetSymbol)
-                )
+            )
         });
 
         Action memory action = Actions.Action({
@@ -1492,7 +1492,7 @@ library Actions {
             scriptAddress: CodeJarHelper.getCodeAddress(type(WrapperActions).creationCode),
             scriptCalldata: TokenWrapper.encodeActionToWrapOrUnwrap(
                 wrapOrUnwrap.chainId, wrapOrUnwrap.assetSymbol, wrapOrUnwrap.amount
-                ),
+            ),
             scriptSources: scriptSources,
             expiry: wrapOrUnwrap.blockTimestamp + STANDARD_EXPIRY_BUFFER
         });

@@ -29,7 +29,7 @@ library PaycallWrapper {
             scriptAddress: CodeJarHelper.getCodeAddress(paycallSource),
             scriptCalldata: abi.encodeWithSelector(
                 Paycall.run.selector, operation.scriptAddress, operation.scriptCalldata, maxPaymentCost
-                ),
+            ),
             scriptSources: scriptSources,
             expiry: operation.expiry
         });
