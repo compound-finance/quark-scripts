@@ -52,7 +52,8 @@ contract QuarkBuilderMorphoBorrowTest is Test, QuarkBuilderTest {
             borrower: borrower,
             chainId: chainId,
             collateralAmount: collateralAmount,
-            collateralAssetSymbol: collateralAssetSymbol
+            collateralAssetSymbol: collateralAssetSymbol,
+            preferAcross: false
         });
     }
 

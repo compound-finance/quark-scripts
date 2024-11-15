@@ -25,6 +25,7 @@ contract TransferActionsBuilder is QuarkBuilderBase {
         address sender;
         address recipient;
         uint256 blockTimestamp;
+        bool preferAcross;
     }
 
     function transfer(
@@ -82,7 +83,7 @@ contract TransferActionsBuilder is QuarkBuilderBase {
                 useQuotecall: useQuotecall,
                 bridgeEnabled: true,
                 autoWrapperEnabled: true,
-                preferAcross: true
+                preferAcross: transferIntent.preferAcross
             });
         }
 

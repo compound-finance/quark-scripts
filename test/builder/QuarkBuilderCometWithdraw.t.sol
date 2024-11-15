@@ -41,7 +41,8 @@ contract QuarkBuilderCometWithdrawTest is Test, QuarkBuilderTest {
             blockTimestamp: BLOCK_TIMESTAMP,
             chainId: chainId,
             comet: comet,
-            withdrawer: withdrawer
+            withdrawer: withdrawer,
+            preferAcross: false
         });
     }
 

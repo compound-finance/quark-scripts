@@ -24,6 +24,7 @@ contract MorphoVaultActionsBuilder is QuarkBuilderBase {
         uint256 blockTimestamp;
         address sender;
         uint256 chainId;
+        bool preferAcross;
     }
 
     function morphoVaultSupply(
@@ -81,7 +82,7 @@ contract MorphoVaultActionsBuilder is QuarkBuilderBase {
                     useQuotecall: useQuotecall,
                     bridgeEnabled: true,
                     autoWrapperEnabled: true,
-                    preferAcross: true
+                    preferAcross: supplyIntent.preferAcross
                 }),
                 chainAccountsList: chainAccountsList,
                 payment: payment,
@@ -105,6 +106,7 @@ contract MorphoVaultActionsBuilder is QuarkBuilderBase {
         uint256 blockTimestamp;
         uint256 chainId;
         address withdrawer;
+        bool preferAcross;
     }
 
     function morphoVaultWithdraw(
@@ -168,7 +170,7 @@ contract MorphoVaultActionsBuilder is QuarkBuilderBase {
                 useQuotecall: useQuotecall,
                 bridgeEnabled: true,
                 autoWrapperEnabled: true,
-                preferAcross: true
+                preferAcross: withdrawIntent.preferAcross
             });
         }
 

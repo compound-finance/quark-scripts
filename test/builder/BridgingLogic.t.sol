@@ -61,7 +61,8 @@ contract BridgingLogicTest is Test, QuarkBuilderTest {
                 amount: 1e18,
                 sender: address(0xb0b),
                 recipient: address(0xceecee),
-                blockTimestamp: BLOCK_TIMESTAMP
+                blockTimestamp: BLOCK_TIMESTAMP,
+                preferAcross: false
             }), // transfer 1e18 WETH on chain 8453 to 0xceecee
             chainAccountsList,
             paymentUsd_()

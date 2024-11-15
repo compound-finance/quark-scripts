@@ -26,6 +26,7 @@ contract MorphoActionsBuilder is QuarkBuilderBase {
         uint256 chainId;
         uint256 collateralAmount;
         string collateralAssetSymbol;
+        bool preferAcross;
     }
 
     function morphoBorrow(
@@ -72,7 +73,7 @@ contract MorphoActionsBuilder is QuarkBuilderBase {
                 useQuotecall: useQuotecall,
                 bridgeEnabled: true,
                 autoWrapperEnabled: true,
-                preferAcross: true
+                preferAcross: borrowIntent.preferAcross
             });
         }
 
@@ -102,6 +103,7 @@ contract MorphoActionsBuilder is QuarkBuilderBase {
         uint256 chainId;
         uint256 collateralAmount;
         string collateralAssetSymbol;
+        bool preferAcross;
     }
 
     function morphoRepay(
@@ -165,7 +167,7 @@ contract MorphoActionsBuilder is QuarkBuilderBase {
                     useQuotecall: useQuotecall,
                     bridgeEnabled: true,
                     autoWrapperEnabled: true,
-                    preferAcross: true
+                    preferAcross: repayIntent.preferAcross
                 }),
                 chainAccountsList: chainAccountsList,
                 payment: payment,
@@ -192,6 +194,7 @@ contract MorphoActionsBuilder is QuarkBuilderBase {
         address[] distributors;
         address[] rewards;
         bytes32[][] proofs;
+        bool preferAcross;
     }
 
     function morphoClaimRewards(
@@ -249,7 +252,7 @@ contract MorphoActionsBuilder is QuarkBuilderBase {
                 useQuotecall: useQuotecall,
                 bridgeEnabled: true,
                 autoWrapperEnabled: true,
-                preferAcross: true
+                preferAcross: claimIntent.preferAcross
             });
         }
 

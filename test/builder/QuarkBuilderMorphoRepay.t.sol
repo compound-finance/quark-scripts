@@ -53,7 +53,8 @@ contract QuarkBuilderMorphoRepayTest is Test, QuarkBuilderTest {
             repayer: repayer,
             chainId: chainId,
             collateralAmount: collateralAmount,
-            collateralAssetSymbol: collateralAssetSymbol
+            collateralAssetSymbol: collateralAssetSymbol,
+            preferAcross: false
         });
     }
 

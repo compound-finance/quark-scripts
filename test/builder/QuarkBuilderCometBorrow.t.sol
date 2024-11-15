@@ -33,7 +33,8 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
             chainId: chainId,
             collateralAmounts: collateralAmounts,
             collateralAssetSymbols: collateralAssetSymbols,
-            comet: cometUsdc_(1)
+            comet: cometUsdc_(1),
+            preferAcross: false
         });
     }
 

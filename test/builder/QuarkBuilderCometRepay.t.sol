@@ -34,7 +34,8 @@ contract QuarkBuilderCometRepayTest is Test, QuarkBuilderTest {
             collateralAmounts: collateralAmounts,
             collateralAssetSymbols: collateralAssetSymbols,
             comet: comet,
-            repayer: address(0xa11ce)
+            repayer: address(0xa11ce),
+            preferAcross: false
         });
     }
 

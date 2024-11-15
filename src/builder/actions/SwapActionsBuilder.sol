@@ -31,6 +31,7 @@ contract SwapActionsBuilder is QuarkBuilderBase {
         address sender;
         bool isExactOut;
         uint256 blockTimestamp;
+        bool preferAcross;
     }
 
     function swap(
@@ -112,7 +113,7 @@ contract SwapActionsBuilder is QuarkBuilderBase {
                     useQuotecall: isMaxSwap,
                     bridgeEnabled: true,
                     autoWrapperEnabled: true,
-                    preferAcross: true
+                    preferAcross: swapIntent.preferAcross
                 });
             }
 
@@ -146,6 +147,7 @@ contract SwapActionsBuilder is QuarkBuilderBase {
         uint256 interval;
         address sender;
         uint256 blockTimestamp;
+        bool preferAcross;
     }
 
     // Note: We don't currently bridge the input token or the payment token for recurring swaps. Recurring swaps
@@ -207,7 +209,7 @@ contract SwapActionsBuilder is QuarkBuilderBase {
                 useQuotecall: false,
                 bridgeEnabled: false,
                 autoWrapperEnabled: false,
-                preferAcross: true
+                preferAcross: swapIntent.preferAcross
             });
         }
 

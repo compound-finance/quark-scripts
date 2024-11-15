@@ -27,6 +27,7 @@ contract CometActionsBuilder is QuarkBuilderBase {
         string[] collateralAssetSymbols;
         address comet;
         address repayer;
+        bool preferAcross;
     }
 
     function cometRepay(
@@ -84,7 +85,7 @@ contract CometActionsBuilder is QuarkBuilderBase {
                 useQuotecall: useQuotecall,
                 bridgeEnabled: true,
                 autoWrapperEnabled: true,
-                preferAcross: true
+                preferAcross: repayIntent.preferAcross
             });
         }
 
@@ -115,6 +116,7 @@ contract CometActionsBuilder is QuarkBuilderBase {
         uint256[] collateralAmounts;
         string[] collateralAssetSymbols;
         address comet;
+        bool preferAcross;
     }
 
     function cometBorrow(
@@ -162,7 +164,7 @@ contract CometActionsBuilder is QuarkBuilderBase {
                 useQuotecall: useQuotecall,
                 bridgeEnabled: true,
                 autoWrapperEnabled: true,
-                preferAcross: true
+                preferAcross: borrowIntent.preferAcross
             });
         }
 
@@ -191,6 +193,7 @@ contract CometActionsBuilder is QuarkBuilderBase {
         uint256 chainId;
         address comet;
         address sender;
+        bool preferAcross;
     }
 
     function cometSupply(
@@ -248,7 +251,7 @@ contract CometActionsBuilder is QuarkBuilderBase {
                     useQuotecall: isMaxSupply,
                     bridgeEnabled: true,
                     autoWrapperEnabled: true,
-                    preferAcross: true
+                    preferAcross: cometSupplyIntent.preferAcross
                 }),
                 chainAccountsList: chainAccountsList,
                 payment: payment,
@@ -273,6 +276,7 @@ contract CometActionsBuilder is QuarkBuilderBase {
         uint256 chainId;
         address comet;
         address withdrawer;
+        bool preferAcross;
     }
 
     function cometWithdraw(
@@ -334,7 +338,7 @@ contract CometActionsBuilder is QuarkBuilderBase {
                     useQuotecall: useQuotecall,
                     bridgeEnabled: true,
                     autoWrapperEnabled: true,
-                    preferAcross: true
+                    preferAcross: cometWithdrawIntent.preferAcross
                 }),
                 chainAccountsList: chainAccountsList,
                 payment: payment,
