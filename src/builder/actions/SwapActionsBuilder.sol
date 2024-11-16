@@ -70,7 +70,7 @@ contract SwapActionsBuilder is QuarkBuilderBase {
                     sellToken: swapIntent.sellToken,
                     sellAssetSymbol: Accounts.findAssetPositions(
                         swapIntent.sellToken, swapIntent.chainId, chainAccountsList
-                    ).symbol,
+                        ).symbol,
                     sellAmount: swapIntent.sellAmount,
                     buyToken: swapIntent.buyToken,
                     buyAssetSymbol: Accounts.findAssetPositions(swapIntent.buyToken, swapIntent.chainId, chainAccountsList)
