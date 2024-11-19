@@ -5,7 +5,7 @@ import {IQuarkWallet} from "quark-core/src/interfaces/IQuarkWallet.sol";
 
 import {Actions} from "src/builder/actions/Actions.sol";
 import {Accounts} from "src/builder/Accounts.sol";
-import {BridgeRoutes} from "src/builder/BridgeRoutes.sol";
+import {Across, BridgeRoutes} from "src/builder/BridgeRoutes.sol";
 import {EIP712Helper} from "src/builder/EIP712Helper.sol";
 import {Math} from "src/lib/Math.sol";
 import {MorphoInfo} from "src/builder/MorphoInfo.sol";
@@ -232,6 +232,15 @@ contract QuarkBuilderBase {
                 uint256 supplementalBalance = HashMap.contains(assetsBridged, abi.encode(assetSymbolOut))
                     ? HashMap.getUint256(assetsBridged, abi.encode(assetSymbolOut))
                     : 0;
+                // Note: Right now, ETH/WETH is only bridged via Across. Across has a weird quirk where it will send ETH to EOAs and
+                // WETH to contracts. Since the QuarkBuilder cannot know if a QuarkWallet is deployed before the operation is actually
+                // executed on-chain, it needs to use the "wrap up to" script because it cannot know how much to wrap ahead of time.
+                bool useWrapUpTo;
+                if (Across.isNonDeterministicBridgeAction(assetsBridged, assetSymbolOut)) {
+                    useWrapUpTo = true;
+                    supplementalBalance = 0;
+                }
+
                 checkAndInsertWrapOrUnwrapAction({
                     actions: actions,
                     quarkOperations: quarkOperations,
@@ -243,7 +252,8 @@ contract QuarkBuilderBase {
                     chainId: actionIntent.chainId,
                     account: actionIntent.actor,
                     blockTimestamp: actionIntent.blockTimestamp,
-                    useQuotecall: actionIntent.useQuotecall
+                    useQuotecall: actionIntent.useQuotecall,
+                    useWrapUpTo: useWrapUpTo
                 });
             }
         }
@@ -410,25 +420,36 @@ contract QuarkBuilderBase {
         uint256 chainId,
         address account,
         uint256 blockTimestamp,
-        bool useQuotecall
+        bool useQuotecall,
+        bool useWrapUpTo
     ) internal pure {
         // Check if inserting wrapOrUnwrap action is necessary
         uint256 assetBalanceOnChain =
             Accounts.getBalanceOnChain(assetSymbol, chainId, chainAccountsList) + supplementalBalance;
         if (assetBalanceOnChain < amount && TokenWrapper.hasWrapperContract(chainId, assetSymbol)) {
-            // If the asset has a wrapper counterpart, wrap/unwrap the token to cover the transferIntent amount
+            // If the asset has a wrapper counterpart, wrap/unwrap the token to cover the amount needed for the intent
             string memory counterpartSymbol = TokenWrapper.getWrapperCounterpartSymbol(chainId, assetSymbol);
 
             // Wrap/unwrap the token to cover the amount
+            uint256 amountToWrap;
+            if (useWrapUpTo) {
+                // If we are using the "wrap up to script", then the `amountToWrap` should be the entire amount needed
+                // for the intent
+                amountToWrap = amount;
+            } else {
+                // If we aren't using the "wrap up to" script, then we need to subtract the current balance from the
+                // amount to wrap
+                amountToWrap = amount - assetBalanceOnChain;
+            }
             (IQuarkWallet.QuarkOperation memory wrapOrUnwrapOperation, Actions.Action memory wrapOrUnwrapAction) =
             Actions.wrapOrUnwrapAsset(
                 Actions.WrapOrUnwrapAsset({
                     chainAccountsList: chainAccountsList,
                     assetSymbol: counterpartSymbol,
-                    // NOTE: Wrap/unwrap the amount needed to cover the amount
-                    amount: amount - assetBalanceOnChain,
+                    amount: amountToWrap,
                     chainId: chainId,
                     sender: account,
+                    useWrapUpTo: useWrapUpTo,
                     blockTimestamp: blockTimestamp
                 }),
                 payment,
