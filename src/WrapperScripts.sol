@@ -10,8 +10,22 @@ contract WrapperActions {
         IWETH(weth).deposit{value: amount}();
     }
 
+    function wrapETHUpTo(address weth, uint256 targetAmount) external payable {
+        uint256 currentBalance = IERC20(weth).balanceOf(address(this));
+        if (currentBalance < targetAmount) {
+            IWETH(weth).deposit{value: targetAmount - currentBalance}();
+        }
+    }
+
     function unwrapWETH(address weth, uint256 amount) external {
         IWETH(weth).withdraw(amount);
+    }
+
+    function unwrapWETHUpTo(address weth, uint256 targetAmount) external {
+        uint256 currentBalance = address(this).balance;
+        if (currentBalance < targetAmount) {
+            IWETH(weth).withdraw(targetAmount - currentBalance);
+        }
     }
 
     function wrapLidoStETH(address wstETH, address stETH, uint256 amount) external {
