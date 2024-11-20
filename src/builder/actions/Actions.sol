@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.27;
 
-import {console} from "../console.sol";
+import {console} from "src/builder/console.sol";
 
 import {Accounts} from "src/builder/Accounts.sol";
 import {Across, BridgeRoutes, CCTP} from "src/builder/BridgeRoutes.sol";
