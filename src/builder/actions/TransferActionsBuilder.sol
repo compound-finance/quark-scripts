@@ -46,7 +46,7 @@ contract TransferActionsBuilder is QuarkBuilderBase {
         bool useQuotecall = isMaxTransfer;
 
         // TODO: The intent shouldn't be changed! in the builder function we need to determine how much
-        // amount out if it is max...
+        // amount out if it is max...ie. at this point, we don't know what payment max cost is
         // Convert transferIntent to user aggregated balance
         // if (isMaxTransfer) {
         //     transferIntent.amount = Accounts.totalAvailableAsset(transferIntent.assetSymbol, chainAccountsList, payment);
