@@ -72,7 +72,8 @@ contract QuarkBuilderMorphoClaimRewardsTest is Test, QuarkBuilderTest {
             claimables: claimables,
             distributors: distributors,
             rewards: rewards,
-            proofs: proofs
+            proofs: proofs,
+            preferAcross: false
         });
     }
 

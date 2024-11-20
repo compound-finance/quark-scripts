@@ -39,7 +39,8 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
             assetSymbol: assetSymbol,
             blockTimestamp: BLOCK_TIMESTAMP,
             chainId: chainId,
-            sender: sender
+            sender: sender,
+            preferAcross: false
         });
     }
 
@@ -52,7 +53,8 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
                 assetSymbol: "USDC",
                 blockTimestamp: BLOCK_TIMESTAMP,
                 sender: address(0xa11ce),
-                chainId: 1
+                chainId: 1,
+                preferAcross: false
             }),
             chainAccountsList_(0e6), // but we are holding 0 USDC in total across 1, 8453
             paymentUsd_()
@@ -69,7 +71,8 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
                 assetSymbol: "USDC",
                 blockTimestamp: BLOCK_TIMESTAMP,
                 sender: address(0xa11ce),
-                chainId: 1
+                chainId: 1,
+                preferAcross: false
             }),
             chainAccountsList_(2e6), // holding 2 USDC in total across 1, 8453
             paymentUsdc_(maxCosts_(1, 1_000e6)) // but costs 1,000 USDC
@@ -112,7 +115,8 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
                 assetSymbol: "USDC",
                 blockTimestamp: BLOCK_TIMESTAMP,
                 sender: address(0xa11ce),
-                chainId: 1
+                chainId: 1,
+                preferAcross: false
             }),
             chainAccountsList,
             paymentUsd_()
@@ -127,7 +131,8 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
                 assetSymbol: "USDC",
                 blockTimestamp: BLOCK_TIMESTAMP,
                 sender: address(0xa11ce),
-                chainId: 1
+                chainId: 1,
+                preferAcross: false
             }),
             chainAccountsList_(3e6), // holding 3 USDC in total across chains 1, 8453
             paymentUsd_()
@@ -202,7 +207,8 @@ contract QuarkBuilderMorphoVaultTest is Test, QuarkBuilderTest {
                 assetSymbol: "USDC",
                 blockTimestamp: BLOCK_TIMESTAMP,
                 sender: address(0xa11ce),
-                chainId: 1
+                chainId: 1,
+                preferAcross: false
             }),
             chainAccountsList, // holding 3 USDC in total across chains 1, 8453
             paymentUsd_()

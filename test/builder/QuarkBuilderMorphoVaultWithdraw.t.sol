@@ -40,7 +40,8 @@ contract QuarkBuilderMorphoVaultWithdrawTest is Test, QuarkBuilderTest {
             assetSymbol: assetSymbol,
             blockTimestamp: BLOCK_TIMESTAMP,
             chainId: chainId,
-            withdrawer: withdrawer
+            withdrawer: withdrawer,
+            preferAcross: false
         });
     }
 

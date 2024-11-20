@@ -20,6 +20,10 @@ import {PaymentInfo} from "src/builder/PaymentInfo.sol";
 import {QuarkBuilder} from "src/builder/QuarkBuilder.sol";
 import {QuarkBuilderBase} from "src/builder/QuarkBuilderBase.sol";
 import {Quotecall} from "src/Quotecall.sol";
+import {AcrossActions} from "src/AcrossScripts.sol";
+
+import {FFI} from "src/builder/FFI.sol";
+import {AcrossFFI} from "test/builder/mocks/AcrossFFI.sol";
 
 contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
     function transferUsdc_(uint256 chainId, uint256 amount, address recipient, uint256 blockTimestamp)
@@ -85,7 +89,28 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             recipient: recipient,
             amount: amount,
             assetSymbol: assetSymbol,
-            blockTimestamp: blockTimestamp
+            blockTimestamp: blockTimestamp,
+            preferAcross: false
+        });
+    }
+
+    function transferToken_(
+        string memory assetSymbol,
+        uint256 chainId,
+        uint256 amount,
+        address sender,
+        address recipient,
+        uint256 blockTimestamp,
+        bool preferAcross
+    ) internal pure returns (TransferActionsBuilder.TransferIntent memory) {
+        return TransferActionsBuilder.TransferIntent({
+            chainId: chainId,
+            sender: sender,
+            recipient: recipient,
+            amount: amount,
+            assetSymbol: assetSymbol,
+            blockTimestamp: blockTimestamp,
+            preferAcross: preferAcross
         });
     }
 

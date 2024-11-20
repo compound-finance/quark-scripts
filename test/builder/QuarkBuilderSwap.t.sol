@@ -92,7 +92,8 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
             feeAmount: 10,
             sender: sender,
             isExactOut: false,
-            blockTimestamp: blockTimestamp
+            blockTimestamp: blockTimestamp,
+            preferAcross: false
         });
     }
 

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.27;
 
+import {console} from "src/builder/console.sol";
+
 import {Accounts} from "src/builder/Accounts.sol";
 import {Across, BridgeRoutes, CCTP} from "src/builder/BridgeRoutes.sol";
 import {CodeJarHelper} from "src/builder/CodeJarHelper.sol";
@@ -248,6 +250,7 @@ library Actions {
         address recipient;
         uint256 blockTimestamp;
         bool useQuotecall;
+        bool preferAcross;
     }
 
     // Note: To avoid stack too deep errors
@@ -585,7 +588,8 @@ library Actions {
                             blockTimestamp: bridgeInfo.blockTimestamp
                         }),
                         payment,
-                        bridgeInfo.useQuotecall
+                        bridgeInfo.useQuotecall,
+                        bridgeInfo.preferAcross
                     );
 
                     List.addAction(actions, action);
@@ -605,25 +609,40 @@ library Actions {
         return (List.toQuarkOperationArray(quarkOperations), List.toActionArray(actions));
     }
 
-    function bridgeAsset(BridgeAsset memory bridge, PaymentInfo.Payment memory payment, bool useQuotecall)
-        internal
-        pure
-        returns (IQuarkWallet.QuarkOperation memory, Action memory)
-    {
-        if (CCTP.canBridge(bridge.srcChainId, bridge.destinationChainId, bridge.assetSymbol)) {
-            return bridgeUSDC(bridge, payment, useQuotecall);
-        } else if (Across.canBridge(bridge.srcChainId, bridge.destinationChainId, bridge.assetSymbol)) {
-            return bridgeAcross(bridge, payment, useQuotecall);
+    function bridgeAsset(
+        BridgeAsset memory bridge,
+        PaymentInfo.Payment memory payment,
+        bool useQuotecall,
+        bool preferAcross
+    ) internal pure returns (IQuarkWallet.QuarkOperation memory, Action memory) {
+        bool acrossCanBridge = Across.canBridge(bridge.srcChainId, bridge.destinationChainId, bridge.assetSymbol);
+        bool cctpCanBridge = CCTP.canBridge(bridge.srcChainId, bridge.destinationChainId, bridge.assetSymbol);
+
+        // Choose order of actions based on user bridge preference.
+        if (preferAcross) {
+            if (acrossCanBridge) {
+                return bridgeAcross(bridge, payment, useQuotecall);
+            } else if (cctpCanBridge) {
+                return bridgeCCTP(bridge, payment, useQuotecall);
+            }
         } else {
-            revert BridgingUnsupportedForAsset();
+            if (cctpCanBridge) {
+                return bridgeCCTP(bridge, payment, useQuotecall);
+            } else if (acrossCanBridge) {
+                return bridgeAcross(bridge, payment, useQuotecall);
+            }
         }
+
+        revert BridgingUnsupportedForAsset();
     }
 
-    function bridgeUSDC(BridgeAsset memory bridge, PaymentInfo.Payment memory payment, bool useQuotecall)
+    function bridgeCCTP(BridgeAsset memory bridge, PaymentInfo.Payment memory payment, bool useQuotecall)
         internal
         pure
         returns (IQuarkWallet.QuarkOperation memory, Action memory)
     {
+        console.log("Bridging via CCTP", bridge.assetSymbol);
+
         if (!Strings.stringEqIgnoreCase(bridge.assetSymbol, "USDC")) {
             revert InvalidAssetForBridge();
         }
@@ -688,6 +707,8 @@ library Actions {
         pure
         returns (IQuarkWallet.QuarkOperation memory, Action memory)
     {
+        console.log("Bridging via Across", bridge.assetSymbol);
+
         Accounts.ChainAccounts memory srcChainAccounts =
             Accounts.findChainAccounts(bridge.srcChainId, bridge.chainAccountsList);
 

@@ -72,7 +72,8 @@ contract QuarkBuilderRecurringSwapTest is Test, QuarkBuilderTest {
             path: path,
             interval: interval,
             sender: sender,
-            blockTimestamp: blockTimestamp
+            blockTimestamp: blockTimestamp,
+            preferAcross: false
         });
     }
 

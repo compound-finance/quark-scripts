@@ -31,7 +31,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
             blockTimestamp: BLOCK_TIMESTAMP,
             chainId: chainId,
             comet: COMET_ETH,
-            sender: address(0xa11ce)
+            sender: address(0xa11ce),
+            preferAcross: false
         });
     }
 
@@ -54,7 +55,8 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
             blockTimestamp: BLOCK_TIMESTAMP,
             chainId: chainId,
             comet: COMET,
-            sender: sender
+            sender: sender,
+            preferAcross: false
         });
     }
 

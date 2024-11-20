@@ -27,6 +27,7 @@ contract CometActionsBuilder is QuarkBuilderBase {
         string[] collateralAssetSymbols;
         address comet;
         address repayer;
+        bool preferAcross;
     }
 
     function cometRepay(
@@ -83,7 +84,8 @@ contract CometActionsBuilder is QuarkBuilderBase {
                 chainId: repayIntent.chainId,
                 useQuotecall: useQuotecall,
                 bridgeEnabled: true,
-                autoWrapperEnabled: true
+                autoWrapperEnabled: true,
+                preferAcross: repayIntent.preferAcross
             });
         }
 
@@ -114,6 +116,7 @@ contract CometActionsBuilder is QuarkBuilderBase {
         uint256[] collateralAmounts;
         string[] collateralAssetSymbols;
         address comet;
+        bool preferAcross;
     }
 
     function cometBorrow(
@@ -160,7 +163,8 @@ contract CometActionsBuilder is QuarkBuilderBase {
                 chainId: borrowIntent.chainId,
                 useQuotecall: useQuotecall,
                 bridgeEnabled: true,
-                autoWrapperEnabled: true
+                autoWrapperEnabled: true,
+                preferAcross: borrowIntent.preferAcross
             });
         }
 
@@ -189,6 +193,7 @@ contract CometActionsBuilder is QuarkBuilderBase {
         uint256 chainId;
         address comet;
         address sender;
+        bool preferAcross;
     }
 
     function cometSupply(
@@ -245,7 +250,8 @@ contract CometActionsBuilder is QuarkBuilderBase {
                     chainId: cometSupplyIntent.chainId,
                     useQuotecall: isMaxSupply,
                     bridgeEnabled: true,
-                    autoWrapperEnabled: true
+                    autoWrapperEnabled: true,
+                    preferAcross: cometSupplyIntent.preferAcross
                 }),
                 chainAccountsList: chainAccountsList,
                 payment: payment,
@@ -270,6 +276,7 @@ contract CometActionsBuilder is QuarkBuilderBase {
         uint256 chainId;
         address comet;
         address withdrawer;
+        bool preferAcross;
     }
 
     function cometWithdraw(
@@ -330,7 +337,8 @@ contract CometActionsBuilder is QuarkBuilderBase {
                     chainId: cometWithdrawIntent.chainId,
                     useQuotecall: useQuotecall,
                     bridgeEnabled: true,
-                    autoWrapperEnabled: true
+                    autoWrapperEnabled: true,
+                    preferAcross: cometWithdrawIntent.preferAcross
                 }),
                 chainAccountsList: chainAccountsList,
                 payment: payment,
