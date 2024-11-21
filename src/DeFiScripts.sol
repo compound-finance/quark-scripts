@@ -252,13 +252,19 @@ contract CometSupplyMultipleAssetsAndBorrow {
         }
 
         for (uint256 i = 0; i < assets.length;) {
-            IERC20(assets[i]).forceApprove(comet, amounts[i]);
-            IComet(comet).supply(assets[i], amounts[i]);
+            if (amounts[i] > 0) {
+                IERC20(assets[i]).forceApprove(comet, amounts[i]);
+                IComet(comet).supply(assets[i], amounts[i]);
+            }
+
             unchecked {
                 ++i;
             }
         }
-        IComet(comet).withdraw(baseAsset, borrow);
+
+        if (borrow > 0) {
+            IComet(comet).withdraw(baseAsset, borrow);
+        }
     }
 }
 
@@ -273,10 +279,16 @@ contract CometRepayAndWithdrawMultipleAssets {
             revert DeFiScriptErrors.InvalidInput();
         }
 
-        IERC20(baseAsset).forceApprove(comet, repay);
-        IComet(comet).supply(baseAsset, repay);
+        if (repay > 0) {
+            IERC20(baseAsset).forceApprove(comet, repay);
+            IComet(comet).supply(baseAsset, repay);
+        }
+
         for (uint256 i = 0; i < assets.length;) {
-            IComet(comet).withdraw(assets[i], amounts[i]);
+            if (amounts[i] > 0) {
+                IComet(comet).withdraw(assets[i], amounts[i]);
+            }
+
             unchecked {
                 ++i;
             }
