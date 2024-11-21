@@ -1490,7 +1490,9 @@ library Actions {
             nonce: accountSecret.nonceSecret,
             isReplayable: false,
             scriptAddress: CodeJarHelper.getCodeAddress(type(WrapperActions).creationCode),
-            scriptCalldata: TokenWrapper.encodeActionToWrapOrUnwrap(wrapOrUnwrap.chainId, wrapOrUnwrap.assetSymbol),
+            scriptCalldata: TokenWrapper.encodeActionToWrapOrUnwrap(
+                wrapOrUnwrap.chainId, wrapOrUnwrap.assetSymbol, wrapOrUnwrap.amount
+                ),
             scriptSources: scriptSources,
             expiry: wrapOrUnwrap.blockTimestamp + STANDARD_EXPIRY_BUFFER
         });

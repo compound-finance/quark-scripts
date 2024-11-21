@@ -1066,8 +1066,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             morphoVaultPositions: emptyMorphoVaultPositions_()
         });
 
-        // Transfer 1.5ETH to 0xceecee on chain 1
-        // Should able to have auto unwrapping 0.5 WETH to ETH to cover the amount
+        // Transfer 1.5 ETH to 0xceecee on chain 1
+        // Should unwrap up to 1.5 WETH to ETH to cover the amount (0.5 WETH will actually be unwrapped)
         QuarkBuilder.BuilderResult memory result = builder.transfer(
             transferEth_(1, 1.5e18, address(0xceecee), BLOCK_TIMESTAMP), chainAccountsList, paymentUsd_()
         );
@@ -1089,13 +1089,14 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         callContracts[0] = wrapperActionsAddress;
         callContracts[1] = transferActionsAddress;
         bytes[] memory callDatas = new bytes[](2);
-        callDatas[0] =
-            abi.encodeWithSelector(WrapperActions.unwrapAllWETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+        callDatas[0] = abi.encodeWithSelector(
+            WrapperActions.unwrapWETHUpTo.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1.5e18
+        );
         callDatas[1] = abi.encodeWithSelector(TransferActions.transferNativeToken.selector, address(0xceecee), 1.5e18);
         assertEq(
             result.quarkOperations[0].scriptCalldata,
             abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
-            "calldata is Multicall.run([wrapperActionsAddress, transferActionsAddress], [WrapperActions.unwrapAllWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2), TransferActions.transferNativeToken(address(0xceecee), 1.5e18)]);"
+            "calldata is Multicall.run([wrapperActionsAddress, transferActionsAddress], [WrapperActions.unwrapWETHUpTo(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1.5e18), TransferActions.transferNativeToken(address(0xceecee), 1.5e18)]);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
@@ -1172,8 +1173,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             morphoVaultPositions: emptyMorphoVaultPositions_()
         });
 
-        // Transfer 1.5ETH to 0xceecee on chain 1
-        // Should able to have auto unwrapping 0.5 WETH to ETH to cover the amount
+        // Transfer 1.5 ETH to 0xceecee on chain 1
+        // Should unwrap up to 1.5 WETH to ETH to cover the amount (0.5 WETH will actually be unwrapped)
         QuarkBuilder.BuilderResult memory result = builder.transfer(
             transferEth_(1, 1.5e18, address(0xceecee), BLOCK_TIMESTAMP), chainAccountsList, paymentUsdc_(maxCosts)
         );
@@ -1198,8 +1199,9 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         callContracts[0] = wrapperActionsAddress;
         callContracts[1] = transferActionsAddress;
         bytes[] memory callDatas = new bytes[](2);
-        callDatas[0] =
-            abi.encodeWithSelector(WrapperActions.unwrapAllWETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+        callDatas[0] = abi.encodeWithSelector(
+            WrapperActions.unwrapWETHUpTo.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1.5e18
+        );
         callDatas[1] = abi.encodeWithSelector(TransferActions.transferNativeToken.selector, address(0xceecee), 1.5e18);
         assertEq(
             result.quarkOperations[0].scriptCalldata,
@@ -1209,7 +1211,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
                 abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
                 1e5
             ),
-            "calldata is Paycall.run(Multicall.run([wrapperActionsAddress, transferActionsAddress], [WrapperActions.unwrapAllWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2), TransferActions.transferNativeToken(address(0xceecee), 1.5e18)]), 1e5);"
+            "calldata is Paycall.run(Multicall.run([wrapperActionsAddress, transferActionsAddress], [WrapperActions.unwrapWETHUpTo(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1.5e18), TransferActions.transferNativeToken(address(0xceecee), 1.5e18)]), 1e5);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
@@ -1286,8 +1288,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
             morphoVaultPositions: emptyMorphoVaultPositions_()
         });
 
-        // Transfer max ETH to 0xceecee on chain 1
-        // Should able to have auto unwrapping 0.5 WETH to ETH to cover the amount
+        // Transfer max (2) ETH to 0xceecee on chain 1
+        // Should unwrap up to 2 WETH to ETH to cover the amount (1 WETH will actually be unwrapped)
         QuarkBuilder.BuilderResult memory result = builder.transfer(
             transferEth_(1, type(uint256).max, address(0xceecee), BLOCK_TIMESTAMP),
             chainAccountsList,
@@ -1314,8 +1316,9 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         callContracts[0] = wrapperActionsAddress;
         callContracts[1] = transferActionsAddress;
         bytes[] memory callDatas = new bytes[](2);
-        callDatas[0] =
-            abi.encodeWithSelector(WrapperActions.unwrapAllWETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+        callDatas[0] = abi.encodeWithSelector(
+            WrapperActions.unwrapWETHUpTo.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 2e18
+        );
         callDatas[1] = abi.encodeWithSelector(TransferActions.transferNativeToken.selector, address(0xceecee), 2e18);
         assertEq(
             result.quarkOperations[0].scriptCalldata,
@@ -1325,7 +1328,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
                 abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
                 1e5
             ),
-            "calldata is Quotecall.run(Multicall.run([wrapperActionsAddress, transferActionsAddress], [WrapperActions.unwrapAllWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2), TransferActions.transferNativeToken(address(0xceecee), 2e18)]), 1e5);"
+            "calldata is Quotecall.run(Multicall.run([wrapperActionsAddress, transferActionsAddress], [WrapperActions.unwrapWETHUpTo(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 2e18), TransferActions.transferNativeToken(address(0xceecee), 2e18)]), 1e5);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"

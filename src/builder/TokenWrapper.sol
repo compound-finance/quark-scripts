@@ -108,14 +108,17 @@ library TokenWrapper {
         return Strings.stringEqIgnoreCase(tokenSymbol, getKnownWrapperTokenPair(chainId, tokenSymbol).wrappedSymbol);
     }
 
-    function encodeActionToWrapOrUnwrap(uint256 chainId, string memory tokenSymbol)
+    /// Note: We "wrap/unwrap all" for every asset except for ETH/WETH. For ETH/WETH, we will "wrap all ETH" but
+    ///       "unwrap up to X WETH". This is an intentional choice to prefer WETH over ETH since it is much more
+    ///       usable across protocols.
+    function encodeActionToWrapOrUnwrap(uint256 chainId, string memory tokenSymbol, uint256 amount)
         internal
         pure
         returns (bytes memory)
     {
         KnownWrapperTokenPair memory pair = getKnownWrapperTokenPair(chainId, tokenSymbol);
         if (isWrappedToken(chainId, tokenSymbol)) {
-            return encodeActionToUnwrapToken(chainId, tokenSymbol);
+            return encodeActionToUnwrapToken(chainId, tokenSymbol, amount);
         } else {
             return encodeActionToWrapToken(chainId, tokenSymbol, pair.underlyingToken);
         }
@@ -140,14 +143,14 @@ library TokenWrapper {
         revert NotWrappable();
     }
 
-    function encodeActionToUnwrapToken(uint256 chainId, string memory tokenSymbol)
+    function encodeActionToUnwrapToken(uint256 chainId, string memory tokenSymbol, uint256 amount)
         internal
         pure
         returns (bytes memory)
     {
         if (Strings.stringEqIgnoreCase(tokenSymbol, "WETH")) {
             return abi.encodeWithSelector(
-                WrapperActions.unwrapAllWETH.selector, getKnownWrapperTokenPair(chainId, tokenSymbol).wrapper
+                WrapperActions.unwrapWETHUpTo.selector, getKnownWrapperTokenPair(chainId, tokenSymbol).wrapper, amount
             );
         } else if (Strings.stringEqIgnoreCase(tokenSymbol, "wstETH")) {
             return abi.encodeWithSelector(
