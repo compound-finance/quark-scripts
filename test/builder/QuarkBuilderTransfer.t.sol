@@ -20,10 +20,6 @@ import {PaymentInfo} from "src/builder/PaymentInfo.sol";
 import {QuarkBuilder} from "src/builder/QuarkBuilder.sol";
 import {QuarkBuilderBase} from "src/builder/QuarkBuilderBase.sol";
 import {Quotecall} from "src/Quotecall.sol";
-import {AcrossActions} from "src/AcrossScripts.sol";
-
-import {FFI} from "src/builder/FFI.sol";
-import {AcrossFFI} from "test/builder/mocks/AcrossFFI.sol";
 
 contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
     function transferUsdc_(uint256 chainId, uint256 amount, address recipient, uint256 blockTimestamp)
