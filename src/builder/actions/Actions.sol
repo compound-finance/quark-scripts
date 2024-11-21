@@ -118,7 +118,6 @@ library Actions {
         uint256 amount;
         uint256 chainId;
         address sender;
-        bool useWrapUpTo;
         uint256 blockTimestamp;
     }
 
@@ -1491,9 +1490,7 @@ library Actions {
             nonce: accountSecret.nonceSecret,
             isReplayable: false,
             scriptAddress: CodeJarHelper.getCodeAddress(type(WrapperActions).creationCode),
-            scriptCalldata: TokenWrapper.encodeActionToWrapOrUnwrap(
-                wrapOrUnwrap.chainId, wrapOrUnwrap.assetSymbol, wrapOrUnwrap.amount, wrapOrUnwrap.useWrapUpTo
-                ),
+            scriptCalldata: TokenWrapper.encodeActionToWrapOrUnwrap(wrapOrUnwrap.chainId, wrapOrUnwrap.assetSymbol),
             scriptSources: scriptSources,
             expiry: wrapOrUnwrap.blockTimestamp + STANDARD_EXPIRY_BUFFER
         });

@@ -37,7 +37,7 @@ contract QuarkBuilderBase {
 
     /* ===== Constants ===== */
 
-    string constant VERSION = "0.2.0";
+    string constant VERSION = "0.2.1";
 
     /* ===== Custom Errors ===== */
 
@@ -234,10 +234,8 @@ contract QuarkBuilderBase {
                     : 0;
                 // Note: Right now, ETH/WETH is only bridged via Across. Across has a weird quirk where it will send ETH to EOAs and
                 // WETH to contracts. Since the QuarkBuilder cannot know if a QuarkWallet is deployed before the operation is actually
-                // executed on-chain, it needs to use the "wrap up to" script because it cannot know how much to wrap ahead of time.
-                bool useWrapUpTo;
+                // executed on-chain, we need to assume there is no supplemental balance that arrives on the destination chain.
                 if (Across.isNonDeterministicBridgeAction(assetsBridged, assetSymbolOut)) {
-                    useWrapUpTo = true;
                     supplementalBalance = 0;
                 }
 
@@ -247,13 +245,12 @@ contract QuarkBuilderBase {
                     chainAccountsList: chainAccountsList,
                     payment: payment,
                     assetSymbol: assetSymbolOut,
-                    amount: actionIntent.amountOuts[i],
+                    amountNeeded: actionIntent.amountOuts[i],
                     supplementalBalance: supplementalBalance,
                     chainId: actionIntent.chainId,
                     account: actionIntent.actor,
                     blockTimestamp: actionIntent.blockTimestamp,
-                    useQuotecall: actionIntent.useQuotecall,
-                    useWrapUpTo: useWrapUpTo
+                    useQuotecall: actionIntent.useQuotecall
                 });
             }
         }
@@ -415,41 +412,30 @@ contract QuarkBuilderBase {
         Accounts.ChainAccounts[] memory chainAccountsList,
         PaymentInfo.Payment memory payment,
         string memory assetSymbol,
-        uint256 amount,
+        uint256 amountNeeded,
         uint256 supplementalBalance,
         uint256 chainId,
         address account,
         uint256 blockTimestamp,
-        bool useQuotecall,
-        bool useWrapUpTo
+        bool useQuotecall
     ) internal pure {
         // Check if inserting wrapOrUnwrap action is necessary
         uint256 assetBalanceOnChain =
             Accounts.getBalanceOnChain(assetSymbol, chainId, chainAccountsList) + supplementalBalance;
-        if (assetBalanceOnChain < amount && TokenWrapper.hasWrapperContract(chainId, assetSymbol)) {
+        if (assetBalanceOnChain < amountNeeded && TokenWrapper.hasWrapperContract(chainId, assetSymbol)) {
             // If the asset has a wrapper counterpart, wrap/unwrap the token to cover the amount needed for the intent
             string memory counterpartSymbol = TokenWrapper.getWrapperCounterpartSymbol(chainId, assetSymbol);
 
             // Wrap/unwrap the token to cover the amount
-            uint256 amountToWrap;
-            if (useWrapUpTo) {
-                // If we are using the "wrap up to script", then the `amountToWrap` should be the entire amount needed
-                // for the intent
-                amountToWrap = amount;
-            } else {
-                // If we aren't using the "wrap up to" script, then we need to subtract the current balance from the
-                // amount to wrap
-                amountToWrap = amount - assetBalanceOnChain;
-            }
             (IQuarkWallet.QuarkOperation memory wrapOrUnwrapOperation, Actions.Action memory wrapOrUnwrapAction) =
             Actions.wrapOrUnwrapAsset(
                 Actions.WrapOrUnwrapAsset({
                     chainAccountsList: chainAccountsList,
                     assetSymbol: counterpartSymbol,
-                    amount: amountToWrap,
+                    // This is just to indicate we plan to wrap all
+                    amount: type(uint256).max,
                     chainId: chainId,
                     sender: account,
-                    useWrapUpTo: useWrapUpTo,
                     blockTimestamp: blockTimestamp
                 }),
                 payment,

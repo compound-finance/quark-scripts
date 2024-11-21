@@ -283,13 +283,13 @@ contract QuarkBuilderSwapTest is Test, QuarkBuilderTest {
         callContracts[1] = approveAndSwapAddress;
         bytes[] memory callDatas = new bytes[](2);
         callDatas[0] =
-            abi.encodeWithSelector(WrapperActions.wrapETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18);
+            abi.encodeWithSelector(WrapperActions.wrapAllETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
         callDatas[1] =
             abi.encodeCall(ApproveAndSwap.run, (ZERO_EX_ENTRY_POINT, WETH_1, 1e18, USDC_1, 3000e6, ZERO_EX_SWAP_DATA));
         assertEq(
             result.quarkOperations[0].scriptCalldata,
             abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
-            "calldata is Multicall.run([wrapperActionsAddress, approveAndSwapAddress], [WrapperActions.wrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18), ApproveAndSwap.run (ZERO_EX_ENTRY_POINT, WETH_1, 1e18, USDC_1, 3000e6,  ZERO_EX_SWAP_DATA)]);"
+            "calldata is Multicall.run([wrapperActionsAddress, approveAndSwapAddress], [WrapperActions.wrapAllETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2), ApproveAndSwap.run (ZERO_EX_ENTRY_POINT, WETH_1, 1e18, USDC_1, 3000e6,  ZERO_EX_SWAP_DATA)]);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 3 days, "expiry is current blockTimestamp + 3 days"

@@ -208,7 +208,7 @@ library Across {
         uint256 bridgedAmount = HashMap.contains(assetsBridged, abi.encode(assetSymbol))
             ? HashMap.getUint256(assetsBridged, abi.encode(assetSymbol))
             : 0;
-        return bridgedAmount != 0
+        return bridgedAmount > 0
             && (Strings.stringEqIgnoreCase(assetSymbol, "ETH") || Strings.stringEqIgnoreCase(assetSymbol, "WETH"));
     }
 }

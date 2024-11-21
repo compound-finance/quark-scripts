@@ -108,67 +108,50 @@ library TokenWrapper {
         return Strings.stringEqIgnoreCase(tokenSymbol, getKnownWrapperTokenPair(chainId, tokenSymbol).wrappedSymbol);
     }
 
-    function encodeActionToWrapOrUnwrap(uint256 chainId, string memory tokenSymbol, uint256 amount, bool useWrapUpTo)
+    function encodeActionToWrapOrUnwrap(uint256 chainId, string memory tokenSymbol)
         internal
         pure
         returns (bytes memory)
     {
         KnownWrapperTokenPair memory pair = getKnownWrapperTokenPair(chainId, tokenSymbol);
         if (isWrappedToken(chainId, tokenSymbol)) {
-            return encodeActionToUnwrapToken(chainId, tokenSymbol, amount, useWrapUpTo);
+            return encodeActionToUnwrapToken(chainId, tokenSymbol);
         } else {
-            return encodeActionToWrapToken(chainId, tokenSymbol, pair.underlyingToken, amount, useWrapUpTo);
+            return encodeActionToWrapToken(chainId, tokenSymbol, pair.underlyingToken);
         }
     }
 
-    function encodeActionToWrapToken(
-        uint256 chainId,
-        string memory tokenSymbol,
-        address tokenAddress,
-        uint256 amount,
-        bool useWrapUpTo
-    ) internal pure returns (bytes memory) {
+    function encodeActionToWrapToken(uint256 chainId, string memory tokenSymbol, address tokenAddress)
+        internal
+        pure
+        returns (bytes memory)
+    {
         if (Strings.stringEqIgnoreCase(tokenSymbol, "ETH")) {
-            if (useWrapUpTo) {
-                return abi.encodeWithSelector(
-                    WrapperActions.wrapETHUpTo.selector, getKnownWrapperTokenPair(chainId, tokenSymbol).wrapper, amount
-                );
-            } else {
-                return abi.encodeWithSelector(
-                    WrapperActions.wrapETH.selector, getKnownWrapperTokenPair(chainId, tokenSymbol).wrapper, amount
-                );
-            }
+            return abi.encodeWithSelector(
+                WrapperActions.wrapAllETH.selector, getKnownWrapperTokenPair(chainId, tokenSymbol).wrapper
+            );
         } else if (Strings.stringEqIgnoreCase(tokenSymbol, "stETH")) {
             return abi.encodeWithSelector(
-                WrapperActions.wrapLidoStETH.selector,
+                WrapperActions.wrapAllLidoStETH.selector,
                 getKnownWrapperTokenPair(chainId, tokenSymbol).wrapper,
-                tokenAddress,
-                amount
+                tokenAddress
             );
         }
         revert NotWrappable();
     }
 
-    function encodeActionToUnwrapToken(uint256 chainId, string memory tokenSymbol, uint256 amount, bool useWrapUpTo)
+    function encodeActionToUnwrapToken(uint256 chainId, string memory tokenSymbol)
         internal
         pure
         returns (bytes memory)
     {
         if (Strings.stringEqIgnoreCase(tokenSymbol, "WETH")) {
-            if (useWrapUpTo) {
-                return abi.encodeWithSelector(
-                    WrapperActions.unwrapWETHUpTo.selector,
-                    getKnownWrapperTokenPair(chainId, tokenSymbol).wrapper,
-                    amount
-                );
-            } else {
-                return abi.encodeWithSelector(
-                    WrapperActions.unwrapWETH.selector, getKnownWrapperTokenPair(chainId, tokenSymbol).wrapper, amount
-                );
-            }
+            return abi.encodeWithSelector(
+                WrapperActions.unwrapAllWETH.selector, getKnownWrapperTokenPair(chainId, tokenSymbol).wrapper
+            );
         } else if (Strings.stringEqIgnoreCase(tokenSymbol, "wstETH")) {
             return abi.encodeWithSelector(
-                WrapperActions.unwrapLidoWstETH.selector, getKnownWrapperTokenPair(chainId, tokenSymbol).wrapper, amount
+                WrapperActions.unwrapAllLidoWstETH.selector, getKnownWrapperTokenPair(chainId, tokenSymbol).wrapper
             );
         }
         revert NotUnwrappable();

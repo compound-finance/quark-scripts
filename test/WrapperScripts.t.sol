@@ -65,7 +65,7 @@ contract WrapperScriptsTest is Test {
         assertEq(address(wallet).balance, 0 ether);
     }
 
-    function testWrapETHUpTo() public {
+    function testWrapAllETH() public {
         vm.pauseGasMetering();
         QuarkWallet wallet = QuarkWallet(factory.create(alice, address(0)));
 
@@ -75,7 +75,7 @@ contract WrapperScriptsTest is Test {
         QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
             wallet,
             wrapperScript,
-            abi.encodeWithSelector(WrapperActions.wrapETHUpTo.selector, WETH, 10 ether),
+            abi.encodeWithSelector(WrapperActions.wrapAllETH.selector, WETH),
             ScriptType.ScriptSource
         );
         bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
@@ -86,33 +86,8 @@ contract WrapperScriptsTest is Test {
         vm.resumeGasMetering();
         wallet.executeQuarkOperation(op, signature);
 
-        assertEq(IERC20(WETH).balanceOf(address(wallet)), 10 ether);
-        assertEq(address(wallet).balance, 7 ether);
-    }
-
-    function testWrapETHUpToDoesNotWrapIfNotNeeded() public {
-        vm.pauseGasMetering();
-        QuarkWallet wallet = QuarkWallet(factory.create(alice, address(0)));
-
-        deal(address(wallet), 10 ether);
-        deal(WETH, address(wallet), 10 ether);
-
-        QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
-            wallet,
-            wrapperScript,
-            abi.encodeWithSelector(WrapperActions.wrapETHUpTo.selector, WETH, 10 ether),
-            ScriptType.ScriptSource
-        );
-        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
-
-        assertEq(IERC20(WETH).balanceOf(address(wallet)), 10 ether);
-        assertEq(address(wallet).balance, 10 ether);
-
-        vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, signature);
-
-        assertEq(IERC20(WETH).balanceOf(address(wallet)), 10 ether);
-        assertEq(address(wallet).balance, 10 ether);
+        assertEq(IERC20(WETH).balanceOf(address(wallet)), 17 ether);
+        assertEq(address(wallet).balance, 0 ether);
     }
 
     function testUnwrapWETH() public {
@@ -137,7 +112,7 @@ contract WrapperScriptsTest is Test {
         assertEq(address(wallet).balance, 10 ether);
     }
 
-    function testUnwrapWETHUpTo() public {
+    function testUnwrapAllWETH() public {
         vm.pauseGasMetering();
         QuarkWallet wallet = QuarkWallet(factory.create(alice, address(0)));
 
@@ -147,7 +122,7 @@ contract WrapperScriptsTest is Test {
         QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
             wallet,
             wrapperScript,
-            abi.encodeWithSelector(WrapperActions.unwrapWETHUpTo.selector, WETH, 10 ether),
+            abi.encodeWithSelector(WrapperActions.unwrapAllWETH.selector, WETH),
             ScriptType.ScriptSource
         );
         bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
@@ -158,33 +133,8 @@ contract WrapperScriptsTest is Test {
         vm.resumeGasMetering();
         wallet.executeQuarkOperation(op, signature);
 
-        assertEq(IERC20(WETH).balanceOf(address(wallet)), 7 ether);
-        assertEq(address(wallet).balance, 10 ether);
-    }
-
-    function testUnwrapWETHUpToDoesNotUnwrapIfNotNeeded() public {
-        vm.pauseGasMetering();
-        QuarkWallet wallet = QuarkWallet(factory.create(alice, address(0)));
-
-        deal(WETH, address(wallet), 10 ether);
-        deal(address(wallet), 10 ether);
-
-        QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
-            wallet,
-            wrapperScript,
-            abi.encodeWithSelector(WrapperActions.unwrapWETHUpTo.selector, WETH, 10 ether),
-            ScriptType.ScriptSource
-        );
-        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
-
-        assertEq(IERC20(WETH).balanceOf(address(wallet)), 10 ether);
-        assertEq(address(wallet).balance, 10 ether);
-
-        vm.resumeGasMetering();
-        wallet.executeQuarkOperation(op, signature);
-
-        assertEq(IERC20(WETH).balanceOf(address(wallet)), 10 ether);
-        assertEq(address(wallet).balance, 10 ether);
+        assertEq(IERC20(WETH).balanceOf(address(wallet)), 0 ether);
+        assertEq(address(wallet).balance, 17 ether);
     }
 
     function testWrapStETH() public {
@@ -208,9 +158,41 @@ contract WrapperScriptsTest is Test {
 
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 0 ether);
         assertApproxEqAbs(IERC20(stETH).balanceOf(address(wallet)), 10 ether, 0.01 ether);
+
         vm.resumeGasMetering();
         wallet.executeQuarkOperation(op, signature);
+
         assertEq(IERC20(stETH).balanceOf(address(wallet)), 0 ether);
+        assertApproxEqAbs(IERC20(wstETH).balanceOf(address(wallet)), 8.74 ether, 0.01 ether);
+    }
+
+    function testWrapAllStETH() public {
+        vm.pauseGasMetering();
+        QuarkWallet wallet = QuarkWallet(factory.create(alice, address(0)));
+
+        // Special balance computation in Lido, have to do regular staking action to not mess up the Lido's contract
+        deal(address(wallet), 10 ether);
+        vm.startPrank(address(wallet));
+        // Call Lido's submit() to stake
+        IStETH(stETH).submit{value: 10 ether}(address(0));
+        vm.stopPrank();
+
+        QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
+            wallet,
+            wrapperScript,
+            abi.encodeWithSelector(WrapperActions.wrapAllLidoStETH.selector, wstETH, stETH),
+            ScriptType.ScriptSource
+        );
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+
+        assertEq(IERC20(wstETH).balanceOf(address(wallet)), 0 ether);
+        assertApproxEqAbs(IERC20(stETH).balanceOf(address(wallet)), 10 ether, 0.01 ether);
+
+        vm.resumeGasMetering();
+        wallet.executeQuarkOperation(op, signature);
+
+        // Due to shares math in wstETH, the user can be left with a tiny amount of stETH
+        assertApproxEqAbs(IERC20(stETH).balanceOf(address(wallet)), 0 ether, 1);
         assertApproxEqAbs(IERC20(wstETH).balanceOf(address(wallet)), 8.74 ether, 0.01 ether);
     }
 
@@ -230,8 +212,34 @@ contract WrapperScriptsTest is Test {
 
         assertEq(IERC20(stETH).balanceOf(address(wallet)), 0 ether);
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 10 ether);
+
         vm.resumeGasMetering();
         wallet.executeQuarkOperation(op, signature);
+
+        assertApproxEqAbs(IERC20(stETH).balanceOf(address(wallet)), 11.44 ether, 0.01 ether);
+        assertEq(IERC20(wstETH).balanceOf(address(wallet)), 0 ether);
+    }
+
+    function testUnwrapAllWstETH() public {
+        vm.pauseGasMetering();
+        QuarkWallet wallet = QuarkWallet(factory.create(alice, address(0)));
+
+        deal(wstETH, address(wallet), 10 ether);
+
+        QuarkWallet.QuarkOperation memory op = new QuarkOperationHelper().newBasicOpWithCalldata(
+            wallet,
+            wrapperScript,
+            abi.encodeWithSelector(WrapperActions.unwrapAllLidoWstETH.selector, wstETH),
+            ScriptType.ScriptSource
+        );
+        bytes memory signature = new SignatureHelper().signOp(alicePrivateKey, wallet, op);
+
+        assertEq(IERC20(stETH).balanceOf(address(wallet)), 0 ether);
+        assertEq(IERC20(wstETH).balanceOf(address(wallet)), 10 ether);
+
+        vm.resumeGasMetering();
+        wallet.executeQuarkOperation(op, signature);
+
         assertApproxEqAbs(IERC20(stETH).balanceOf(address(wallet)), 11.44 ether, 0.01 ether);
         assertEq(IERC20(wstETH).balanceOf(address(wallet)), 0 ether);
     }

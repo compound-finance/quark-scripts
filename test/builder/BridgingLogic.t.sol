@@ -136,13 +136,13 @@ contract BridgingLogicTest is Test, QuarkBuilderTest {
         callContracts[1] = transferActionsAddress;
         bytes[] memory callDatas = new bytes[](2);
         callDatas[0] = abi.encodeWithSelector(
-            WrapperActions.wrapETHUpTo.selector, TokenWrapper.getKnownWrapperTokenPair(8453, "WETH").wrapper, 1e18
+            WrapperActions.wrapAllETH.selector, TokenWrapper.getKnownWrapperTokenPair(8453, "WETH").wrapper
         );
         callDatas[1] = abi.encodeCall(TransferActions.transferERC20Token, (weth_(8453), address(0xceecee), 1e18));
         assertEq(
             result.quarkOperations[1].scriptCalldata,
             abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
-            "calldata is Multicall.run([wrapperActionsAddress, transferActionsAddress], [WrapperActions.wrapETHUpTo(USDC_8453, 1e18),  TransferActions.transferERC20Token(USDC_8453, address(0xceecee), 1e18))"
+            "calldata is Multicall.run([wrapperActionsAddress, transferActionsAddress], [WrapperActions.wrapAllETH(USDC_8453),  TransferActions.transferERC20Token(USDC_8453, address(0xceecee), 1e18))"
         );
         assertEq(
             result.quarkOperations[1].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"

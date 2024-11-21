@@ -1093,14 +1093,13 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         callContracts[0] = wrapperActionsAddress;
         callContracts[1] = transferActionsAddress;
         bytes[] memory callDatas = new bytes[](2);
-        callDatas[0] = abi.encodeWithSelector(
-            WrapperActions.unwrapWETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 0.5e18
-        );
+        callDatas[0] =
+            abi.encodeWithSelector(WrapperActions.unwrapAllWETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
         callDatas[1] = abi.encodeWithSelector(TransferActions.transferNativeToken.selector, address(0xceecee), 1.5e18);
         assertEq(
             result.quarkOperations[0].scriptCalldata,
             abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
-            "calldata is Multicall.run([wrapperActionsAddress, transferActionsAddress], [WrapperActions.unwrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 0.5e18), TransferActions.transferNativeToken(address(0xceecee), 1.5e18)]);"
+            "calldata is Multicall.run([wrapperActionsAddress, transferActionsAddress], [WrapperActions.unwrapAllWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2), TransferActions.transferNativeToken(address(0xceecee), 1.5e18)]);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
@@ -1203,9 +1202,8 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         callContracts[0] = wrapperActionsAddress;
         callContracts[1] = transferActionsAddress;
         bytes[] memory callDatas = new bytes[](2);
-        callDatas[0] = abi.encodeWithSelector(
-            WrapperActions.unwrapWETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 0.5e18
-        );
+        callDatas[0] =
+            abi.encodeWithSelector(WrapperActions.unwrapAllWETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
         callDatas[1] = abi.encodeWithSelector(TransferActions.transferNativeToken.selector, address(0xceecee), 1.5e18);
         assertEq(
             result.quarkOperations[0].scriptCalldata,
@@ -1215,7 +1213,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
                 abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
                 1e5
             ),
-            "calldata is Paycall.run(Multicall.run([wrapperActionsAddress, transferActionsAddress], [WrapperActions.unwrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 0.5e18), TransferActions.transferNativeToken(address(0xceecee), 1.5e18)]), 1e5);"
+            "calldata is Paycall.run(Multicall.run([wrapperActionsAddress, transferActionsAddress], [WrapperActions.unwrapAllWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2), TransferActions.transferNativeToken(address(0xceecee), 1.5e18)]), 1e5);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
@@ -1321,7 +1319,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         callContracts[1] = transferActionsAddress;
         bytes[] memory callDatas = new bytes[](2);
         callDatas[0] =
-            abi.encodeWithSelector(WrapperActions.unwrapWETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18);
+            abi.encodeWithSelector(WrapperActions.unwrapAllWETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
         callDatas[1] = abi.encodeWithSelector(TransferActions.transferNativeToken.selector, address(0xceecee), 2e18);
         assertEq(
             result.quarkOperations[0].scriptCalldata,
@@ -1331,7 +1329,7 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
                 abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
                 1e5
             ),
-            "calldata is Quotecall.run(Multicall.run([wrapperActionsAddress, transferActionsAddress], [WrapperActions.unwrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18), TransferActions.transferNativeToken(address(0xceecee), 2e18)]), 1e5);"
+            "calldata is Quotecall.run(Multicall.run([wrapperActionsAddress, transferActionsAddress], [WrapperActions.unwrapAllWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2), TransferActions.transferNativeToken(address(0xceecee), 2e18)]), 1e5);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
@@ -1432,13 +1430,13 @@ contract QuarkBuilderTransferTest is Test, QuarkBuilderTest {
         callContracts[1] = transferActionsAddress;
         bytes[] memory callDatas = new bytes[](2);
         callDatas[0] =
-            abi.encodeWithSelector(WrapperActions.wrapETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 0.75e18);
+            abi.encodeWithSelector(WrapperActions.wrapAllETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
         callDatas[1] =
             abi.encodeWithSelector(TransferActions.transferERC20Token.selector, WETH_1, address(0xceecee), 1.75e18);
         assertEq(
             result.quarkOperations[0].scriptCalldata,
             abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
-            "calldata is Multicall.run([wrapperActionsAddress, transferActionsAddress], [WrapperActions.wrapETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 0.75e18), TransferActions.transferERC20Token(WETH_1, address(0xceecee), 1.75e18)]);"
+            "calldata is Multicall.run([wrapperActionsAddress, transferActionsAddress], [WrapperActions.wrapAllETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2), TransferActions.transferERC20Token(WETH_1, address(0xceecee), 1.75e18)]);"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
