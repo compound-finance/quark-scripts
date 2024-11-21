@@ -37,7 +37,7 @@ contract QuarkBuilderBase {
 
     /* ===== Constants ===== */
 
-    string constant VERSION = "0.2.1";
+    string constant VERSION = "0.3.0";
 
     /* ===== Custom Errors ===== */
 
