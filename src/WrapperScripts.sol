@@ -17,6 +17,13 @@ contract WrapperActions {
         }
     }
 
+    function wrapAllETH(address weth) external payable {
+        uint256 ethBalance = address(this).balance;
+        if (ethBalance > 0) {
+            IWETH(weth).deposit{value: ethBalance}();
+        }
+    }
+
     function unwrapWETH(address weth, uint256 amount) external {
         IWETH(weth).withdraw(amount);
     }
@@ -28,12 +35,34 @@ contract WrapperActions {
         }
     }
 
+    function unwrapAllWETH(address weth) external payable {
+        uint256 wethBalance = IERC20(weth).balanceOf(address(this));
+        if (wethBalance > 0) {
+            IWETH(weth).withdraw(wethBalance);
+        }
+    }
+
     function wrapLidoStETH(address wstETH, address stETH, uint256 amount) external {
         IERC20(stETH).approve(wstETH, amount);
         IWstETH(wstETH).wrap(amount);
     }
 
+    function wrapAllLidoStETH(address wstETH, address stETH) external payable {
+        uint256 stETHBalance = IERC20(stETH).balanceOf(address(this));
+        if (stETHBalance > 0) {
+            IERC20(stETH).approve(wstETH, stETHBalance);
+            IWstETH(wstETH).wrap(stETHBalance);
+        }
+    }
+
     function unwrapLidoWstETH(address wstETH, uint256 amount) external {
         IWstETH(wstETH).unwrap(amount);
+    }
+
+    function unwrapAllLidoWstETH(address wstETH) external {
+        uint256 wstETHBalance = IERC20(wstETH).balanceOf(address(this));
+        if (wstETHBalance > 0) {
+            IWstETH(wstETH).unwrap(wstETHBalance);
+        }
     }
 }

@@ -264,7 +264,7 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
         callContracts[1] = cometSupplyMultipleAssetsAndBorrowAddress;
         bytes[] memory callDatas = new bytes[](2);
         callDatas[0] =
-            abi.encodeWithSelector(WrapperActions.wrapETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18);
+            abi.encodeWithSelector(WrapperActions.wrapAllETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
         callDatas[1] = abi.encodeCall(
             CometSupplyMultipleAssetsAndBorrow.run, (cometUsdc_(1), collateralTokens, collateralAmounts, usdc_(1), 1e6)
         );
@@ -272,7 +272,7 @@ contract QuarkBuilderCometBorrowTest is Test, QuarkBuilderTest {
         assertEq(
             result.quarkOperations[0].scriptCalldata,
             abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
-            "calldata is Multicall.run([wrapperActionsAddress, cometSupplyMultipleAssetsAndBorrowAddress], [WrapperActions.wrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 10e18), CometSupplyMultipleAssetsAndBorrow.run(COMET_1, collateralTokens, collateralAmounts, usdc_(1), 1e6)"
+            "calldata is Multicall.run([wrapperActionsAddress, cometSupplyMultipleAssetsAndBorrowAddress], [WrapperActions.wrapAllETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2), CometSupplyMultipleAssetsAndBorrow.run(COMET_1, collateralTokens, collateralAmounts, usdc_(1), 1e6)"
         );
         assertEq(result.quarkOperations[0].scriptSources.length, 3);
         assertEq(result.quarkOperations[0].scriptSources[0], type(WrapperActions).creationCode);

@@ -306,12 +306,12 @@ contract QuarkBuilderCometSupplyTest is Test, QuarkBuilderTest {
         callContracts[1] = cometSupplyActionsAddress;
         bytes[] memory callDatas = new bytes[](2);
         callDatas[0] =
-            abi.encodeWithSelector(WrapperActions.wrapETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18);
+            abi.encodeWithSelector(WrapperActions.wrapAllETH.selector, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
         callDatas[1] = abi.encodeCall(CometSupplyActions.supply, (COMET_ETH, weth_(1), 1e18));
         assertEq(
             result.quarkOperations[0].scriptCalldata,
             abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
-            "calldata is Multicall.run([wrapperActionsAddress, cometSupplyActionsAddress], [WrapperActions.wrapWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 1e18), CometSupplyActions.supply(COMET_ETH, weth_(1), 1e18)"
+            "calldata is Multicall.run([wrapperActionsAddress, cometSupplyActionsAddress], [WrapperActions.wrapAllETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2), CometSupplyActions.supply(COMET_ETH, weth_(1), 1e18)"
         );
         assertEq(
             result.quarkOperations[0].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 3 days"

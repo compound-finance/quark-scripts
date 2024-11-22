@@ -23,14 +23,15 @@ import {PaymentInfo} from "src/builder/PaymentInfo.sol";
 import {QuarkBuilder} from "src/builder/QuarkBuilder.sol";
 import {QuarkBuilderBase} from "src/builder/QuarkBuilderBase.sol";
 import {Quotecall} from "src/Quotecall.sol";
+import {TokenWrapper} from "src/builder/TokenWrapper.sol";
 import {YulHelper} from "test/lib/YulHelper.sol";
 
-import {AcrossFFI} from "test/builder/mocks/AcrossFFI.sol";
+import {MockAcrossFFI, MockAcrossFFIConstants} from "test/builder/mocks/AcrossFFI.sol";
 
 contract BridgingLogicTest is Test, QuarkBuilderTest {
     function setUp() public {
         // Deploy mock FFI for calling Across API
-        AcrossFFI mockFFI = new AcrossFFI();
+        MockAcrossFFI mockFFI = new MockAcrossFFI();
         vm.etch(FFI.ACROSS_FFI_ADDRESS, address(mockFFI).code);
     }
 
@@ -48,7 +49,7 @@ contract BridgingLogicTest is Test, QuarkBuilderTest {
         chainAccountsList[1] = Accounts.ChainAccounts({
             chainId: 8453,
             quarkSecrets: quarkSecrets_(address(0xb0b), bytes32(uint256(2))),
-            assetPositionsList: assetPositionsList_(8453, address(0xb0b), 0e18),
+            assetPositionsList: assetPositionsList_(8453, address(0xb0b), 0.5e18),
             cometPositions: emptyCometPositions_(),
             morphoPositions: emptyMorphoPositions_(),
             morphoVaultPositions: emptyMorphoVaultPositions_()
@@ -69,6 +70,10 @@ contract BridgingLogicTest is Test, QuarkBuilderTest {
         );
 
         assertEq(result.paymentCurrency, "usd", "usd currency");
+
+        address multicallAddress = CodeJarHelper.getCodeAddress(type(Multicall).creationCode);
+        address wrapperActionsAddress = CodeJarHelper.getCodeAddress(type(WrapperActions).creationCode);
+        address transferActionsAddress = CodeJarHelper.getCodeAddress(type(TransferActions).creationCode);
 
         // Check the quark operations
         assertEq(result.quarkOperations.length, 2, "two operations");
@@ -102,8 +107,8 @@ contract BridgingLogicTest is Test, QuarkBuilderTest {
                     address(0xb0b), // recipient
                     weth_(1), // inputToken
                     weth_(8453), // outputToken
-                    1e18 * (1e18 + 0.01e18) / 1e18 + 1e6, // inputAmount
-                    1e18, // outputAmount
+                    0.5e18 * (1e18 + MockAcrossFFIConstants.VARIABLE_FEE_PCT) / 1e18 + MockAcrossFFIConstants.GAS_FEE, // inputAmount
+                    0.5e18, // outputAmount
                     8453, // destinationChainId
                     address(0), // exclusiveRelayer
                     uint32(BLOCK_TIMESTAMP) - Across.QUOTE_TIMESTAMP_BUFFER, // quoteTimestamp
@@ -123,28 +128,21 @@ contract BridgingLogicTest is Test, QuarkBuilderTest {
 
         assertEq(
             result.quarkOperations[1].scriptAddress,
-            address(
-                uint160(
-                    uint256(
-                        keccak256(
-                            abi.encodePacked(
-                                bytes1(0xff),
-                                /* codeJar address */
-                                address(CodeJarHelper.CODE_JAR_ADDRESS),
-                                uint256(0),
-                                /* script bytecode */
-                                keccak256(type(TransferActions).creationCode)
-                            )
-                        )
-                    )
-                )
-            ),
-            "script address for transfer is correct given the code jar address"
+            multicallAddress,
+            "script address for Multicall is correct given the code jar address"
         );
+        address[] memory callContracts = new address[](2);
+        callContracts[0] = wrapperActionsAddress;
+        callContracts[1] = transferActionsAddress;
+        bytes[] memory callDatas = new bytes[](2);
+        callDatas[0] = abi.encodeWithSelector(
+            WrapperActions.wrapAllETH.selector, TokenWrapper.getKnownWrapperTokenPair(8453, "WETH").wrapper
+        );
+        callDatas[1] = abi.encodeCall(TransferActions.transferERC20Token, (weth_(8453), address(0xceecee), 1e18));
         assertEq(
             result.quarkOperations[1].scriptCalldata,
-            abi.encodeCall(TransferActions.transferERC20Token, (weth_(8453), address(0xceecee), 1e18)),
-            "calldata is TransferActions.transferERC20Token(USDC_8453, address(0xceecee), 5e6);"
+            abi.encodeWithSelector(Multicall.run.selector, callContracts, callDatas),
+            "calldata is Multicall.run([wrapperActionsAddress, transferActionsAddress], [WrapperActions.wrapAllETH(USDC_8453),  TransferActions.transferERC20Token(USDC_8453, address(0xceecee), 1e18))"
         );
         assertEq(
             result.quarkOperations[1].expiry, BLOCK_TIMESTAMP + 7 days, "expiry is current blockTimestamp + 7 days"
@@ -169,8 +167,9 @@ contract BridgingLogicTest is Test, QuarkBuilderTest {
                     price: WETH_PRICE,
                     token: WETH_1,
                     assetSymbol: "WETH",
-                    inputAmount: 1e18 * (1e18 + 0.01e18) / 1e18 + 1e6,
-                    outputAmount: 1e18,
+                    inputAmount: 0.5e18 * (1e18 + MockAcrossFFIConstants.VARIABLE_FEE_PCT) / 1e18
+                        + MockAcrossFFIConstants.GAS_FEE,
+                    outputAmount: 0.5e18,
                     chainId: 1,
                     recipient: address(0xb0b),
                     destinationChainId: 8453,

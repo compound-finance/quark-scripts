@@ -4,6 +4,7 @@ pragma solidity ^0.8.27;
 import {AcrossActions} from "src/AcrossScripts.sol";
 import {CCTPBridgeActions} from "src/BridgeScripts.sol";
 import {Errors} from "src/builder/Errors.sol";
+import {HashMap} from "src/builder/HashMap.sol";
 import {QuarkBuilder} from "src/builder/QuarkBuilder.sol";
 
 import "src/builder/Strings.sol";
@@ -195,5 +196,19 @@ library Across {
                 useNativeToken // useNativeToken
             )
         );
+    }
+
+    // Returns whether or not an asset is bridged non-deterministically. This applies to WETH/ETH, where Across will send either ETH or WETH
+    // to the target address depending on if address is an EOA or contract.
+    function isNonDeterministicBridgeAction(HashMap.Map memory assetsBridged, string memory assetSymbol)
+        internal
+        pure
+        returns (bool)
+    {
+        uint256 bridgedAmount = HashMap.contains(assetsBridged, abi.encode(assetSymbol))
+            ? HashMap.getUint256(assetsBridged, abi.encode(assetSymbol))
+            : 0;
+        return bridgedAmount > 0
+            && (Strings.stringEqIgnoreCase(assetSymbol, "ETH") || Strings.stringEqIgnoreCase(assetSymbol, "WETH"));
     }
 }

@@ -108,6 +108,9 @@ library TokenWrapper {
         return Strings.stringEqIgnoreCase(tokenSymbol, getKnownWrapperTokenPair(chainId, tokenSymbol).wrappedSymbol);
     }
 
+    /// Note: We "wrap/unwrap all" for every asset except for ETH/WETH. For ETH/WETH, we will "wrap all ETH" but
+    ///       "unwrap up to X WETH". This is an intentional choice to prefer WETH over ETH since it is much more
+    ///       usable across protocols.
     function encodeActionToWrapOrUnwrap(uint256 chainId, string memory tokenSymbol, uint256 amount)
         internal
         pure
@@ -117,25 +120,24 @@ library TokenWrapper {
         if (isWrappedToken(chainId, tokenSymbol)) {
             return encodeActionToUnwrapToken(chainId, tokenSymbol, amount);
         } else {
-            return encodeActionToWrapToken(chainId, tokenSymbol, pair.underlyingToken, amount);
+            return encodeActionToWrapToken(chainId, tokenSymbol, pair.underlyingToken);
         }
     }
 
-    function encodeActionToWrapToken(uint256 chainId, string memory tokenSymbol, address tokenAddress, uint256 amount)
+    function encodeActionToWrapToken(uint256 chainId, string memory tokenSymbol, address tokenAddress)
         internal
         pure
         returns (bytes memory)
     {
         if (Strings.stringEqIgnoreCase(tokenSymbol, "ETH")) {
             return abi.encodeWithSelector(
-                WrapperActions.wrapETH.selector, getKnownWrapperTokenPair(chainId, tokenSymbol).wrapper, amount
+                WrapperActions.wrapAllETH.selector, getKnownWrapperTokenPair(chainId, tokenSymbol).wrapper
             );
         } else if (Strings.stringEqIgnoreCase(tokenSymbol, "stETH")) {
             return abi.encodeWithSelector(
-                WrapperActions.wrapLidoStETH.selector,
+                WrapperActions.wrapAllLidoStETH.selector,
                 getKnownWrapperTokenPair(chainId, tokenSymbol).wrapper,
-                tokenAddress,
-                amount
+                tokenAddress
             );
         }
         revert NotWrappable();
@@ -148,11 +150,11 @@ library TokenWrapper {
     {
         if (Strings.stringEqIgnoreCase(tokenSymbol, "WETH")) {
             return abi.encodeWithSelector(
-                WrapperActions.unwrapWETH.selector, getKnownWrapperTokenPair(chainId, tokenSymbol).wrapper, amount
+                WrapperActions.unwrapWETHUpTo.selector, getKnownWrapperTokenPair(chainId, tokenSymbol).wrapper, amount
             );
         } else if (Strings.stringEqIgnoreCase(tokenSymbol, "wstETH")) {
             return abi.encodeWithSelector(
-                WrapperActions.unwrapLidoWstETH.selector, getKnownWrapperTokenPair(chainId, tokenSymbol).wrapper, amount
+                WrapperActions.unwrapAllLidoWstETH.selector, getKnownWrapperTokenPair(chainId, tokenSymbol).wrapper
             );
         }
         revert NotUnwrappable();
